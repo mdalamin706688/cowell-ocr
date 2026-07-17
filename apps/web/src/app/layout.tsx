@@ -17,6 +17,14 @@ const noto = Noto_Sans_JP({
 export const metadata: Metadata = {
   title: "Cowell OCR — 現地調査デジタル化",
   description: "LED現地調査シートをOCRでGoogleスプレッドシートに自動変換",
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    apple: [{ url: "/apple-touch-icon.svg", sizes: "180x180", type: "image/svg+xml" }],
+    shortcut: ["/favicon.svg"],
+  },
 };
 
 export default function RootLayout({

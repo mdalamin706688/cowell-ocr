@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <defs>
+    <linearGradient id="forest" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1f4239"/>
+      <stop offset="1" stop-color="#152923"/>
+    </linearGradient>
+    <linearGradient id="lumen" x1="16" y1="6" x2="16" y2="22" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f5c76a"/>
+      <stop offset="1" stop-color="#d4842a"/>
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="8" fill="url(#forest)"/>
+  <rect x="0.5" y="0.5" width="31" height="31" rx="7.5" stroke="#f5c76a" stroke-opacity="0.2"/>
+  <path d="M16 5.5L11.5 13h3.25v8.5h3.5V13H20.5L16 5.5z" fill="url(#lumen)"/>
+  <ellipse cx="16" cy="24.5" rx="5.5" ry="1.35" fill="#f5c76a" fill-opacity="0.35"/>
+</svg>
