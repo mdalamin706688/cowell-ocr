@@ -5,7 +5,24 @@ export interface SessionUser {
   name: string;
 }
 
-export const isStaticPreview = process.env.NEXT_PUBLIC_STATIC_PREVIEW === "true";
+export const DEMO_EMAIL = "admin@cowell.local";
+export const DEMO_PASSWORD = "change-me";
+
+/** GitHub Pages preview — no server API */
+export function isPreviewEnvironment(): boolean {
+  if (typeof window !== "undefined") {
+    return window.location.hostname.endsWith("github.io");
+  }
+  return process.env.NEXT_PUBLIC_STATIC_PREVIEW === "true";
+}
+
+export function getDemoEmail(): string {
+  return process.env.NEXT_PUBLIC_DEV_LOGIN_EMAIL || DEMO_EMAIL;
+}
+
+export function getDemoPassword(): string {
+  return process.env.NEXT_PUBLIC_DEV_LOGIN_PASSWORD || DEMO_PASSWORD;
+}
 
 export function createSessionToken(user: SessionUser): string {
   return btoa(JSON.stringify(user));
@@ -31,10 +48,16 @@ export function readClientSession(): SessionUser | null {
 }
 
 export function demoLogin(email: string, password: string): SessionUser | null {
-  const demoEmail = process.env.NEXT_PUBLIC_DEV_LOGIN_EMAIL ?? "admin@cowell.local";
-  const demoPassword = process.env.NEXT_PUBLIC_DEV_LOGIN_PASSWORD ?? "change-me";
-  if (email === demoEmail && password === demoPassword) {
+  if (email === getDemoEmail() && password === getDemoPassword()) {
     return { email, name: "管理者" };
   }
   return null;
+}
+
+export function getBasePath(): string {
+  if (typeof window !== "undefined" && window.location.hostname.endsWith("github.io")) {
+    const parts = window.location.pathname.split("/");
+    if (parts.length > 1 && parts[1]) return `/${parts[1]}`;
+  }
+  return process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 }

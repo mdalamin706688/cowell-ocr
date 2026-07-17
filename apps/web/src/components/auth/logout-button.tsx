@@ -5,9 +5,7 @@ import { LogOut, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { copy } from "@/lib/copy";
 import { Button } from "@/components/ui/button";
-import { clearClientSession, isStaticPreview } from "@/lib/client-auth";
-
-const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+import { clearClientSession, getBasePath, isPreviewEnvironment } from "@/lib/client-auth";
 
 interface LogoutButtonProps {
   variant?: "sidebar" | "mobile";
@@ -20,9 +18,9 @@ export function LogoutButton({ variant = "sidebar", className }: LogoutButtonPro
   const handleLogout = async () => {
     setLoading(true);
     try {
-      if (isStaticPreview) {
+      if (isPreviewEnvironment()) {
         clearClientSession();
-        window.location.href = `${basePath}/login?from=logout`;
+        window.location.href = `${getBasePath()}/login?from=logout`;
         return;
       }
 
@@ -30,7 +28,7 @@ export function LogoutButton({ variant = "sidebar", className }: LogoutButtonPro
         method: "POST",
         headers: { Accept: "application/json" },
       });
-      window.location.href = `${basePath}/login?from=logout`;
+      window.location.href = `${getBasePath()}/login?from=logout`;
     } catch {
       setLoading(false);
     }
