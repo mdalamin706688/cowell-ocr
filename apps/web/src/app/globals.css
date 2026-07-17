@@ -1,0 +1,299 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 38 28% 97%;
+    --foreground: 28 12% 11%;
+    --card: 40 35% 99%;
+    --card-foreground: 28 12% 11%;
+    --popover: 40 35% 99%;
+    --popover-foreground: 28 12% 11%;
+    --primary: 26 58% 44%;
+    --primary-foreground: 40 40% 98%;
+    --secondary: 38 18% 94%;
+    --secondary-foreground: 28 10% 28%;
+    --muted: 36 16% 93%;
+    --muted-foreground: 28 6% 46%;
+    --accent: 28 48% 94%;
+    --accent-foreground: 26 55% 30%;
+    --destructive: 0 65% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 32 14% 87%;
+    --input: 32 14% 87%;
+    --ring: 26 58% 44%;
+    --radius: 0.75rem;
+    --lumen: 28 68% 50%;
+    --lumen-glow: 34 88% 62%;
+    --forest: 158 32% 14%;
+    --forest-muted: 158 20% 26%;
+    --paper: 38 28% 97%;
+    --ink: 28 12% 11%;
+  }
+
+  * { @apply border-border; }
+
+  html { font-size: 15px; scroll-behavior: smooth; }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1, "palt" 1;
+  }
+
+  ::selection {
+    background: hsl(var(--lumen) / 0.22);
+    color: hsl(var(--ink));
+  }
+}
+
+@layer components {
+  /* ── Canvas ── */
+  .paper-canvas {
+    background-color: hsl(var(--paper));
+    background-image:
+      radial-gradient(ellipse 90% 60% at 0% -20%, hsl(var(--lumen) / 0.07) 0%, transparent 55%),
+      radial-gradient(ellipse 50% 40% at 100% 0%, hsl(var(--forest) / 0.04) 0%, transparent 50%);
+  }
+
+  .grain {
+    pointer-events: none;
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    opacity: 0.018;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* ── Cards ── */
+  .ui-card {
+    @apply rounded-xl border border-border/80 bg-card;
+    box-shadow:
+      0 0 0 1px hsl(40 40% 99% / 0.7) inset,
+      0 1px 2px hsl(28 12% 11% / 0.04),
+      0 8px 28px hsl(28 12% 11% / 0.05);
+  }
+
+  .ui-card-header {
+    @apply flex items-center justify-between gap-3 px-5 py-4 border-b border-border/60;
+  }
+
+  .ui-card-body { @apply p-5; }
+
+  /* ── Hero (forest) ── */
+  .forest-hero {
+    @apply relative overflow-hidden rounded-xl;
+    background: linear-gradient(148deg, hsl(var(--forest)) 0%, hsl(158 36% 10%) 100%);
+    box-shadow:
+      0 0 0 1px hsl(var(--lumen-glow) / 0.1) inset,
+      0 20px 48px hsl(158 32% 8% / 0.22);
+  }
+
+  .forest-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 80% at 100% 0%, hsl(var(--lumen) / 0.16) 0%, transparent 55%),
+      repeating-linear-gradient(
+        -12deg,
+        transparent,
+        transparent 40px,
+        hsl(0 0% 100% / 0.015) 40px,
+        hsl(0 0% 100% / 0.015) 41px
+      );
+    pointer-events: none;
+  }
+
+  .forest-panel {
+    background: linear-gradient(160deg, hsl(var(--forest)) 0%, hsl(158 36% 10%) 100%);
+  }
+
+  /* ── Signature copper rule ── */
+  .copper-rule {
+    width: 2.5rem;
+    height: 2px;
+    background: linear-gradient(90deg, hsl(var(--lumen)), hsl(var(--lumen-glow)));
+    border-radius: 1px;
+  }
+
+  /* ── Buttons ── */
+  .btn-lumen {
+    @apply font-semibold text-white rounded-xl;
+    background: linear-gradient(165deg, hsl(var(--lumen-glow)) 0%, hsl(var(--lumen)) 48%, hsl(26 58% 38%) 100%);
+    box-shadow:
+      0 0 0 1px hsl(34 88% 72% / 0.15) inset,
+      0 1px 2px hsl(26 58% 28% / 0.2),
+      0 6px 18px hsl(var(--lumen) / 0.28);
+    transition: box-shadow 0.2s ease, transform 0.15s ease, filter 0.2s ease;
+  }
+
+  .btn-lumen:hover {
+    filter: brightness(1.03);
+    box-shadow:
+      0 0 0 1px hsl(34 88% 72% / 0.22) inset,
+      0 2px 4px hsl(26 58% 28% / 0.22),
+      0 10px 28px hsl(var(--lumen) / 0.32);
+  }
+
+  .btn-lumen:active { transform: scale(0.985); }
+
+  .btn-surface {
+    @apply font-medium text-foreground rounded-xl border border-border/80 bg-card;
+    box-shadow:
+      0 0 0 1px hsl(40 40% 99% / 0.65) inset,
+      0 1px 2px hsl(28 12% 11% / 0.04);
+    transition: box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+  }
+
+  .btn-surface:hover {
+    @apply bg-accent/40 border-lumen/25;
+    box-shadow:
+      0 0 0 1px hsl(40 40% 99% / 0.8) inset,
+      0 4px 14px hsl(28 12% 11% / 0.06);
+  }
+
+  .btn-surface:active { transform: scale(0.985); }
+
+  .btn-elevated {
+    @apply font-semibold text-foreground rounded-xl border-0;
+    background: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(38 20% 96%) 100%);
+    box-shadow:
+      0 0 0 1px hsl(0 0% 100% / 0.9) inset,
+      0 1px 2px hsl(28 12% 11% / 0.08),
+      0 8px 24px hsl(28 12% 11% / 0.12);
+    transition: box-shadow 0.2s ease, transform 0.15s ease;
+  }
+
+  .btn-elevated:hover {
+    box-shadow:
+      0 0 0 1px hsl(0 0% 100%) inset,
+      0 2px 4px hsl(28 12% 11% / 0.1),
+      0 12px 32px hsl(28 12% 11% / 0.14);
+  }
+
+  .btn-elevated:active { transform: scale(0.985); }
+
+  .btn-logout {
+    @apply w-full flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium;
+    @apply border border-border/70 bg-card/80 text-muted-foreground;
+    box-shadow: 0 0 0 1px hsl(40 40% 99% / 0.5) inset;
+    transition: all 0.2s ease;
+  }
+
+  .btn-logout:hover {
+    @apply border-border text-foreground bg-muted/30;
+    box-shadow:
+      0 0 0 1px hsl(40 40% 99% / 0.7) inset,
+      0 4px 12px hsl(28 12% 11% / 0.05);
+  }
+
+  .btn-logout-icon {
+    @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-lg;
+    @apply bg-muted/60 text-muted-foreground;
+    transition: background 0.2s ease, color 0.2s ease;
+  }
+
+  .btn-logout:hover .btn-logout-icon {
+    @apply bg-destructive/10 text-destructive;
+  }
+
+  .btn-ghost-premium {
+    @apply rounded-xl font-medium text-muted-foreground;
+    transition: background 0.2s ease, color 0.2s ease;
+  }
+
+  .btn-ghost-premium:hover {
+    @apply bg-muted/50 text-foreground;
+  }
+
+  /* ── Typography ── */
+  .text-label {
+    @apply text-[11px] font-medium tracking-wide text-muted-foreground;
+  }
+
+  .text-eyebrow {
+    @apply text-[10px] font-semibold tracking-wider text-lumen;
+  }
+
+  .text-title {
+    @apply font-display font-semibold tracking-tight text-foreground;
+  }
+
+  .text-display {
+    @apply font-display font-bold tracking-tight leading-[1.15];
+  }
+
+  /* ── Nav ── */
+  .nav-link {
+    @apply relative flex items-center rounded-lg px-3 py-2.5 text-sm transition-colors;
+  }
+
+  .nav-link-active {
+    @apply bg-accent/70 font-semibold text-foreground shadow-sm;
+  }
+
+  .nav-link-active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 2px;
+    height: 60%;
+    border-radius: 1px;
+    background: linear-gradient(180deg, hsl(var(--lumen-glow)), hsl(var(--lumen)));
+  }
+
+  /* ── Timeline ── */
+  .timeline-track {
+    @apply relative flex justify-between;
+  }
+
+  .timeline-track::before {
+    content: "";
+    position: absolute;
+    top: 11px;
+    left: 12px;
+    right: 12px;
+    height: 1px;
+    background: linear-gradient(90deg, hsl(var(--border)), hsl(var(--lumen) / 0.35), hsl(var(--border)));
+  }
+
+  .timeline-dot {
+    @apply relative z-10 flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold;
+    @apply border border-border bg-card text-muted-foreground;
+    box-shadow: 0 0 0 3px hsl(var(--paper));
+  }
+
+  .timeline-dot-done {
+    @apply border-lumen/30 bg-lumen text-white;
+  }
+
+  .timeline-dot-active {
+    @apply border-lumen bg-card text-lumen ring-2 ring-lumen/20;
+  }
+
+  /* ── Upload ── */
+  .ui-upload {
+    @apply relative rounded-xl border border-dashed border-border/90 bg-muted/20 p-10 text-center;
+    @apply transition-all duration-200 hover:border-lumen/40 hover:bg-accent/25;
+  }
+
+  .ui-upload-active {
+    @apply border-lumen/50 bg-accent/40;
+  }
+
+  /* ── Table ── */
+  .table-row-hover:hover {
+    background: hsl(var(--lumen) / 0.03);
+  }
+
+  /* ── Form card (login) ── */
+  .form-surface {
+    @apply rounded-xl border border-border/70 bg-card p-7;
+    box-shadow:
+      0 0 0 1px hsl(40 40% 99% / 0.8) inset,
+      0 16px 40px hsl(28 12% 11% / 0.06);
+  }
+}
