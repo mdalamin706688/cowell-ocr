@@ -1,8 +1,8 @@
 import type { OcrResult, OcrRow } from "@cowell/shared";
 import { getBasePath, isPreviewEnvironment } from "./client-auth";
-import { getGeminiApiKey } from "./gemini-key";
 import { runGeminiOcr } from "./gemini";
 import { rowsToTsv } from "./ocr";
+import { copy } from "./copy";
 
 type ApiError = { error?: string };
 
@@ -23,9 +23,9 @@ export async function surveyRunOcr(
   files: Array<{ base64: string; mimeType: string; name: string }>
 ): Promise<OcrResult> {
   if (isPreviewEnvironment()) {
-    const apiKey = getGeminiApiKey();
+    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY?.trim();
     if (!apiKey) {
-      throw new Error("APIキーを入力してください");
+      throw new Error(copy.errors.serviceNotConfigured);
     }
     return runGeminiOcr({ prompt, files }, { apiKey });
   }
