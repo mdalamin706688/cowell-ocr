@@ -24,8 +24,30 @@ export function getDemoPassword(): string {
   return process.env.NEXT_PUBLIC_DEV_LOGIN_PASSWORD || DEMO_PASSWORD;
 }
 
+/** UTF-8 safe base64 (btoa alone fails on Japanese text) */
+function encodeBase64Utf8(value: string): string {
+  const bytes = new TextEncoder().encode(value);
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+function decodeBase64Utf8(value: string): string {
+  const binary = atob(value);
+  const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
 export function createSessionToken(user: SessionUser): string {
-  return btoa(JSON.stringify(user));
+  return encodeBase64Utf8(JSON.stringify(user));
+}
+
+export function parseSessionToken(token: string): SessionUser | null {
+  try {
+    return JSON.parse(decodeBase64Utf8(token)) as SessionUser;
+  } catch {
+    return null;
+  }
 }
 
 export function setClientSession(user: SessionUser): void {
@@ -40,11 +62,7 @@ export function clearClientSession(): void {
 export function readClientSession(): SessionUser | null {
   const match = document.cookie.match(/cowell_session=([^;]+)/);
   if (!match) return null;
-  try {
-    return JSON.parse(atob(match[1])) as SessionUser;
-  } catch {
-    return null;
-  }
+  return parseSessionToken(match[1]);
 }
 
 export function demoLogin(email: string, password: string): SessionUser | null {

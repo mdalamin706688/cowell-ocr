@@ -78,23 +78,14 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { DashboardContent } from "@/components/dashboard/dashboard-content";
-
-function readSession() {
-  const match = document.cookie.match(/cowell_session=([^;]+)/);
-  if (!match) return null;
-  try {
-    return JSON.parse(atob(match[1])) as { email: string; name: string };
-  } catch {
-    return null;
-  }
-}
+import { readClientSession } from "@/lib/client-auth";
 
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<{ email: string; name: string } | null>(null);
 
   useEffect(() => {
-    const session = readSession();
+    const session = readClientSession();
     if (!session) {
       router.replace("/login/");
       return;
