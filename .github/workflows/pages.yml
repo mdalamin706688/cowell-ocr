@@ -32,6 +32,8 @@ jobs:
         run: node scripts/build-github-pages.mjs
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
+          DEMO_LOGIN_EMAIL: ${{ secrets.DEMO_LOGIN_EMAIL }}
+          DEMO_LOGIN_PASSWORD: ${{ secrets.DEMO_LOGIN_PASSWORD }}
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

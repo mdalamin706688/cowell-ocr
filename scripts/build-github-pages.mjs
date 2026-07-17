@@ -116,7 +116,14 @@ export default function DashboardPage() {
   execSync("npm run build --workspace=apps/web", {
     cwd: root,
     stdio: "inherit",
-    env: { ...process.env, GITHUB_PAGES: "true" },
+    env: {
+      ...process.env,
+      GITHUB_PAGES: "true",
+      NEXT_PUBLIC_STATIC_PREVIEW: "true",
+      NEXT_PUBLIC_PREFILL_LOGIN: "true",
+      NEXT_PUBLIC_DEV_LOGIN_EMAIL: process.env.DEMO_LOGIN_EMAIL ?? "admin@cowell.local",
+      NEXT_PUBLIC_DEV_LOGIN_PASSWORD: process.env.DEMO_LOGIN_PASSWORD ?? "change-me",
+    },
   });
 
   writeFileSync(join(web, "out", ".nojekyll"), "");

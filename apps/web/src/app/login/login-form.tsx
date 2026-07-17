@@ -8,17 +8,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/brand/logo";
 import { copy } from "@/lib/copy";
+import { demoLogin, isStaticPreview, setClientSession } from "@/lib/client-auth";
 
+const DEMO_EMAIL = process.env.NEXT_PUBLIC_DEV_LOGIN_EMAIL ?? "admin@cowell.local";
+const DEMO_PASSWORD = process.env.NEXT_PUBLIC_DEV_LOGIN_PASSWORD ?? "change-me";
 const DEV_AUTO_LOGIN = process.env.NEXT_PUBLIC_DEV_AUTO_LOGIN === "true";
-const DEV_EMAIL = process.env.NEXT_PUBLIC_DEV_LOGIN_EMAIL ?? "";
-const DEV_PASSWORD = process.env.NEXT_PUBLIC_DEV_LOGIN_PASSWORD ?? "";
+const PREFILL_LOGIN = isStaticPreview || DEV_AUTO_LOGIN || process.env.NEXT_PUBLIC_PREFILL_LOGIN === "true";
 
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const fromLogout = searchParams.get("from") === "logout";
-  const [email, setEmail] = useState(DEV_AUTO_LOGIN ? DEV_EMAIL : "");
-  const [password, setPassword] = useState(DEV_AUTO_LOGIN ? DEV_PASSWORD : "");
+  const [email, setEmail] = useState(PREFILL_LOGIN ? DEMO_EMAIL : "");
+  const [password, setPassword] = useState(PREFILL_LOGIN ? DEMO_PASSWORD : "");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const autoLoginAttempted = useRef(false);
@@ -29,6 +31,16 @@ export function LoginForm() {
       setError(null);
 
       try {
+        if (isStaticPreview) {
+          const user = demoLogin(loginEmail, loginPassword);
+          if (!user) {
+            throw new Error(copy.errors.loginFailed);
+          }
+          setClientSession(user);
+          router.push("/dashboard");
+          return;
+        }
+
         const res = await fetch("/api/auth/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -51,9 +63,9 @@ export function LoginForm() {
   );
 
   useEffect(() => {
-    if (!DEV_AUTO_LOGIN || !DEV_EMAIL || !DEV_PASSWORD || autoLoginAttempted.current || fromLogout) return;
+    if (!DEV_AUTO_LOGIN || autoLoginAttempted.current || fromLogout) return;
     autoLoginAttempted.current = true;
-    void login(DEV_EMAIL, DEV_PASSWORD);
+    void login(DEMO_EMAIL, DEMO_PASSWORD);
   }, [login, fromLogout]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -95,6 +107,12 @@ export function LoginForm() {
           <div className="form-surface">
             <h2 className="font-display text-xl font-semibold tracking-tight">{copy.login.title}</h2>
             <p className="mt-1.5 text-sm text-muted-foreground">{copy.login.subtitle}</p>
+
+            {isStaticPreview && (
+              <p className="mt-4 rounded-lg border border-lumen/20 bg-accent/50 px-3 py-2.5 text-xs text-muted-foreground leading-relaxed">
+                プレビュー環境です。入力済みの認証情報で「サインイン」をクリックしてください。
+              </p>
+            )}
 
             {fromLogout && (
               <p className="mt-4 rounded-lg border border-lumen/20 bg-accent/50 px-3 py-2.5 text-sm">

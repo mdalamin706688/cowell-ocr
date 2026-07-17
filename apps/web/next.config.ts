@@ -2,9 +2,13 @@ import type { NextConfig } from "next";
 
 const isGitHubPages = process.env.GITHUB_PAGES === "true";
 const repoName = process.env.GITHUB_REPOSITORY?.split("/")[1] ?? "cowell-ocr";
+const basePath = isGitHubPages ? `/${repoName}` : "";
 
 const nextConfig: NextConfig = {
   transpilePackages: ["@cowell/shared"],
+  env: {
+    NEXT_PUBLIC_BASE_PATH: basePath,
+  },
   images: {
     unoptimized: isGitHubPages,
     remotePatterns: [],
