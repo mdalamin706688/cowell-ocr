@@ -110,6 +110,8 @@ export default function DashboardPage() {
     env: {
       ...process.env,
       GITHUB_PAGES: "true",
+      GITHUB_REPOSITORY: process.env.GITHUB_REPOSITORY ?? "mdalamin706688/cowell-ocr",
+      NEXT_PUBLIC_BASE_PATH: `/${(process.env.GITHUB_REPOSITORY ?? "mdalamin706688/cowell-ocr").split("/")[1]}`,
       NEXT_PUBLIC_STATIC_PREVIEW: "true",
       NEXT_PUBLIC_PREFILL_LOGIN: "true",
       NEXT_PUBLIC_DEV_LOGIN_EMAIL: process.env.DEMO_LOGIN_EMAIL ?? "admin@cowell.local",
