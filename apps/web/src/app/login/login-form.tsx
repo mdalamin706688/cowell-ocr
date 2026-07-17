@@ -32,7 +32,6 @@ export function LoginForm() {
 
   useEffect(() => {
     const preview = isPreviewEnvironment();
-    setPreviewMode(preview);
     // Production server: clear prefilled demo creds unless dev auto-login
     if (!preview && !DEV_AUTO_LOGIN) {
       setEmail("");
