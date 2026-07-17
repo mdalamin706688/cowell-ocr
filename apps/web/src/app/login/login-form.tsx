@@ -25,7 +25,6 @@ export function LoginForm() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState(getDemoEmail());
   const [password, setPassword] = useState(getDemoPassword());
-  const [previewMode, setPreviewMode] = useState(false);
   const [loggedOutMessage, setLoggedOutMessage] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -96,9 +95,18 @@ export function LoginForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Preview: always use demo creds — browser translation can corrupt input values
     if (isPreviewEnvironment()) {
-      await login(getDemoEmail(), getDemoPassword());
+      // Prefer demo creds on static host — browser translation can corrupt inputs
+      const user =
+        demoLogin(email, password) ?? demoLogin(getDemoEmail(), getDemoPassword());
+      if (!user) {
+        setError(copy.errors.loginFailed);
+        return;
+      }
+      setLoading(true);
+      setError(null);
+      setClientSession(user);
+      router.push("/dashboard");
       return;
     }
     await login(email, password);
@@ -145,38 +153,19 @@ export function LoginForm() {
               </p>
             )}
 
-            {previewMode ? (
-              <div className="mt-6 space-y-4">
-                {error && (
-                  <p className="rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
-                    {error}
-                  </p>
-                )}
-                <Button
-                  type="button"
-                  className="w-full"
-                  size="lg"
-                  disabled={loading}
-                  onClick={() => login(getDemoEmail(), getDemoPassword())}
-                >
-                  {loading ? (
-                    <><Loader2 className="h-4 w-4 animate-spin" />{copy.login.submitting}</>
-                  ) : (
-                    <>{copy.login.submit}<ArrowRight className="h-4 w-4" /></>
-                  )}
-                </Button>
-              </div>
-            ) : (
             <form onSubmit={handleSubmit} className="mt-6 space-y-4" autoComplete="on">
               <div className="space-y-1.5">
                 <Label htmlFor="email" className="text-label">{copy.login.email}</Label>
                 <Input
                   id="email"
                   type="email"
+                  name="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   autoComplete="email"
+                  translate="no"
+                  className="notranslate"
                 />
               </div>
               <div className="space-y-1.5">
@@ -184,10 +173,13 @@ export function LoginForm() {
                 <Input
                   id="password"
                   type="password"
+                  name="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   autoComplete="current-password"
+                  translate="no"
+                  className="notranslate"
                 />
               </div>
 
@@ -205,7 +197,6 @@ export function LoginForm() {
                 )}
               </Button>
             </form>
-            )}
           </div>
         </div>
       </div>
