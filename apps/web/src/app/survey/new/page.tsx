@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -16,8 +16,10 @@ import { ReviewTable } from "@/components/review/review-table";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { GeminiKeyPanel } from "@/components/survey/gemini-key-panel";
 import { copy } from "@/lib/copy";
 import { isPreviewEnvironment } from "@/lib/client-auth";
+import { isGeminiKeyConfigured, showGeminiKeyPanel } from "@/lib/gemini-key";
 import { surveyExport, surveyRunOcr, triggerCsvDownload } from "@/lib/survey-api";
 import { formatCurrencyJpy, formatDuration } from "@/lib/utils";
 
@@ -33,6 +35,15 @@ function SurveyWorkflow() {
   const [promptOpen, setPromptOpen] = useState(false);
   const [csvExport, setCsvExport] = useState(false);
   const [exportTitle, setExportTitle] = useState("");
+  const [geminiReady, setGeminiReady] = useState(() =>
+    typeof window !== "undefined" ? isGeminiKeyConfigured() : true
+  );
+
+  useEffect(() => {
+    setGeminiReady(isGeminiKeyConfigured());
+  }, []);
+
+  const ocrBlocked = showGeminiKeyPanel() && !geminiReady;
 
   const runOcr = useCallback(async () => {
     if (!files.length) return;
@@ -113,6 +124,7 @@ function SurveyWorkflow() {
       <AnimatePresence mode="wait">
         {step === "upload" && (
           <motion.div key="u" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+            <GeminiKeyPanel onConfiguredChange={setGeminiReady} />
             <div className="ui-card">
               <div className="ui-card-header"><p className="text-sm font-medium">{copy.survey.files}</p></div>
               <div className="ui-card-body">
@@ -145,7 +157,7 @@ function SurveyWorkflow() {
             </div>
 
             <div className="flex justify-end pt-1">
-              <Button disabled={!files.length} onClick={runOcr} size="lg">
+              <Button disabled={!files.length || ocrBlocked} onClick={runOcr} size="lg">
                 <ScanLine className="h-4 w-4" />{copy.survey.runOcr}<ArrowRight className="h-4 w-4" />
               </Button>
             </div>

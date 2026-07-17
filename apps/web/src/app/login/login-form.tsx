@@ -145,12 +145,29 @@ export function LoginForm() {
               </p>
             )}
 
-            <form
-              onSubmit={handleSubmit}
-              className="mt-6 space-y-4 notranslate"
-              translate="no"
-              autoComplete="on"
-            >
+            {previewMode ? (
+              <div className="mt-6 space-y-4">
+                {error && (
+                  <p className="rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+                    {error}
+                  </p>
+                )}
+                <Button
+                  type="button"
+                  className="w-full"
+                  size="lg"
+                  disabled={loading}
+                  onClick={() => login(getDemoEmail(), getDemoPassword())}
+                >
+                  {loading ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" />{copy.login.submitting}</>
+                  ) : (
+                    <>{copy.login.submit}<ArrowRight className="h-4 w-4" /></>
+                  )}
+                </Button>
+              </div>
+            ) : (
+            <form onSubmit={handleSubmit} className="mt-6 space-y-4" autoComplete="on">
               <div className="space-y-1.5">
                 <Label htmlFor="email" className="text-label">{copy.login.email}</Label>
                 <Input
@@ -158,11 +175,8 @@ export function LoginForm() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder={previewMode ? getDemoEmail() : undefined}
-                  required={!previewMode}
+                  required
                   autoComplete="email"
-                  translate="no"
-                  className="notranslate"
                 />
               </div>
               <div className="space-y-1.5">
@@ -172,11 +186,8 @@ export function LoginForm() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder={previewMode ? "••••••••" : undefined}
-                  required={!previewMode}
+                  required
                   autoComplete="current-password"
-                  translate="no"
-                  className="notranslate"
                 />
               </div>
 
@@ -194,6 +205,7 @@ export function LoginForm() {
                 )}
               </Button>
             </form>
+            )}
           </div>
         </div>
       </div>
