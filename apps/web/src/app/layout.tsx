@@ -41,7 +41,7 @@ export default function RootLayout({
   const appleHref = `${basePath}/apple-touch-icon.svg`;
 
   return (
-    <html lang="ja">
+    <html lang="ja" translate="no" className="notranslate">
       <head>
         <link rel="icon" href={iconHref} type="image/svg+xml" sizes="any" />
         <link rel="shortcut icon" href={iconHref} />

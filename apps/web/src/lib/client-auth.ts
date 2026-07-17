@@ -79,3 +79,29 @@ export function getBasePath(): string {
   }
   return process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 }
+
+const FLASH_PREFIX = "cowell_flash_";
+
+/** One-time flash message (e.g. after logout) without polluting the URL */
+export function setFlash(key: string): void {
+  try {
+    sessionStorage.setItem(`${FLASH_PREFIX}${key}`, "1");
+  } catch {
+    /* private browsing / storage blocked */
+  }
+}
+
+export function consumeFlash(key: string): boolean {
+  try {
+    const storageKey = `${FLASH_PREFIX}${key}`;
+    if (sessionStorage.getItem(storageKey)) {
+      sessionStorage.removeItem(storageKey);
+      return true;
+    }
+  } catch {
+    /* ignore */
+  }
+  return false;
+}
+
+export const FLASH_LOGGED_OUT = "logged_out";

@@ -9,7 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/brand/logo";
 import { copy } from "@/lib/copy";
 import {
+  consumeFlash,
   demoLogin,
+  FLASH_LOGGED_OUT,
   getDemoEmail,
   getDemoPassword,
   isPreviewEnvironment,
@@ -21,10 +23,10 @@ const DEV_AUTO_LOGIN = process.env.NEXT_PUBLIC_DEV_AUTO_LOGIN === "true";
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const fromLogout = searchParams.get("from") === "logout";
   const [email, setEmail] = useState(getDemoEmail());
   const [password, setPassword] = useState(getDemoPassword());
   const [previewMode, setPreviewMode] = useState(false);
+  const [loggedOutMessage, setLoggedOutMessage] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const autoLoginAttempted = useRef(false);
@@ -37,7 +39,15 @@ export function LoginForm() {
       setEmail("");
       setPassword("");
     }
-  }, []);
+
+    const fromLegacyLogout = searchParams.get("from") === "logout";
+    if (consumeFlash(FLASH_LOGGED_OUT) || fromLegacyLogout) {
+      setLoggedOutMessage(true);
+    }
+    if (fromLegacyLogout) {
+      router.replace("/login/");
+    }
+  }, [router, searchParams]);
 
   const login = useCallback(
     async (loginEmail: string, loginPassword: string) => {
@@ -79,13 +89,18 @@ export function LoginForm() {
   );
 
   useEffect(() => {
-    if (!DEV_AUTO_LOGIN || autoLoginAttempted.current || fromLogout) return;
+    if (!DEV_AUTO_LOGIN || autoLoginAttempted.current || loggedOutMessage) return;
     autoLoginAttempted.current = true;
     void login(getDemoEmail(), getDemoPassword());
-  }, [login, fromLogout]);
+  }, [login, loggedOutMessage]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Preview: always use demo creds — browser translation can corrupt input values
+    if (isPreviewEnvironment()) {
+      await login(getDemoEmail(), getDemoPassword());
+      return;
+    }
     await login(email, password);
   };
 
@@ -130,13 +145,18 @@ export function LoginForm() {
               </p>
             )}
 
-            {fromLogout && (
+            {loggedOutMessage && (
               <p className="mt-4 rounded-lg border border-lumen/20 bg-accent/50 px-3 py-2.5 text-sm">
                 {copy.login.loggedOut}
               </p>
             )}
 
-            <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+            <form
+              onSubmit={handleSubmit}
+              className="mt-6 space-y-4 notranslate"
+              translate="no"
+              autoComplete="on"
+            >
               <div className="space-y-1.5">
                 <Label htmlFor="email" className="text-label">{copy.login.email}</Label>
                 <Input
@@ -145,8 +165,11 @@ export function LoginForm() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder={previewMode ? getDemoEmail() : undefined}
-                  required
+                  readOnly={previewMode}
+                  required={!previewMode}
                   autoComplete="email"
+                  translate="no"
+                  className="notranslate"
                 />
               </div>
               <div className="space-y-1.5">
@@ -157,8 +180,11 @@ export function LoginForm() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder={previewMode ? "••••••••" : undefined}
-                  required
+                  readOnly={previewMode}
+                  required={!previewMode}
                   autoComplete="current-password"
+                  translate="no"
+                  className="notranslate"
                 />
               </div>
 

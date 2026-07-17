@@ -5,7 +5,13 @@ import { LogOut, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { copy } from "@/lib/copy";
 import { Button } from "@/components/ui/button";
-import { clearClientSession, getBasePath, isPreviewEnvironment } from "@/lib/client-auth";
+import {
+  clearClientSession,
+  FLASH_LOGGED_OUT,
+  getBasePath,
+  isPreviewEnvironment,
+  setFlash,
+} from "@/lib/client-auth";
 
 interface LogoutButtonProps {
   variant?: "sidebar" | "mobile";
@@ -20,7 +26,8 @@ export function LogoutButton({ variant = "sidebar", className }: LogoutButtonPro
     try {
       if (isPreviewEnvironment()) {
         clearClientSession();
-        window.location.href = `${getBasePath()}/login?from=logout`;
+        setFlash(FLASH_LOGGED_OUT);
+        window.location.href = `${getBasePath()}/login/`;
         return;
       }
 
@@ -28,7 +35,8 @@ export function LogoutButton({ variant = "sidebar", className }: LogoutButtonPro
         method: "POST",
         headers: { Accept: "application/json" },
       });
-      window.location.href = `${getBasePath()}/login?from=logout`;
+      setFlash(FLASH_LOGGED_OUT);
+      window.location.href = `${getBasePath()}/login/`;
     } catch {
       setLoading(false);
     }
