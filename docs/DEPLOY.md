@@ -1,48 +1,41 @@
-# Deploy Cowell OCR (GitHub Actions → Vercel)
+# Deployment
 
-## 1. Vercel project
+## GitHub Pages (UI preview)
 
-1. Import the GitHub repo in [Vercel](https://vercel.com/new).
-2. Set **Root Directory** to `apps/web`.
-3. Framework: **Next.js** (auto-detected).
-4. Add environment variables (Production):
+The `pages.yml` workflow deploys a **static export** to GitHub Pages on every push to `main`.
 
-| Variable | Required |
-|----------|----------|
-| `GEMINI_API_KEY` | Yes |
-| `AUTH_SECRET` | Yes (32+ random chars) |
-| `ADMIN_EMAIL` | Yes |
-| `ADMIN_PASSWORD` | Yes |
-| `GOOGLE_SERVICE_ACCOUNT_EMAIL` | For Sheets export |
-| `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` | For Sheets export |
-| `GOOGLE_SHEETS_FOLDER_ID` | Optional |
+1. Open **Settings → Pages → Build and deployment**
+2. Set **Source** to **GitHub Actions**
+3. After the workflow succeeds, the site is live at:
+   `https://mdalamin706688.github.io/cowell-ocr/`
 
-5. Copy from Vercel → Project Settings → General:
-   - **Project ID** → `VERCEL_PROJECT_ID`
-   - **Team / Personal ID** → `VERCEL_ORG_ID`
-6. Create a [Vercel token](https://vercel.com/account/tokens) → `VERCEL_TOKEN`
+> **Note:** GitHub Pages is static-only. Login, OCR, and Sheets export require a server. Use the Vercel deployment below for the full app.
 
-## 2. GitHub repository secrets
+## Full production (Vercel — recommended)
 
-Repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
+1. Create a project at [vercel.com](https://vercel.com) linked to `mdalamin706688/cowell-ocr`
+2. Add these **GitHub repository secrets** (Settings → Secrets → Actions):
 
-| Secret | Value |
-|--------|--------|
-| `VERCEL_TOKEN` | Vercel API token |
-| `VERCEL_ORG_ID` | Vercel team/user ID |
-| `VERCEL_PROJECT_ID` | Vercel project ID |
-| `GEMINI_API_KEY` | Gemini API key |
-| `AUTH_SECRET` | Same as Vercel |
+| Secret | Description |
+|--------|-------------|
+| `GEMINI_API_KEY` | Google Gemini API key |
+| `AUTH_SECRET` | Random string (32+ chars) |
 | `ADMIN_EMAIL` | Admin login email |
 | `ADMIN_PASSWORD` | Admin login password |
-| `GOOGLE_SERVICE_ACCOUNT_EMAIL` | Optional |
-| `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` | Optional (use `\n` for newlines) |
-| `GOOGLE_SHEETS_FOLDER_ID` | Optional |
+| `GOOGLE_SERVICE_ACCOUNT_EMAIL` | Sheets service account |
+| `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` | Service account private key |
+| `GOOGLE_SHEETS_FOLDER_ID` | Optional Drive folder ID |
+| `VERCEL_TOKEN` | From Vercel account settings |
+| `VERCEL_ORG_ID` | From Vercel project settings |
+| `VERCEL_PROJECT_ID` | From Vercel project settings |
 
-Also add the same app secrets to the **production** environment (Settings → Environments → production).
+3. Push to `main` — `deploy.yml` builds and deploys the full Next.js app.
 
-## 3. Deploy
+## Local development
 
-Push to `main`. The **Deploy** workflow builds and runs `vercel --prod`.
-
-Live URL: Vercel project domain (e.g. `cowell-ocr.vercel.app`).
+```bash
+npm install
+cp .env.example apps/web/.env.local
+# Edit apps/web/.env.local
+npm run dev
+```
