@@ -9,12 +9,24 @@ export interface GeminiOcrRequest {
   files: Array<{ base64: string; mimeType: string; name: string }>;
 }
 
-export async function runGeminiOcr(request: GeminiOcrRequest): Promise<OcrResult> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  const model = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+export interface GeminiOcrOptions {
+  apiKey?: string;
+  model?: string;
+}
+
+export async function runGeminiOcr(
+  request: GeminiOcrRequest,
+  options: GeminiOcrOptions = {}
+): Promise<OcrResult> {
+  const apiKey = options.apiKey ?? process.env.GEMINI_API_KEY;
+  const model =
+    options.model ??
+    process.env.GEMINI_MODEL ??
+    process.env.NEXT_PUBLIC_GEMINI_MODEL ??
+    "gemini-2.0-flash";
 
   if (!apiKey) {
-    throw new Error("GEMINI_API_KEY is not configured");
+    throw new Error("読み取り機能の設定が完了していません");
   }
 
   const start = Date.now();

@@ -9,10 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/brand/logo";
 import { LogoutButton } from "@/components/auth/logout-button";
 
-const nav = [
-  { href: "/dashboard", label: copy.nav.home },
-  { href: "/survey/new", label: copy.nav.newSurvey },
-];
+const nav = [{ href: "/dashboard", label: copy.nav.home }];
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -80,7 +77,7 @@ export function AppShell({ children, user }: AppShellProps) {
       </header>
 
       <main className="lg:pl-[240px]">
-        <div className="mx-auto max-w-4xl px-5 py-8 sm:px-8 sm:py-10">
+        <div className="mx-auto max-w-5xl px-5 py-8 sm:px-8 sm:py-10">
           {children}
         </div>
       </main>

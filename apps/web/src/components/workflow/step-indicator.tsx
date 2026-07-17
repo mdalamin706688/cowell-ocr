@@ -6,7 +6,7 @@ import type { WorkflowStep } from "@cowell/shared";
 
 const steps: { key: WorkflowStep; label: string }[] = [
   { key: "upload", label: "アップロード" },
-  { key: "processing", label: "OCR" },
+  { key: "processing", label: "読み取り" },
   { key: "review", label: "確認" },
   { key: "export", label: "登録" },
   { key: "complete", label: "完了" },

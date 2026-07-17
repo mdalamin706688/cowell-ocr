@@ -116,6 +116,8 @@ export default function DashboardPage() {
       NEXT_PUBLIC_PREFILL_LOGIN: "true",
       NEXT_PUBLIC_DEV_LOGIN_EMAIL: process.env.DEMO_LOGIN_EMAIL ?? "admin@cowell.local",
       NEXT_PUBLIC_DEV_LOGIN_PASSWORD: process.env.DEMO_LOGIN_PASSWORD ?? "change-me",
+      NEXT_PUBLIC_GEMINI_API_KEY: process.env.GEMINI_API_KEY ?? "",
+      NEXT_PUBLIC_GEMINI_MODEL: process.env.GEMINI_MODEL ?? "gemini-2.0-flash",
     },
   });
 

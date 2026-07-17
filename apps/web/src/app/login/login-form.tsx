@@ -139,12 +139,6 @@ export function LoginForm() {
             <h2 className="font-display text-xl font-semibold tracking-tight">{copy.login.title}</h2>
             <p className="mt-1.5 text-sm text-muted-foreground">{copy.login.subtitle}</p>
 
-            {previewMode && (
-              <p className="mt-4 rounded-lg border border-lumen/20 bg-accent/50 px-3 py-2.5 text-xs text-muted-foreground leading-relaxed">
-                プレビュー環境です。入力済みの認証情報で「サインイン」をクリックしてください。
-              </p>
-            )}
-
             {loggedOutMessage && (
               <p className="mt-4 rounded-lg border border-lumen/20 bg-accent/50 px-3 py-2.5 text-sm">
                 {copy.login.loggedOut}
@@ -165,7 +159,6 @@ export function LoginForm() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder={previewMode ? getDemoEmail() : undefined}
-                  readOnly={previewMode}
                   required={!previewMode}
                   autoComplete="email"
                   translate="no"
@@ -180,7 +173,6 @@ export function LoginForm() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder={previewMode ? "••••••••" : undefined}
-                  readOnly={previewMode}
                   required={!previewMode}
                   autoComplete="current-password"
                   translate="no"

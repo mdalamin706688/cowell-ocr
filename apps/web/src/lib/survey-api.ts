@@ -1,0 +1,91 @@
+import type { OcrResult, OcrRow } from "@cowell/shared";
+import { getBasePath, isPreviewEnvironment } from "./client-auth";
+import { runGeminiOcr } from "./gemini";
+import { rowsToTsv } from "./ocr";
+
+type ApiError = { error?: string };
+
+async function parseJsonResponse<T>(res: Response): Promise<T> {
+  const text = await res.text();
+  if (!text.trim()) {
+    throw new Error("サーバーから応答がありませんでした");
+  }
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error("読み取りサービスに接続できませんでした。しばらくしてから再度お試しください。");
+  }
+}
+
+export async function surveyRunOcr(
+  prompt: string,
+  files: Array<{ base64: string; mimeType: string; name: string }>
+): Promise<OcrResult> {
+  if (isPreviewEnvironment()) {
+    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error("読み取り機能の設定が完了していません");
+    }
+    return runGeminiOcr({ prompt, files }, { apiKey });
+  }
+
+  const res = await fetch(`${getBasePath()}/api/ocr`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt, files }),
+  });
+
+  if (!res.ok) {
+    const data = await parseJsonResponse<ApiError>(res);
+    throw new Error(data.error || "読み取りに失敗しました");
+  }
+
+  return parseJsonResponse<OcrResult>(res);
+}
+
+export interface SurveyExportResult {
+  spreadsheetUrl: string;
+  rowCount: number;
+  downloadOnly?: boolean;
+}
+
+function downloadCsv(rows: OcrRow[], title: string): void {
+  const tsv = rowsToTsv(rows);
+  const blob = new Blob(["\uFEFF" + tsv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `${title.replace(/[^\w\u3000-\u9fff-]/g, "_")}.csv`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  window.setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+export function triggerCsvDownload(rows: OcrRow[], title: string): void {
+  downloadCsv(rows, title);
+}
+
+export async function surveyExport(
+  rows: OcrRow[],
+  title: string
+): Promise<SurveyExportResult> {
+  if (isPreviewEnvironment()) {
+    downloadCsv(rows, title);
+    return { spreadsheetUrl: "", rowCount: rows.length, downloadOnly: true };
+  }
+
+  const res = await fetch(`${getBasePath()}/api/sheets/export`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ rows, title }),
+  });
+
+  if (!res.ok) {
+    const data = await parseJsonResponse<ApiError>(res);
+    throw new Error(data.error || "スプレッドシートへの登録に失敗しました");
+  }
+
+  const data = await parseJsonResponse<{ spreadsheetUrl: string; rowCount: number }>(res);
+  return { spreadsheetUrl: data.spreadsheetUrl, rowCount: data.rowCount };
+}

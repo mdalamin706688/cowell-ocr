@@ -34,6 +34,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           DEMO_LOGIN_EMAIL: ${{ secrets.DEMO_LOGIN_EMAIL }}
           DEMO_LOGIN_PASSWORD: ${{ secrets.DEMO_LOGIN_PASSWORD }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
