@@ -2,11 +2,12 @@
 
 ## GitHub Pages (UI preview)
 
-The `pages.yml` workflow deploys a **static export** to GitHub Pages on every push to `main`.
-
 1. Open **Settings → Pages → Build and deployment**
-2. Set **Source** to **GitHub Actions**
-3. After the workflow succeeds, the site is live at:
+2. Under **Source**, select **GitHub Actions** (not “Deploy from a branch”)
+3. Do **not** use the suggested “Next.js” workflow — the repo already has `pages.yml` (“Deploy GitHub Pages”)
+4. Go to **Actions** → **Deploy GitHub Pages** → **Re-run all jobs**
+
+After success, the site is live at:
    `https://mdalamin706688.github.io/cowell-ocr/`
 
 > **Note:** GitHub Pages is static-only. Login, OCR, and Sheets export require a server. Use the Vercel deployment below for the full app.

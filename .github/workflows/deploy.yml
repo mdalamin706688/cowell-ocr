@@ -35,6 +35,7 @@ jobs:
           GOOGLE_SHEETS_FOLDER_ID: ${{ secrets.GOOGLE_SHEETS_FOLDER_ID }}
 
       - name: Deploy to Vercel
+        continue-on-error: true
         uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
