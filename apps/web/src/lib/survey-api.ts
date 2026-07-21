@@ -1,8 +1,12 @@
 import type { OcrResult, OcrRow } from "@cowell/shared";
 import { getBasePath, isPreviewEnvironment } from "./client-auth";
-import { runGeminiOcr } from "./gemini";
 import { rowsToTsv } from "./ocr";
 import { copy } from "./copy";
+import {
+  isGoogleClientConfigured,
+  requestGoogleSheetsAccessToken,
+} from "./google-auth-client";
+import { exportRowsWithAccessToken } from "./sheets-export";
 
 type ApiError = { error?: string };
 
@@ -22,12 +26,9 @@ export async function surveyRunOcr(
   prompt: string,
   files: Array<{ base64: string; mimeType: string; name: string }>
 ): Promise<OcrResult> {
+  // Preview/static hosts have no backend — never call Gemini from the browser with a public key
   if (isPreviewEnvironment()) {
-    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY?.trim();
-    if (!apiKey) {
-      throw new Error(copy.errors.serviceNotConfigured);
-    }
-    return runGeminiOcr({ prompt, files }, { apiKey });
+    throw new Error(copy.errors.serviceNotConfigured);
   }
 
   const res = await fetch(`${getBasePath()}/api/ocr`, {
@@ -72,14 +73,32 @@ export async function surveyExport(
   title: string
 ): Promise<SurveyExportResult> {
   if (isPreviewEnvironment()) {
+    // Static preview: prefer FE Google connect when client ID is set
+    if (isGoogleClientConfigured()) {
+      const accessToken = await requestGoogleSheetsAccessToken();
+      const folderId = process.env.NEXT_PUBLIC_GOOGLE_SHEETS_FOLDER_ID || null;
+      const result = await exportRowsWithAccessToken({
+        accessToken,
+        rows,
+        title,
+        folderId,
+      });
+      return { spreadsheetUrl: result.spreadsheetUrl, rowCount: result.rowCount };
+    }
     downloadCsv(rows, title);
     return { spreadsheetUrl: "", rowCount: rows.length, downloadOnly: true };
+  }
+
+  // Full app: FE Google OAuth first, then server (service account) fallback
+  let accessToken: string | undefined;
+  if (isGoogleClientConfigured()) {
+    accessToken = await requestGoogleSheetsAccessToken();
   }
 
   const res = await fetch(`${getBasePath()}/api/sheets/export`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ rows, title }),
+    body: JSON.stringify({ rows, title, accessToken }),
   });
 
   if (!res.ok) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runGeminiOcr } from "@/lib/gemini";
+import { isMockOcrEnabled, runMockOcr } from "@/lib/mock-ocr";
 
 export async function POST(request: NextRequest) {
   try {
@@ -8,6 +9,11 @@ export async function POST(request: NextRequest) {
 
     if (!prompt || !files?.length) {
       return NextResponse.json({ error: "プロンプトとファイルが必要です" }, { status: 400 });
+    }
+
+    if (isMockOcrEnabled()) {
+      await new Promise((r) => setTimeout(r, 600));
+      return NextResponse.json(runMockOcr(files));
     }
 
     const result = await runGeminiOcr({ prompt, files });

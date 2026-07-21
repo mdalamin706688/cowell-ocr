@@ -77,7 +77,13 @@ See `.env.example` for all variables. Required for OCR:
 GEMINI_API_KEY=your_key_here
 ```
 
-For Google Sheets export (production):
+For Google Sheets export, see [docs/GOOGLE_SHEETS.md](docs/GOOGLE_SHEETS.md). Preferred (FE):
+
+```
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_oauth_web_client_id
+```
+
+Optional service account fallback:
 
 ```
 GOOGLE_SERVICE_ACCOUNT_EMAIL=

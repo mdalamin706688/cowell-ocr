@@ -1,6 +1,14 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+  type ReactNode,
+} from "react";
 import type {
   OcrResult,
   OcrRow,
@@ -9,6 +17,14 @@ import type {
   WorkflowStep,
 } from "@cowell/shared";
 import { DEFAULT_OCR_PROMPT } from "@cowell/shared";
+import {
+  clearSurveyDraft,
+  emptySurveyDraft,
+  loadSurveyDraft,
+  reviveDraftFiles,
+  saveSurveyDraft,
+  stabilizeStep,
+} from "@/lib/survey-draft";
 
 interface SurveyState {
   step: WorkflowStep;
@@ -22,6 +38,7 @@ interface SurveyState {
 }
 
 interface SurveyContextValue extends SurveyState {
+  hydrated: boolean;
   setStep: (step: WorkflowStep) => void;
   setFiles: (files: UploadedFile[]) => void;
   setQuality: (q: QualityPreset) => void;
@@ -34,13 +51,7 @@ interface SurveyContextValue extends SurveyState {
 }
 
 const initialState: SurveyState = {
-  step: "upload",
-  files: [],
-  quality: "standard",
-  prompt: DEFAULT_OCR_PROMPT,
-  ocrResult: null,
-  rows: [],
-  exportUrl: null,
+  ...emptySurveyDraft(),
   error: null,
 };
 
@@ -48,6 +59,52 @@ const SurveyContext = createContext<SurveyContextValue | null>(null);
 
 export function SurveyProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<SurveyState>(initialState);
+  const [hydrated, setHydrated] = useState(false);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const draft = await loadSurveyDraft();
+      if (cancelled) return;
+      if (draft) {
+        const files = reviveDraftFiles(draft.files);
+        setState({
+          step: stabilizeStep(draft.step, Boolean(draft.ocrResult || draft.rows.length)),
+          files,
+          quality: draft.quality,
+          prompt: draft.prompt || DEFAULT_OCR_PROMPT,
+          ocrResult: draft.ocrResult,
+          rows: draft.rows,
+          exportUrl: draft.exportUrl,
+          error: null,
+        });
+      }
+      setHydrated(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      void saveSurveyDraft({
+        step: state.step,
+        files: state.files,
+        quality: state.quality,
+        prompt: state.prompt,
+        ocrResult: state.ocrResult,
+        rows: state.rows,
+        exportUrl: state.exportUrl,
+      });
+    }, 300);
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
+  }, [hydrated, state]);
 
   const setStep = useCallback((step: WorkflowStep) => setState((s) => ({ ...s, step })), []);
   const setFiles = useCallback((files: UploadedFile[]) => setState((s) => ({ ...s, files })), []);
@@ -63,12 +120,16 @@ export function SurveyProvider({ children }: { children: ReactNode }) {
     []
   );
   const setError = useCallback((error: string | null) => setState((s) => ({ ...s, error })), []);
-  const reset = useCallback(() => setState(initialState), []);
+  const reset = useCallback(() => {
+    setState(initialState);
+    void clearSurveyDraft();
+  }, []);
 
   return (
     <SurveyContext.Provider
       value={{
         ...state,
+        hydrated,
         setStep,
         setFiles,
         setQuality,

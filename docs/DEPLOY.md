@@ -23,7 +23,8 @@ After success, the site is live at:
 | `AUTH_SECRET` | Random string (32+ chars) |
 | `ADMIN_EMAIL` | Admin login email |
 | `ADMIN_PASSWORD` | Admin login password |
-| `GOOGLE_SERVICE_ACCOUNT_EMAIL` | Sheets service account |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | OAuth Web client ID (FE Google connect) |
+| `GOOGLE_SERVICE_ACCOUNT_EMAIL` | Sheets service account (fallback) |
 | `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` | Service account private key |
 | `GOOGLE_SHEETS_FOLDER_ID` | Optional Drive folder ID |
 | `VERCEL_TOKEN` | From Vercel account settings |

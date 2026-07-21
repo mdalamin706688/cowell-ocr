@@ -10,7 +10,6 @@ export interface GeminiOcrRequest {
 }
 
 export interface GeminiOcrOptions {
-  apiKey?: string;
   model?: string;
 }
 
@@ -18,12 +17,9 @@ export async function runGeminiOcr(
   request: GeminiOcrRequest,
   options: GeminiOcrOptions = {}
 ): Promise<OcrResult> {
-  const apiKey = options.apiKey ?? process.env.GEMINI_API_KEY;
-  const model =
-    options.model ??
-    process.env.GEMINI_MODEL ??
-    process.env.NEXT_PUBLIC_GEMINI_MODEL ??
-    "gemini-2.0-flash";
+  // Server-only: never accept keys from the client. Env only.
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
+  const model = options.model ?? process.env.GEMINI_MODEL?.trim() ?? "gemini-2.0-flash";
 
   if (!apiKey) {
     throw new Error("読み取り機能の設定が完了していません");

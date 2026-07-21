@@ -18,13 +18,14 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { copy } from "@/lib/copy";
 import { isPreviewEnvironment } from "@/lib/client-auth";
+import { isGoogleClientConfigured } from "@/lib/google-auth-client";
 import { surveyExport, surveyRunOcr, triggerCsvDownload } from "@/lib/survey-api";
 import { formatCurrencyJpy, formatDuration } from "@/lib/utils";
 
 function SurveyWorkflow() {
   const router = useRouter();
   const {
-    step, files, quality, prompt, ocrResult, rows, exportUrl, error,
+    step, files, quality, prompt, ocrResult, rows, exportUrl, error, hydrated,
     setStep, setFiles, setQuality, setPrompt, setOcrResult, setRows, setExportUrl, setError, reset,
   } = useSurvey();
   const [processing, setProcessing] = useState(false);
@@ -80,6 +81,16 @@ function SurveyWorkflow() {
       setExporting(false);
     }
   }, [rows, setStep, setError, setExportUrl]);
+
+  if (!hydrated) {
+    return (
+      <div className="ui-card">
+        <div className="ui-card-body flex flex-col items-center gap-3 py-16">
+          <Loader2 className="h-7 w-7 animate-spin text-lumen" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -208,7 +219,14 @@ function SurveyWorkflow() {
                 {exporting ? (
                   <><Loader2 className="h-4 w-4 animate-spin" />{copy.survey.exporting}</>
                 ) : (
-                  <>{isPreviewEnvironment() ? copy.survey.exportCsv : copy.survey.export}<ArrowRight className="h-4 w-4" /></>
+                  <>
+                    {isPreviewEnvironment() && !isGoogleClientConfigured()
+                      ? copy.survey.exportCsv
+                      : isGoogleClientConfigured()
+                        ? copy.survey.connectGoogle
+                        : copy.survey.export}
+                    <ArrowRight className="h-4 w-4" />
+                  </>
                 )}
               </Button>
             </div>
@@ -219,7 +237,11 @@ function SurveyWorkflow() {
           <div className="ui-card">
             <div className="ui-card-body flex flex-col items-center gap-3 py-16">
               <Loader2 className="h-7 w-7 animate-spin text-lumen" />
-              <p className="text-sm font-medium">{copy.survey.exportProgress}</p>
+              <p className="text-sm font-medium">
+                {isGoogleClientConfigured()
+                  ? copy.survey.connectingGoogle
+                  : copy.survey.exportProgress}
+              </p>
             </div>
           </div>
         )}
