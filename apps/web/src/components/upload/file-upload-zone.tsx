@@ -124,15 +124,15 @@ export function FileUploadZone({
         <p className="font-display text-sm font-semibold">
           {isDragActive ? copy.upload.dropActive : copy.upload.drop}
         </p>
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="mt-1.5 text-sm text-muted-foreground">
           {copy.upload.formats}
         </p>
       </div>
 
-      <div className="flex items-center justify-between text-xs">
+      <div className="flex items-center justify-between text-sm">
         <span className="text-label">{copy.upload.quality}</span>
         <Select value={quality} onValueChange={(v) => onQualityChange(v as QualityPreset)}>
-          <SelectTrigger className="h-8 w-44 text-xs">
+          <SelectTrigger className="h-10 w-48 text-sm">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -156,23 +156,23 @@ export function FileUploadZone({
           {files.map((file) => (
             <div
               key={file.id}
-              className="flex items-center gap-3 rounded-lg border border-border/70 bg-card px-3 py-2.5"
+              className="flex items-center gap-3 rounded-lg border border-border/70 bg-card px-4 py-3"
             >
               {file.previewUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={file.previewUrl} alt="" className="h-8 w-8 rounded object-cover" />
+                <img src={file.previewUrl} alt="" className="h-12 w-12 rounded-md object-cover" />
               ) : (
-                <span className="flex h-8 w-8 items-center justify-center rounded bg-muted text-muted-foreground">
+                <span className="flex h-12 w-12 items-center justify-center rounded-md bg-muted text-muted-foreground">
                   {file.mimeType === "application/pdf" ? (
-                    <FileText className="h-3.5 w-3.5" />
+                    <FileText className="h-4 w-4" />
                   ) : (
-                    <FileImage className="h-3.5 w-3.5" />
+                    <FileImage className="h-4 w-4" />
                   )}
                 </span>
               )}
               <div className="flex-1 min-w-0">
-                <p className="truncate text-xs font-medium">{file.name}</p>
-                <p className="text-[10px] text-muted-foreground tabular-nums">
+                <p className="truncate text-sm font-medium">{file.name}</p>
+                <p className="text-xs text-muted-foreground tabular-nums">
                   {formatBytes(file.originalSizeKB)} → {formatBytes(file.compressedSizeKB)}
                 </p>
               </div>

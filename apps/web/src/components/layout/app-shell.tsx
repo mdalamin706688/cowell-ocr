@@ -21,8 +21,8 @@ export function AppShell({ children, user }: AppShellProps) {
 
   return (
     <div className="min-h-screen paper-canvas">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[240px] flex-col border-r border-border/60 bg-card/95 backdrop-blur-md lg:flex shadow-[1px_0_24px_hsl(28_12%_11%/0.03)]">
-        <div className="flex h-full flex-col p-5">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[260px] flex-col border-r border-border/60 bg-card/95 backdrop-blur-md lg:flex shadow-[1px_0_24px_hsl(28_12%_11%/0.03)]">
+        <div className="flex h-full flex-col p-6">
           <Link href="/dashboard" className="mb-10 transition-opacity hover:opacity-90">
             <Logo size="md" />
           </Link>
@@ -76,8 +76,8 @@ export function AppShell({ children, user }: AppShellProps) {
         </div>
       </header>
 
-      <main className="lg:pl-[240px]">
-        <div className="mx-auto max-w-5xl px-5 py-8 sm:px-8 sm:py-10">
+      <main className="lg:pl-[260px]">
+        <div className="mx-auto max-w-6xl px-6 py-10 sm:px-8 sm:py-12">
           {children}
         </div>
       </main>

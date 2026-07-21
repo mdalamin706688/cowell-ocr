@@ -40,7 +40,7 @@ export function StepIndicator({ current }: { current: WorkflowStep }) {
               </div>
               <span
                 className={cn(
-                  "mt-2 text-[11px] font-medium hidden sm:block",
+                  "mt-2 text-xs font-medium hidden sm:block",
                   active ? "text-foreground" : "text-muted-foreground"
                 )}
               >

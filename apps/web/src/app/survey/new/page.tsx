@@ -96,7 +96,7 @@ function SurveyWorkflow() {
     <div>
       <button
         onClick={() => router.push("/dashboard")}
-        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-6 transition-colors"
+        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
       >
         <ArrowLeft className="h-3.5 w-3.5" />{copy.survey.back}
       </button>
@@ -125,7 +125,7 @@ function SurveyWorkflow() {
         {step === "upload" && (
           <motion.div key="u" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
             <div className="ui-card">
-              <div className="ui-card-header"><p className="text-sm font-medium">{copy.survey.files}</p></div>
+              <div className="ui-card-header"><p className="text-base font-medium">{copy.survey.files}</p></div>
               <div className="ui-card-body">
                 <FileUploadZone files={files} onFilesChange={setFiles} quality={quality} onQualityChange={setQuality} />
               </div>
@@ -138,8 +138,8 @@ function SurveyWorkflow() {
                 className="ui-card-header w-full text-left hover:bg-muted/20 transition-colors"
               >
                 <div>
-                  <p className="text-sm font-medium">{copy.survey.prompt}</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">{copy.survey.promptHint}</p>
+                  <p className="text-base font-medium">{copy.survey.prompt}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{copy.survey.promptHint}</p>
                 </div>
                 <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${promptOpen ? "rotate-180" : ""}`} />
               </button>
@@ -148,7 +148,7 @@ function SurveyWorkflow() {
                   <textarea
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
-                    className="w-full rounded-lg border border-border bg-muted/20 p-3 text-xs font-mono min-h-[100px] resize-y focus:outline-none focus:ring-2 focus:ring-lumen/15 focus:border-lumen/30"
+                    className="w-full rounded-lg border border-border bg-muted/20 p-3.5 text-sm font-mono min-h-[120px] resize-y focus:outline-none focus:ring-2 focus:ring-lumen/15 focus:border-lumen/30"
                     placeholder={DEFAULT_OCR_PROMPT}
                   />
                 </div>
@@ -172,7 +172,7 @@ function SurveyWorkflow() {
               </div>
               <div>
                 <p className="text-sm font-semibold">{copy.survey.processing}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{copy.survey.processingFiles(files.length)}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{copy.survey.processingFiles(files.length)}</p>
               </div>
               <Progress value={progress} className="w-full max-w-xs h-1.5" />
             </div>
@@ -187,15 +187,15 @@ function SurveyWorkflow() {
                 { label: copy.survey.usage.tokens, value: ocrResult.usage.totalTokens.toLocaleString("ja-JP") },
                 { label: copy.survey.usage.cost, value: formatCurrencyJpy(ocrResult.usage.costJpy), highlight: true },
               ].map((stat) => (
-                <div key={stat.label} className="rounded-lg border border-border/70 bg-card px-3 py-2">
-                  <p className="text-[10px] text-muted-foreground">{stat.label}</p>
-                  <p className={`text-sm font-semibold mt-0.5 ${stat.highlight ? "text-lumen" : ""}`}>{stat.value}</p>
+                <div key={stat.label} className="rounded-lg border border-border/70 bg-card px-4 py-2.5">
+                  <p className="text-xs text-muted-foreground">{stat.label}</p>
+                  <p className={`text-base font-semibold mt-0.5 ${stat.highlight ? "text-lumen" : ""}`}>{stat.value}</p>
                 </div>
               ))}
             </div>
             <div className="ui-card">
               <div className="ui-card-header">
-                <p className="text-sm font-medium">{copy.survey.reviewTitle}</p>
+                <p className="text-base font-medium">{copy.survey.reviewTitle}</p>
                 <span className="text-label">{copy.survey.reviewRows(rows.length)}</span>
               </div>
               <div className="ui-card-body pt-3">
@@ -206,7 +206,7 @@ function SurveyWorkflow() {
                   </TabsList>
                   <TabsContent value="table"><ReviewTable rows={rows} onRowsChange={setRows} /></TabsContent>
                   <TabsContent value="raw">
-                    <pre className="rounded-lg border border-border bg-muted/20 p-3 text-[11px] font-mono text-muted-foreground overflow-x-auto whitespace-pre-wrap max-h-64">{ocrResult.rawText}</pre>
+                    <pre className="rounded-lg border border-border bg-muted/20 p-3.5 text-xs font-mono text-muted-foreground overflow-x-auto whitespace-pre-wrap max-h-72">{ocrResult.rawText}</pre>
                   </TabsContent>
                 </Tabs>
               </div>

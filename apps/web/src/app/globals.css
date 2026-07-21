@@ -34,7 +34,7 @@
 
   * { @apply border-border; }
 
-  html { font-size: 15px; scroll-behavior: smooth; }
+  html { font-size: 16px; scroll-behavior: smooth; }
 
   body {
     @apply bg-background text-foreground antialiased;
@@ -75,10 +75,10 @@
   }
 
   .ui-card-header {
-    @apply flex items-center justify-between gap-3 px-5 py-4 border-b border-border/60;
+    @apply flex items-center justify-between gap-3 px-6 py-4 border-b border-border/60;
   }
 
-  .ui-card-body { @apply p-5; }
+  .ui-card-body { @apply p-6; }
 
   /* ── Hero (forest) ── */
   .forest-hero {
@@ -209,11 +209,11 @@
 
   /* ── Typography ── */
   .text-label {
-    @apply text-[11px] font-medium tracking-wide text-muted-foreground;
+    @apply text-xs font-medium tracking-wide text-muted-foreground;
   }
 
   .text-eyebrow {
-    @apply text-[10px] font-semibold tracking-wider text-lumen;
+    @apply text-xs font-semibold tracking-wider text-lumen;
   }
 
   .text-title {
@@ -253,7 +253,7 @@
   .timeline-track::before {
     content: "";
     position: absolute;
-    top: 11px;
+    top: 13px;
     left: 12px;
     right: 12px;
     height: 1px;
@@ -261,7 +261,7 @@
   }
 
   .timeline-dot {
-    @apply relative z-10 flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold;
+    @apply relative z-10 flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold;
     @apply border border-border bg-card text-muted-foreground;
     box-shadow: 0 0 0 3px hsl(var(--paper));
   }
@@ -276,7 +276,7 @@
 
   /* ── Upload ── */
   .ui-upload {
-    @apply relative rounded-xl border border-dashed border-border/90 bg-muted/20 p-10 text-center;
+    @apply relative rounded-xl border border-dashed border-border/90 bg-muted/20 p-12 text-center;
     @apply transition-all duration-200 hover:border-lumen/40 hover:bg-accent/25;
   }
 
