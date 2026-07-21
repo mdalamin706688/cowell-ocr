@@ -15,8 +15,8 @@ User clicks export → Google account picker → spreadsheet is created in **the
 3. **APIs & Services → Credentials → Create credentials → OAuth client ID**
    - Application type: **Web application**
    - Authorized JavaScript origins:
-     - `http://localhost:3000`
-     - production origin (e.g. `https://your-app.vercel.app`)
+   - `http://localhost:3000`
+   - `https://mdalamin706688.github.io` (GitHub Pages — no path suffix)
    - Authorized redirect URIs: not required for GIS token client
 4. Copy the **Client ID**
 

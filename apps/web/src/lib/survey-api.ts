@@ -6,6 +6,7 @@ import {
   isGoogleClientConfigured,
   requestGoogleSheetsAccessToken,
 } from "./google-auth-client";
+import { runMockOcr } from "./mock-ocr";
 import { exportRowsWithAccessToken } from "./sheets-export";
 
 type ApiError = { error?: string };
@@ -26,9 +27,10 @@ export async function surveyRunOcr(
   prompt: string,
   files: Array<{ base64: string; mimeType: string; name: string }>
 ): Promise<OcrResult> {
-  // Preview/static hosts have no backend — never call Gemini from the browser with a public key
+  // GitHub Pages is static — use demo OCR (no backend)
   if (isPreviewEnvironment()) {
-    throw new Error(copy.errors.serviceNotConfigured);
+    await new Promise((r) => setTimeout(r, 600));
+    return runMockOcr(files);
   }
 
   const res = await fetch(`${getBasePath()}/api/ocr`, {

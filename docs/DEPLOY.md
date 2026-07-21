@@ -10,7 +10,15 @@
 After success, the site is live at:
    `https://mdalamin706688.github.io/cowell-ocr/`
 
-> **Note:** GitHub Pages is static-only. Login, OCR, and Sheets export require a server. Use the Vercel deployment below for the full app.
+> **Note:** GitHub Pages is static-only. OCR uses **demo/mock data**; Google Sheets export uses FE OAuth when `NEXT_PUBLIC_GOOGLE_CLIENT_ID` is set in repo secrets.
+
+Optional GitHub Actions secrets for Pages demo:
+
+| Secret | Description |
+|--------|-------------|
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | OAuth Web client ID (add `https://mdalamin706688.github.io` as authorized origin) |
+| `NEXT_PUBLIC_GOOGLE_SHEETS_FOLDER_ID` | Optional Drive folder |
+| `DEMO_LOGIN_EMAIL` / `DEMO_LOGIN_PASSWORD` | Preview login defaults |
 
 ## Full production (Vercel — recommended)
 
