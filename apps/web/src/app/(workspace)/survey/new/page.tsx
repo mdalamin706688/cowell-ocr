@@ -245,7 +245,7 @@ function SurveyWorkflow() {
   );
 
   return (
-    <StaggerReveal className="space-y-8">
+    <StaggerReveal className="space-y-8" fallback={<SurveyPageSkeleton />}>
       <StaggerItem>
         <TransitionLink
           href="/dashboard/"

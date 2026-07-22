@@ -9,15 +9,21 @@ import { cn } from "@/lib/utils";
 interface StaggerRevealProps {
   children: React.ReactNode;
   className?: string;
+  /** Shown while the route slide runs (skeleton loader) */
+  fallback?: React.ReactNode;
 }
 
 /** Staggered section reveal — synced to finish after route slide (matches dashboard) */
-export function StaggerReveal({ children, className }: StaggerRevealProps) {
+export function StaggerReveal({ children, className, fallback }: StaggerRevealProps) {
   const safeMotion = useSafeMotion();
   const pageReady = usePageReady();
 
-  if (!safeMotion || !pageReady) {
-    return <div className={cn(className, "invisible")}>{children}</div>;
+  if (!safeMotion) {
+    return <div className={cn(className)}>{children}</div>;
+  }
+
+  if (!pageReady) {
+    return <div className={cn(className)}>{fallback}</div>;
   }
 
   return (
