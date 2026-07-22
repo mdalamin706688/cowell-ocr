@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useSafeMotion } from "@/hooks/use-safe-motion";
-import { tweenFast } from "@/lib/motion";
+import { springSoft } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 interface StepPanelProps {
@@ -10,7 +10,6 @@ interface StepPanelProps {
   className?: string;
 }
 
-/** Enter-only step wrapper — no exit animation (safe with browser translate) */
 export function StepPanel({ children, className }: StepPanelProps) {
   const safeMotion = useSafeMotion();
 
@@ -20,9 +19,9 @@ export function StepPanel({ children, className }: StepPanelProps) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 6 }}
+      initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={tweenFast}
+      transition={springSoft}
       className={cn(className)}
     >
       {children}

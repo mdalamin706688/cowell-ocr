@@ -2,7 +2,7 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { useNavigation } from "@/contexts/navigation-context";
-import { easeOutExpo } from "@/lib/motion";
+import { easeOutExpo, PAGE_TRANSITION_MS } from "@/lib/motion";
 
 export function NavigationProgress() {
   const { isNavigating, progress } = useNavigation();
@@ -12,21 +12,21 @@ export function NavigationProgress() {
 
   return (
     <div
-      className="pointer-events-none fixed inset-x-0 top-0 z-[100] h-[2px]"
+      className="pointer-events-none fixed inset-x-0 top-0 z-[100] h-[3px]"
       aria-hidden={!isNavigating}
     >
       <motion.div
-        className="h-full w-full origin-left bg-gradient-to-r from-lumen/80 via-lumen-glow to-lumen"
+        className="h-full w-full origin-left bg-gradient-to-r from-lumen via-lumen-glow to-lumen/90"
         initial={false}
         animate={{
-          scaleX: isNavigating ? Math.max(progress, 8) / 100 : 0,
+          scaleX: isNavigating ? Math.max(progress, 6) / 100 : 0,
           opacity: isNavigating ? 1 : 0,
         }}
         transition={{
-          scaleX: { duration: 0.35, ease: easeOutExpo },
-          opacity: { duration: 0.25, ease: "easeOut" },
+          scaleX: { duration: PAGE_TRANSITION_MS / 1000, ease: easeOutExpo },
+          opacity: { duration: 0.3, ease: "easeOut" },
         }}
-        style={{ boxShadow: "0 0 12px hsl(var(--lumen-glow) / 0.45)" }}
+        style={{ boxShadow: "0 0 16px hsl(var(--lumen-glow) / 0.5)" }}
       />
     </div>
   );

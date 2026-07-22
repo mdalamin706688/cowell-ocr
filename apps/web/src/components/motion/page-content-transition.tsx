@@ -1,22 +1,31 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { usePathname } from "next/navigation";
+import { useNavigation } from "@/contexts/navigation-context";
 import { useSafeMotion } from "@/hooks/use-safe-motion";
-import { tweenFast } from "@/lib/motion";
+import { getPageMotion, springPage, type PageMotionVariant } from "@/lib/motion";
+import { cn } from "@/lib/utils";
 
 interface PageContentTransitionProps {
   children: React.ReactNode;
   className?: string;
+  variant?: PageMotionVariant;
 }
 
 /**
- * Enter-only route transition. Avoids AnimatePresence exit animations that crash
- * when browser translation has rewritten the DOM (removeChild errors).
+ * Direction-aware route transition with exit + enter when motion is safe.
+ * Falls back to static markup when browser translate is active.
  */
-export function PageContentTransition({ children, className }: PageContentTransitionProps) {
+export function PageContentTransition({
+  children,
+  className,
+  variant = "workspace",
+}: PageContentTransitionProps) {
   const pathname = usePathname();
+  const { direction } = useNavigation();
   const safeMotion = useSafeMotion();
+  const pageMotion = getPageMotion(variant, direction);
 
   if (!safeMotion) {
     return (
@@ -27,14 +36,19 @@ export function PageContentTransition({ children, className }: PageContentTransi
   }
 
   return (
-    <motion.div
-      key={pathname}
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={tweenFast}
-      className={className}
-    >
-      {children}
-    </motion.div>
+    <div className={cn("relative", className)}>
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={pathname}
+          initial={pageMotion.initial}
+          animate={pageMotion.animate}
+          exit={pageMotion.exit}
+          transition={springPage}
+          className="w-full"
+        >
+          {children}
+        </motion.div>
+      </AnimatePresence>
+    </div>
   );
 }

@@ -30,7 +30,7 @@ export function LogoutButton({ variant = "sidebar", className }: LogoutButtonPro
       if (isPreviewEnvironment()) {
         clearClientSession();
         setFlash(FLASH_LOGGED_OUT);
-        startNavigation();
+        startNavigation("/login/");
         router.replace("/login/");
         return;
       }
@@ -40,7 +40,7 @@ export function LogoutButton({ variant = "sidebar", className }: LogoutButtonPro
         headers: { Accept: "application/json" },
       });
       setFlash(FLASH_LOGGED_OUT);
-      startNavigation();
+      startNavigation("/login/");
       router.replace("/login/");
     } catch {
       setLoading(false);

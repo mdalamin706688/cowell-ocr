@@ -36,7 +36,7 @@ export function LoginForm() {
 
   const completePreviewLogin = useCallback(() => {
     setClientSession(createPreviewSession());
-    startNavigation();
+    startNavigation("/dashboard/");
     router.replace("/dashboard/");
   }, [router, startNavigation]);
 
@@ -76,7 +76,7 @@ export function LoginForm() {
           throw new Error(data.error || copy.errors.loginFailed);
         }
 
-        startNavigation();
+        startNavigation("/dashboard/");
         router.push("/dashboard/");
         router.refresh();
       } catch (err) {

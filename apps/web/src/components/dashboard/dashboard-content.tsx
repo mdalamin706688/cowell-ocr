@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TransitionLink } from "@/components/ui/transition-link";
+import { StaggerItem, StaggerReveal } from "@/components/motion/stagger-reveal";
 import { copy } from "@/lib/copy";
 
 interface DashboardContentProps {
@@ -30,8 +31,8 @@ export function DashboardContent({ userName = "管理者" }: DashboardContentPro
   });
 
   return (
-    <div className="space-y-8">
-      {/* Header strip */}
+    <StaggerReveal className="space-y-8">
+      <StaggerItem>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-label">{today}</p>
@@ -46,8 +47,9 @@ export function DashboardContent({ userName = "管理者" }: DashboardContentPro
           </TransitionLink>
         </Button>
       </div>
+      </StaggerItem>
 
-      {/* Primary hero */}
+      <StaggerItem>
       <section className="forest-hero overflow-hidden">
         <div className="relative z-10 grid lg:grid-cols-[1fr,280px] gap-8 p-7 sm:p-9">
           <div className="max-w-lg">
@@ -98,8 +100,9 @@ export function DashboardContent({ userName = "管理者" }: DashboardContentPro
           </div>
         </div>
       </section>
+      </StaggerItem>
 
-      {/* Capability cards */}
+      <StaggerItem>
       <section className="grid gap-4 sm:grid-cols-3">
         {copy.dashboard.capabilities.map((cap, i) => {
           const Icon = capabilityIcons[i] ?? Zap;
@@ -120,8 +123,9 @@ export function DashboardContent({ userName = "管理者" }: DashboardContentPro
           );
         })}
       </section>
+      </StaggerItem>
 
-      {/* Workflow timeline */}
+      <StaggerItem>
       <section>
         <div className="mb-5 flex items-end justify-between gap-4">
           <div>
@@ -154,8 +158,9 @@ export function DashboardContent({ userName = "管理者" }: DashboardContentPro
           </div>
         </div>
       </section>
+      </StaggerItem>
 
-      {/* Spec strip */}
+      <StaggerItem>
       <section className="ui-card">
         <div className="ui-card-body flex flex-wrap items-center justify-between gap-6 py-5">
           {copy.dashboard.specs.map((item, i) => (
@@ -173,6 +178,7 @@ export function DashboardContent({ userName = "管理者" }: DashboardContentPro
           </div>
         </div>
       </section>
-    </div>
+      </StaggerItem>
+    </StaggerReveal>
   );
 }

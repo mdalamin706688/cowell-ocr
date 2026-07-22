@@ -17,19 +17,20 @@ export function TransitionLink({
 }: TransitionLinkProps) {
   const router = useRouter();
   const { startNavigation } = useNavigation();
+  const hrefString = typeof href === "string" ? href : href.pathname ?? "";
 
   return (
     <Link
       href={href}
       prefetch={prefetch}
-      className={cn("transition-transform active:scale-[0.98]", className)}
+      className={cn("transition-transform duration-200 active:scale-[0.98]", className)}
       onClick={(event) => {
         onClick?.(event);
         if (event.defaultPrevented) return;
-        startNavigation();
+        startNavigation(hrefString);
       }}
       onMouseEnter={() => {
-        if (typeof href === "string") router.prefetch(href);
+        if (hrefString) router.prefetch(hrefString);
       }}
       {...props}
     />

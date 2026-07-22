@@ -1,68 +1,73 @@
 /** Shared motion tokens — premium easing, consistent across the app */
 export const easeOutExpo = [0.22, 1, 0.36, 1] as const;
 
+/** Target duration for route transitions + progress bar sync */
+export const PAGE_TRANSITION_MS = 480;
+
 export const springSnappy = {
   type: "spring" as const,
-  stiffness: 420,
-  damping: 36,
-  mass: 0.7,
+  stiffness: 380,
+  damping: 34,
+  mass: 0.85,
+};
+
+export const springPage = {
+  type: "spring" as const,
+  stiffness: 260,
+  damping: 30,
+  mass: 0.95,
 };
 
 export const springSoft = {
   type: "spring" as const,
-  stiffness: 280,
-  damping: 32,
-  mass: 0.85,
+  stiffness: 220,
+  damping: 28,
+  mass: 1,
 };
 
-export const tweenFast = {
-  duration: 0.22,
+export const tweenReveal = {
+  duration: 0.45,
   ease: easeOutExpo,
 };
 
-export const tweenPage = {
-  duration: 0.32,
-  ease: easeOutExpo,
-};
-
-export const pageVariants = {
-  initial: {
-    opacity: 0,
-    y: 14,
-    filter: "blur(6px)",
+export const staggerContainer = {
+  hidden: { opacity: 1 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.07,
+      delayChildren: 0.12,
+    },
   },
-  animate: {
+};
+
+export const staggerItem = {
+  hidden: { opacity: 0, y: 18 },
+  show: {
     opacity: 1,
     y: 0,
-    filter: "blur(0px)",
-  },
-  exit: {
-    opacity: 0,
-    y: -10,
-    filter: "blur(4px)",
+    transition: springSoft,
   },
 };
 
-export const workspaceVariants = {
-  initial: {
-    opacity: 0,
-    x: 16,
-    filter: "blur(4px)",
-  },
-  animate: {
-    opacity: 1,
-    x: 0,
-    filter: "blur(0px)",
-  },
-  exit: {
-    opacity: 0,
-    x: -12,
-    filter: "blur(3px)",
-  },
-};
+export type PageMotionVariant = "workspace" | "auth";
 
-export const loginVariants = {
-  initial: { opacity: 0, y: 20, scale: 0.985 },
-  animate: { opacity: 1, y: 0, scale: 1 },
-  exit: { opacity: 0, y: -12, scale: 0.99 },
-};
+export function getPageMotion(
+  variant: PageMotionVariant,
+  direction: number
+): {
+  initial: { opacity: number; x: number; scale: number };
+  animate: { opacity: number; x: number; scale: number };
+  exit: { opacity: number; x: number; scale: number };
+} {
+  const forward = direction >= 0;
+  const distance = variant === "workspace" ? 36 : 24;
+  const enterX = forward ? distance : -distance;
+  const exitX = forward ? -distance * 0.65 : distance * 0.65;
+
+  return {
+    initial: { opacity: 0, x: enterX, scale: 0.985 },
+    animate: { opacity: 1, x: 0, scale: 1 },
+    exit: { opacity: 0, x: exitX, scale: 0.99 },
+  };
+}

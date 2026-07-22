@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { motion } from "framer-motion";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { copy } from "@/lib/copy";
@@ -8,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/brand/logo";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { TransitionLink } from "@/components/ui/transition-link";
+import { useSafeMotion } from "@/hooks/use-safe-motion";
+import { springSnappy } from "@/lib/motion";
 
 const nav = [{ href: "/dashboard/", label: copy.nav.home }];
 
@@ -18,6 +21,7 @@ interface AppShellProps {
 
 export function AppShell({ children, user }: AppShellProps) {
   const pathname = usePathname();
+  const safeMotion = useSafeMotion();
 
   return (
     <div className="min-h-screen paper-canvas">
@@ -40,12 +44,19 @@ export function AppShell({ children, user }: AppShellProps) {
                     active ? "nav-link-active text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                   )}
                 >
-                  {active && (
-                    <span
-                      className="absolute inset-0 rounded-lg bg-accent/70 shadow-sm transition-opacity duration-200"
+                  {active && safeMotion ? (
+                    <motion.span
+                      layoutId="workspace-nav-active"
+                      className="absolute inset-0 rounded-lg bg-accent/70 shadow-sm"
+                      transition={springSnappy}
                       aria-hidden
                     />
-                  )}
+                  ) : active ? (
+                    <span
+                      className="absolute inset-0 rounded-lg bg-accent/70 shadow-sm"
+                      aria-hidden
+                    />
+                  ) : null}
                   <span className="relative pl-2">{label}</span>
                 </TransitionLink>
               );
@@ -82,7 +93,7 @@ export function AppShell({ children, user }: AppShellProps) {
         </div>
       </header>
 
-      <main className="lg:pl-[260px]">
+      <main className="lg:pl-[260px] overflow-x-hidden">
         <div className="mx-auto max-w-6xl px-6 py-10 sm:px-8 sm:py-12">
           {children}
         </div>

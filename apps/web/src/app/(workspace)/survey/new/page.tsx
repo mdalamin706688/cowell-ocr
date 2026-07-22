@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { StepPanel } from "@/components/motion/step-panel";
+import { StaggerItem, StaggerReveal } from "@/components/motion/stagger-reveal";
 import {
   ArrowLeft, ArrowRight, CheckCircle2, ChevronDown, Download,
   ExternalLink, Loader2, ScanLine, Sparkles,
@@ -92,14 +93,18 @@ function SurveyWorkflow() {
 
   return (
     <div>
+      <StaggerReveal className="space-y-0">
+      <StaggerItem>
       <TransitionLink
         href="/dashboard/"
         className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
       >
         <ArrowLeft className="h-3.5 w-3.5" />{copy.survey.back}
       </TransitionLink>
+      </StaggerItem>
 
-      <div className="flex items-start gap-4 mb-6">
+      <StaggerItem>
+      <div className="flex items-start gap-4 mb-6 mt-6">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent/80 text-lumen shadow-sm">
           <Sparkles className="h-5 w-5" />
         </div>
@@ -108,10 +113,16 @@ function SurveyWorkflow() {
           <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">{copy.survey.subtitle}</p>
         </div>
       </div>
+      </StaggerItem>
 
+      <StaggerItem>
       <div className="copper-rule mb-6" />
+      </StaggerItem>
 
+      <StaggerItem>
       <StepIndicator current={step} />
+      </StaggerItem>
+      </StaggerReveal>
 
       {error && (
         <div className="mb-4 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
