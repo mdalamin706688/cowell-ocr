@@ -71,6 +71,42 @@ export function isSurveyRoute(path: string): boolean {
   return path.includes("/survey");
 }
 
+export function isLoginRoute(path: string): boolean {
+  return path.includes("/login");
+}
+
+/** Skeleton matching the login page split layout */
+export function LoginSkeleton() {
+  return (
+    <div className="flex min-h-screen paper-canvas" aria-busy="true" aria-label="Loading login">
+      <div className="hidden w-[48%] flex-col justify-between p-10 sm:p-12 lg:flex">
+        <SkeletonBlock className="h-10 w-36" />
+        <div className="max-w-md space-y-4">
+          <SkeletonBlock className="h-3 w-24 rounded-md" />
+          <SkeletonBlock className="h-8 w-64" />
+          <SkeletonBlock className="h-8 w-56" />
+          <SkeletonBlock className="h-14 w-full" />
+        </div>
+        <SkeletonBlock className="h-3 w-32 rounded-md" />
+      </div>
+
+      <div className="flex flex-1 flex-col items-center justify-center px-6 py-12">
+        <div className="w-full max-w-[360px] space-y-8">
+          <SkeletonBlock className="h-8 w-28 rounded-md lg:hidden" />
+          <div className="space-y-4 rounded-xl bg-muted/20 p-7">
+            <SkeletonBlock className="h-6 w-32 rounded-md" />
+            <SkeletonBlock className="h-4 w-48 rounded-md" />
+            <SkeletonBlock className="h-10 w-full rounded-lg" />
+            <SkeletonBlock className="h-10 w-full rounded-lg" />
+            <SkeletonBlock className="h-11 w-full rounded-lg" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function RouteContentSkeleton({ href }: { href: string }) {
+  if (isLoginRoute(href)) return <LoginSkeleton />;
   return isSurveyRoute(href) ? <SurveyPageSkeleton /> : <ContentSkeleton />;
 }
