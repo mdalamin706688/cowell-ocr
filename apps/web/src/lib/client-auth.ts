@@ -80,10 +80,6 @@ export function createPreviewSession(): SessionUser {
   return { email: getDemoEmail(), name: "管理者" };
 }
 
-export function redirectAfterLogin(): void {
-  window.location.href = `${getBasePath()}/dashboard/`;
-}
-
 export function getBasePath(): string {
   if (typeof window !== "undefined" && window.location.hostname.endsWith("github.io")) {
     const parts = window.location.pathname.split("/");

@@ -20,7 +20,6 @@ const moves = [
 
 const pageBackups = [
   { from: join(appDir, "page.tsx"), to: join(backupDir, "page.tsx") },
-  { from: join(appDir, "dashboard/page.tsx"), to: join(backupDir, "dashboard-page.tsx") },
 ];
 
 function restore() {
@@ -66,38 +65,6 @@ export default function HomePage() {
     router.replace(session ? "/dashboard/" : "/login/");
   }, [router]);
   return null;
-}
-`
-  );
-
-  writeFileSync(
-    join(appDir, "dashboard/page.tsx"),
-    `"use client";
-
-import { useEffect, useState } from "react";
-import { AppShell } from "@/components/layout/app-shell";
-import { DashboardContent } from "@/components/dashboard/dashboard-content";
-import { getBasePath, readClientSession } from "@/lib/client-auth";
-
-export default function DashboardPage() {
-  const [user, setUser] = useState<{ email: string; name: string } | null>(null);
-
-  useEffect(() => {
-    const session = readClientSession();
-    if (!session) {
-      window.location.replace(\`\${getBasePath()}/login/\`);
-      return;
-    }
-    setUser(session);
-  }, []);
-
-  if (!user) return null;
-
-  return (
-    <AppShell user={user}>
-      <DashboardContent userName={user.name} />
-    </AppShell>
-  );
 }
 `
   );

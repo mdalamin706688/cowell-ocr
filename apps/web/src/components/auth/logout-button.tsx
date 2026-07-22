@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { LogOut, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { copy } from "@/lib/copy";
@@ -8,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import {
   clearClientSession,
   FLASH_LOGGED_OUT,
-  getBasePath,
   isPreviewEnvironment,
   setFlash,
 } from "@/lib/client-auth";
@@ -19,6 +19,7 @@ interface LogoutButtonProps {
 }
 
 export function LogoutButton({ variant = "sidebar", className }: LogoutButtonProps) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   const handleLogout = async () => {
@@ -27,7 +28,7 @@ export function LogoutButton({ variant = "sidebar", className }: LogoutButtonPro
       if (isPreviewEnvironment()) {
         clearClientSession();
         setFlash(FLASH_LOGGED_OUT);
-        window.location.href = `${getBasePath()}/login/`;
+        router.replace("/login/");
         return;
       }
 
@@ -36,7 +37,7 @@ export function LogoutButton({ variant = "sidebar", className }: LogoutButtonPro
         headers: { Accept: "application/json" },
       });
       setFlash(FLASH_LOGGED_OUT);
-      window.location.href = `${getBasePath()}/login/`;
+      router.replace("/login/");
     } catch {
       setLoading(false);
     }

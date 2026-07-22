@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/brand/logo";
 import { LogoutButton } from "@/components/auth/logout-button";
 
-const nav = [{ href: "/dashboard", label: copy.nav.home }];
+const nav = [{ href: "/dashboard/", label: copy.nav.home }];
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -23,7 +23,7 @@ export function AppShell({ children, user }: AppShellProps) {
     <div className="min-h-screen paper-canvas">
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[260px] flex-col border-r border-border/60 bg-card/95 backdrop-blur-md lg:flex shadow-[1px_0_24px_hsl(28_12%_11%/0.03)]">
         <div className="flex h-full flex-col p-6">
-          <Link href="/dashboard" className="mb-10 transition-opacity hover:opacity-90">
+          <Link href="/dashboard/" className="mb-10 transition-opacity hover:opacity-90">
             <Logo size="md" />
           </Link>
 
@@ -47,7 +47,7 @@ export function AppShell({ children, user }: AppShellProps) {
           </nav>
 
           <div className="mt-auto space-y-3 border-t border-border/50 pt-5">
-            <Link href="/survey/new">
+            <Link href="/survey/new/">
               <Button size="sm" className="w-full shadow-none">
                 <Plus className="h-3.5 w-3.5" />
                 {copy.nav.newSurvey}
@@ -67,9 +67,9 @@ export function AppShell({ children, user }: AppShellProps) {
       </aside>
 
       <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border/60 bg-card/90 px-4 backdrop-blur-md shadow-sm lg:hidden">
-        <Link href="/dashboard"><Logo size="sm" /></Link>
+        <Link href="/dashboard/"><Logo size="sm" /></Link>
         <div className="flex items-center gap-2">
-          <Link href="/survey/new">
+          <Link href="/survey/new/">
             <Button size="sm"><Plus className="h-3.5 w-3.5" />{copy.nav.newShort}</Button>
           </Link>
           <LogoutButton variant="mobile" />

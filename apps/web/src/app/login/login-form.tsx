@@ -15,7 +15,6 @@ import {
   getDemoEmail,
   getDemoPassword,
   isPreviewEnvironment,
-  redirectAfterLogin,
   setClientSession,
 } from "@/lib/client-auth";
 
@@ -35,8 +34,8 @@ export function LoginForm() {
 
   const completePreviewLogin = useCallback(() => {
     setClientSession(createPreviewSession());
-    redirectAfterLogin();
-  }, []);
+    router.replace("/dashboard/");
+  }, [router]);
 
   useEffect(() => {
     const fromLegacyLogout = searchParams.get("from") === "logout";
@@ -70,7 +69,7 @@ export function LoginForm() {
           throw new Error(data.error || copy.errors.loginFailed);
         }
 
-        router.push("/dashboard");
+        router.push("/dashboard/");
         router.refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : copy.errors.loginFailed);

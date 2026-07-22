@@ -1,7 +1,7 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useState } from "react";
-import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft, ArrowRight, CheckCircle2, ChevronDown, Download,
@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import { DEFAULT_OCR_PROMPT } from "@cowell/shared";
 import { SurveyProvider, useSurvey } from "@/contexts/survey-context";
-import { AppShell } from "@/components/layout/app-shell";
 import { StepIndicator } from "@/components/workflow/step-indicator";
 import { FileUploadZone } from "@/components/upload/file-upload-zone";
 import { ReviewTable } from "@/components/review/review-table";
@@ -23,7 +22,6 @@ import { surveyExport, surveyRunOcr, triggerCsvDownload } from "@/lib/survey-api
 import { formatCurrencyJpy, formatDuration } from "@/lib/utils";
 
 function SurveyWorkflow() {
-  const router = useRouter();
   const {
     step, files, quality, prompt, ocrResult, rows, exportUrl, error, hydrated,
     setStep, setFiles, setQuality, setPrompt, setOcrResult, setRows, setExportUrl, setError, reset,
@@ -94,12 +92,12 @@ function SurveyWorkflow() {
 
   return (
     <div>
-      <button
-        onClick={() => router.push("/dashboard")}
+      <Link
+        href="/dashboard/"
         className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
       >
         <ArrowLeft className="h-3.5 w-3.5" />{copy.survey.back}
-      </button>
+      </Link>
 
       <div className="flex items-start gap-4 mb-6">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent/80 text-lumen shadow-sm">
@@ -283,5 +281,9 @@ function SurveyWorkflow() {
 }
 
 export default function NewSurveyPage() {
-  return <SurveyProvider><AppShell><SurveyWorkflow /></AppShell></SurveyProvider>;
+  return (
+    <SurveyProvider>
+      <SurveyWorkflow />
+    </SurveyProvider>
+  );
 }

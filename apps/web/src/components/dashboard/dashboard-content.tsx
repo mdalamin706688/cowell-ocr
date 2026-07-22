@@ -40,7 +40,7 @@ export function DashboardContent({ userName = "管理者" }: DashboardContentPro
           </h1>
         </div>
         <Button asChild size="lg" className="shadow-none">
-          <Link href="/survey/new">
+          <Link href="/survey/new/">
             {copy.dashboard.cta}
             <ArrowRight className="h-4 w-4" />
           </Link>
@@ -61,7 +61,7 @@ export function DashboardContent({ userName = "管理者" }: DashboardContentPro
             <div className="copper-rule mt-6" />
             <div className="mt-6 flex flex-wrap gap-3">
               <Button asChild variant="elevated" size="lg">
-                <Link href="/survey/new">
+                <Link href="/survey/new/">
                   <Upload className="h-4 w-4" />
                   {copy.dashboard.cta}
                 </Link>
