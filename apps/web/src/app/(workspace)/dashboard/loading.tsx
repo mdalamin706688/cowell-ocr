@@ -1,5 +1,10 @@
 import { ContentSkeleton } from "@/components/layout/content-skeleton";
+import { SkeletonShell } from "@/components/layout/skeleton-shell";
 
 export default function DashboardLoading() {
-  return <ContentSkeleton />;
+  return (
+    <SkeletonShell>
+      <ContentSkeleton />
+    </SkeletonShell>
+  );
 }

@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { RouteContentSkeleton } from "@/components/layout/content-skeleton";
+import { SkeletonShell } from "@/components/layout/skeleton-shell";
 import { useNavigation } from "@/contexts/navigation-context";
 
 export default function WorkspaceLoading() {
@@ -9,5 +10,9 @@ export default function WorkspaceLoading() {
   const { pendingHref } = useNavigation();
   const target = pendingHref ?? pathname;
 
-  return <RouteContentSkeleton href={target} />;
+  return (
+    <SkeletonShell>
+      <RouteContentSkeleton href={target} />
+    </SkeletonShell>
+  );
 }

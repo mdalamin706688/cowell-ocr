@@ -7,6 +7,12 @@ export const PAGE_TRANSITION_MS = 620;
 /** Brief pause after slide before stagger reveal */
 export const PAGE_REVEAL_DELAY_MS = 72;
 
+/** Minimum time skeleton stays visible — prevents abrupt flash on fast loads */
+export const MIN_SKELETON_MS = 420;
+
+/** Skeleton fade in/out duration */
+export const SKELETON_FADE_MS = 420;
+
 export const springSnappy = {
   type: "spring" as const,
   stiffness: 380,

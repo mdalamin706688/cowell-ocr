@@ -4,11 +4,19 @@ import { cn } from "@/lib/utils";
 
 interface SkeletonBlockProps {
   className?: string;
+  /** Staggered entrance delay in ms */
+  delay?: number;
 }
 
-/** Soft shimmer block — no borders, production-grade loading placeholder */
-export function SkeletonBlock({ className }: SkeletonBlockProps) {
-  return <div className={cn("skeleton-block", className)} aria-hidden />;
+/** Soft shimmer block — slow premium pulse, no hard edges */
+export function SkeletonBlock({ className, delay = 0 }: SkeletonBlockProps) {
+  return (
+    <div
+      className={cn("skeleton-block skeleton-block-enter", className)}
+      style={{ animationDelay: `${delay}ms, ${delay + 650}ms` }}
+      aria-hidden
+    />
+  );
 }
 
 interface SkeletonGroupProps {

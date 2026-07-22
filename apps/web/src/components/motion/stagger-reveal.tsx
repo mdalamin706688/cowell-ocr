@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { usePageReady } from "@/hooks/use-page-ready";
 import { useSafeMotion } from "@/hooks/use-safe-motion";
-import { easeOutExpo, staggerContainer, staggerItem } from "@/lib/motion";
+import { easeOutExpo, SKELETON_FADE_MS, staggerContainer, staggerItem } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 interface StaggerRevealProps {
@@ -31,10 +31,10 @@ export function StaggerReveal({ children, className, placeholder }: StaggerRevea
         {!pageReady ? (
           <motion.div
             key="placeholder"
-            initial={{ opacity: 1 }}
+            initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.24, ease: easeOutExpo }}
+            transition={{ duration: SKELETON_FADE_MS / 1000, ease: easeOutExpo }}
             aria-busy
           >
             {placeholder}
