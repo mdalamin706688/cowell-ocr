@@ -55,12 +55,14 @@ export function parseSessionToken(token: string): SessionUser | null {
 
 export function setClientSession(user: SessionUser): void {
   cachedSession = user;
+  if (typeof document === "undefined") return;
   const token = createSessionToken(user);
   document.cookie = `${SESSION_COOKIE}=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
 }
 
 export function clearClientSession(): void {
   cachedSession = null;
+  if (typeof document === "undefined") return;
   document.cookie = `${SESSION_COOKIE}=; path=/; max-age=0; SameSite=Lax`;
 }
 
@@ -68,6 +70,7 @@ let cachedSession: SessionUser | null | undefined;
 
 /** In-memory + cookie session read — avoids auth flash on client navigations */
 export function peekClientSession(): SessionUser | null {
+  if (typeof document === "undefined") return null;
   if (cachedSession !== undefined) return cachedSession;
   cachedSession = readClientSessionFromCookie();
   return cachedSession;

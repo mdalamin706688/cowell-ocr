@@ -18,10 +18,8 @@ interface AuthenticatedShellProps {
 export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   const router = useRouter();
   const preview = isPreviewEnvironment();
-  const [user, setUser] = useState<SessionUser | null>(() =>
-    preview ? peekClientSession() : null
-  );
-  const [ready, setReady] = useState(() => preview && !!peekClientSession());
+  const [user, setUser] = useState<SessionUser | null>(null);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     router.prefetch("/dashboard/");
@@ -69,6 +67,15 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
       cancelled = true;
     };
   }, [preview, ready, router]);
+
+  // Hydrate session synchronously on the client right after login navigation
+  useEffect(() => {
+    if (!preview || ready) return;
+    const session = peekClientSession();
+    if (!session) return;
+    setUser(session);
+    setReady(true);
+  }, [preview, ready]);
 
   if (!ready || !user) {
     return <ShellSkeleton />;
