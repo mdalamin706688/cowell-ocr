@@ -1,5 +1,13 @@
-import { ContentSkeleton } from "@/components/layout/content-skeleton";
+"use client";
+
+import { usePathname } from "next/navigation";
+import { RouteContentSkeleton } from "@/components/layout/content-skeleton";
+import { useNavigation } from "@/contexts/navigation-context";
 
 export default function WorkspaceLoading() {
-  return <ContentSkeleton />;
+  const pathname = usePathname();
+  const { pendingHref } = useNavigation();
+  const target = pendingHref ?? pathname;
+
+  return <RouteContentSkeleton href={target} />;
 }

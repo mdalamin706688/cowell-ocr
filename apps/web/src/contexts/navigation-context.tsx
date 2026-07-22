@@ -16,6 +16,7 @@ interface NavigationContextValue {
   isNavigating: boolean;
   progress: number;
   direction: number;
+  pendingHref: string | null;
   startNavigation: (targetHref?: string) => void;
 }
 
@@ -34,12 +35,14 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const [isNavigating, setIsNavigating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [direction, setDirection] = useState(1);
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
   const startedAt = useRef(0);
   const prevPath = useRef(pathname);
 
   const startNavigation = useCallback(
     (targetHref?: string) => {
       if (targetHref) {
+        setPendingHref(targetHref);
         const from = routeIndex(pathname);
         const to = routeIndex(targetHref);
         setDirection(to >= from ? 1 : -1);
@@ -75,6 +78,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     const hideTimer = window.setTimeout(() => {
       setIsNavigating(false);
       setProgress(0);
+      setPendingHref(null);
     }, remaining + 280);
 
     return () => {
@@ -85,7 +89,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
 
   return (
     <NavigationContext.Provider
-      value={{ isNavigating, progress, direction, startNavigation }}
+      value={{ isNavigating, progress, direction, pendingHref, startNavigation }}
     >
       {children}
     </NavigationContext.Provider>
@@ -99,6 +103,7 @@ export function useNavigation() {
       isNavigating: false,
       progress: 0,
       direction: 1,
+      pendingHref: null,
       startNavigation: (_targetHref?: string) => {},
     };
   }

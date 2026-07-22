@@ -12,6 +12,7 @@ function Block({ className }: { className: string }) {
   );
 }
 
+/** Skeleton placeholder matching the dashboard / home layout */
 export function ContentSkeleton() {
   return (
     <div className="space-y-8" aria-busy="true" aria-label="Loading">
@@ -39,24 +40,62 @@ export function ContentSkeleton() {
 /** Skeleton placeholder matching the new survey page layout */
 export function SurveyPageSkeleton() {
   return (
-    <div className="space-y-8" aria-busy="true" aria-label="Loading">
-      <Block className="h-4 w-24" />
-      <div className="flex gap-4">
+    <div className="space-y-8" aria-busy="true" aria-label="Loading survey">
+      <Block className="h-4 w-28" />
+
+      <div className="flex items-start gap-4">
         <Block className="h-12 w-12 shrink-0 rounded-xl" />
         <div className="flex-1 space-y-2">
-          <Block className="h-7 w-48" />
-          <Block className="h-4 w-full max-w-md" />
+          <Block className="h-7 w-56 max-w-full" />
+          <Block className="h-4 w-full max-w-lg" />
         </div>
       </div>
-      <Block className="h-px w-full" />
-      <div className="flex flex-wrap gap-2">
-        <Block className="h-9 w-24 rounded-full" />
-        <Block className="h-9 w-24 rounded-full" />
-        <Block className="h-9 w-24 rounded-full" />
-        <Block className="h-9 w-24 rounded-full" />
+
+      <div className="h-px w-full bg-border/70" />
+
+      <div className="timeline-track">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div
+            key={i}
+            className="flex flex-col items-center text-center"
+            style={{ width: "20%" }}
+          >
+            <Block className="h-7 w-7 rounded-full" />
+            <Block className="mt-2 hidden h-3 w-14 sm:block" />
+          </div>
+        ))}
       </div>
-      <Block className="h-56 w-full rounded-xl" />
-      <Block className="h-36 w-full rounded-xl" />
+
+      <div className="overflow-hidden rounded-xl border border-border/60 bg-card/50">
+        <div className="border-b border-border/60 px-6 py-4">
+          <Block className="h-5 w-36" />
+        </div>
+        <div className="p-6">
+          <Block className="h-44 w-full rounded-xl border border-dashed border-border/80" />
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-xl border border-border/60 bg-card/50">
+        <div className="flex items-center justify-between px-6 py-4">
+          <div className="space-y-1.5">
+            <Block className="h-5 w-40" />
+            <Block className="h-3 w-52 max-w-full" />
+          </div>
+          <Block className="h-4 w-4 rounded-sm" />
+        </div>
+      </div>
+
+      <div className="flex justify-end pt-1">
+        <Block className="h-11 w-44 rounded-lg" />
+      </div>
     </div>
   );
+}
+
+export function isSurveyRoute(path: string): boolean {
+  return path.includes("/survey");
+}
+
+export function RouteContentSkeleton({ href }: { href: string }) {
+  return isSurveyRoute(href) ? <SurveyPageSkeleton /> : <ContentSkeleton />;
 }
