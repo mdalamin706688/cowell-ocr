@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { StepPanel } from "@/components/motion/step-panel";
+import { SurveyPageSkeleton } from "@/components/layout/content-skeleton";
 import { StaggerItem, StaggerReveal } from "@/components/motion/stagger-reveal";
 import {
   ArrowLeft, ArrowRight, CheckCircle2, ChevronDown, Download,
@@ -242,7 +243,7 @@ function SurveyWorkflow() {
   );
 
   return (
-    <StaggerReveal className="space-y-8">
+    <StaggerReveal placeholder={<SurveyPageSkeleton />}>
       <StaggerItem>
         <TransitionLink
           href="/dashboard/"

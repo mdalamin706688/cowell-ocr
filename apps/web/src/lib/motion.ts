@@ -35,22 +35,20 @@ export const pageTransitionTween = {
 };
 
 export const staggerContainer = {
-  hidden: { opacity: 1 },
+  hidden: {},
   show: {
-    opacity: 1,
     transition: {
-      staggerChildren: 0.09,
-      delayChildren: 0.14,
+      staggerChildren: 0.07,
+      delayChildren: 0.06,
     },
   },
 };
 
 export const staggerItem = {
-  hidden: { opacity: 0, y: 10 },
+  hidden: { opacity: 0 },
   show: {
     opacity: 1,
-    y: 0,
-    transition: { duration: 0.42, ease: easeOutExpo },
+    transition: { duration: 0.36, ease: easeOutExpo },
   },
 };
 

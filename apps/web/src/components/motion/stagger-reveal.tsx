@@ -9,10 +9,15 @@ import { cn } from "@/lib/utils";
 interface StaggerRevealProps {
   children: React.ReactNode;
   className?: string;
+  /** Placeholder while route slide finishes — no children mounted until ready */
+  placeholder?: React.ReactNode;
 }
 
-/** Staggered section reveal — one smooth pass after route slide (loading.tsx handles skeleton) */
-export function StaggerReveal({ children, className }: StaggerRevealProps) {
+/**
+ * Staggered section reveal — opacity only (no y-shift) so sections never overlap.
+ * Children mount once pageReady to avoid mixing with route skeleton below.
+ */
+export function StaggerReveal({ children, className, placeholder }: StaggerRevealProps) {
   const safeMotion = useSafeMotion();
   const pageReady = usePageReady();
 
@@ -20,12 +25,20 @@ export function StaggerReveal({ children, className }: StaggerRevealProps) {
     return <div className={cn(className)}>{children}</div>;
   }
 
+  if (!pageReady) {
+    return (
+      <div className={cn("flex w-full flex-col gap-8 overflow-x-clip", className)} aria-busy>
+        {placeholder}
+      </div>
+    );
+  }
+
   return (
     <motion.div
-      className={cn(className, "overflow-x-clip")}
+      className={cn("flex w-full flex-col gap-8 overflow-x-clip", className)}
       variants={staggerContainer}
       initial="hidden"
-      animate={pageReady ? "show" : "hidden"}
+      animate="show"
     >
       {children}
     </motion.div>
@@ -42,11 +55,11 @@ export function StaggerItem({
   const safeMotion = useSafeMotion();
 
   if (!safeMotion) {
-    return <div className={className}>{children}</div>;
+    return <div className={cn("w-full", className)}>{children}</div>;
   }
 
   return (
-    <motion.div className={className} variants={staggerItem}>
+    <motion.div className={cn("w-full shrink-0", className)} variants={staggerItem}>
       {children}
     </motion.div>
   );
