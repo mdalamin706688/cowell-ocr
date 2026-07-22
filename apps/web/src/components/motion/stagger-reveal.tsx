@@ -9,14 +9,9 @@ import { cn } from "@/lib/utils";
 interface StaggerRevealProps {
   children: React.ReactNode;
   className?: string;
-  /** Placeholder while route slide finishes — no children mounted until ready */
   placeholder?: React.ReactNode;
 }
 
-/**
- * Staggered section reveal — spring fade + subtle rise, clipped per section.
- * Children mount only when ready so text never mixes with skeleton below.
- */
 export function StaggerReveal({ children, className, placeholder }: StaggerRevealProps) {
   const safeMotion = useSafeMotion();
   const pageReady = usePageReady();
@@ -31,7 +26,7 @@ export function StaggerReveal({ children, className, placeholder }: StaggerRevea
         {!pageReady ? (
           <motion.div
             key="placeholder"
-            initial={{ opacity: 0 }}
+            initial={false}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: SKELETON_FADE_MS / 1000, ease: easeOutExpo }}
