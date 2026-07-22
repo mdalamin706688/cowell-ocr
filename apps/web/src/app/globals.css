@@ -292,4 +292,53 @@
       0 0 0 1px hsl(40 40% 99% / 0.8) inset,
       0 16px 40px hsl(28 12% 11% / 0.06);
   }
+
+  /* ── Skeleton shimmer ── */
+  .skeleton-block {
+    @apply relative overflow-hidden;
+    background: hsl(var(--muted) / 0.52);
+  }
+
+  .skeleton-block::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-120%);
+    background: linear-gradient(
+      105deg,
+      transparent 18%,
+      hsl(var(--card) / 0.28) 42%,
+      hsl(var(--card) / 0.62) 50%,
+      hsl(var(--card) / 0.28) 58%,
+      transparent 82%
+    );
+    animation: skeleton-shimmer 2.1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+
+  @keyframes skeleton-shimmer {
+    100% {
+      transform: translateX(120%);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton-block::after {
+      animation: none;
+      opacity: 0;
+    }
+
+    .skeleton-block {
+      animation: skeleton-pulse 1.6s ease-in-out infinite;
+    }
+  }
+
+  @keyframes skeleton-pulse {
+    0%,
+    100% {
+      opacity: 0.55;
+    }
+    50% {
+      opacity: 0.9;
+    }
+  }
 }
