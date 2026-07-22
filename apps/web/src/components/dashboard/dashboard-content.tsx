@@ -12,7 +12,7 @@ import {
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useCopy, useLocale } from "@/lib/i18n/locale-context";
+import { copy } from "@/lib/copy";
 
 interface DashboardContentProps {
   userName?: string;
@@ -22,9 +22,7 @@ const workflowIcons = [Upload, ScanLine, Table2, FileSpreadsheet];
 const capabilityIcons = [FileImage, ScanLine, Sheet];
 
 export function DashboardContent({ userName = "管理者" }: DashboardContentProps) {
-  const copy = useCopy();
-  const { locale } = useLocale();
-  const today = new Date().toLocaleDateString(locale === "ja" ? "ja-JP" : "en-US", {
+  const today = new Date().toLocaleDateString("ja-JP", {
     year: "numeric",
     month: "long",
     day: "numeric",

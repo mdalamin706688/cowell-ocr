@@ -16,15 +16,13 @@ import { ReviewTable } from "@/components/review/review-table";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useCopy, useLocale } from "@/lib/i18n/locale-context";
+import { copy } from "@/lib/copy";
 import { isPreviewEnvironment } from "@/lib/client-auth";
 import { isGoogleClientConfigured } from "@/lib/google-auth-client";
 import { surveyExport, surveyRunOcr, triggerCsvDownload } from "@/lib/survey-api";
 import { formatCurrencyJpy, formatDuration } from "@/lib/utils";
 
 function SurveyWorkflow() {
-  const copy = useCopy();
-  const { locale } = useLocale();
   const router = useRouter();
   const {
     step, files, quality, prompt, ocrResult, rows, exportUrl, error, hydrated,
@@ -186,7 +184,7 @@ function SurveyWorkflow() {
             <div className="flex flex-wrap gap-3">
               {[
                 { label: copy.survey.usage.duration, value: formatDuration(ocrResult.usage.elapsedMs) },
-                { label: copy.survey.usage.tokens, value: ocrResult.usage.totalTokens.toLocaleString(locale === "ja" ? "ja-JP" : "en-US") },
+                { label: copy.survey.usage.tokens, value: ocrResult.usage.totalTokens.toLocaleString("ja-JP") },
                 { label: copy.survey.usage.cost, value: formatCurrencyJpy(ocrResult.usage.costJpy), highlight: true },
               ].map((stat) => (
                 <div key={stat.label} className="rounded-lg border border-border/70 bg-card px-4 py-2.5">

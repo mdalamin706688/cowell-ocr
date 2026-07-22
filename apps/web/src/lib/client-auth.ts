@@ -68,20 +68,11 @@ export function readClientSession(): SessionUser | null {
   return parseSessionToken(match[1]);
 }
 
-export function demoLogin(email: string, password: string, displayName = "管理者"): SessionUser | null {
+export function demoLogin(email: string, password: string): SessionUser | null {
   if (email === getDemoEmail() && password === getDemoPassword()) {
-    return { email, name: displayName };
+    return { email, name: "管理者" };
   }
   return null;
-}
-
-/** Static preview login — ignores form values corrupted by browser translation */
-export function createPreviewSession(displayName: string): SessionUser {
-  return { email: getDemoEmail(), name: displayName };
-}
-
-export function redirectAfterLogin(): void {
-  window.location.href = `${getBasePath()}/dashboard/`;
 }
 
 export function getBasePath(): string {

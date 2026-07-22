@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { useCopy } from "@/lib/i18n/locale-context";
+import { copy } from "@/lib/copy";
 
 interface LogoProps {
   size?: "sm" | "md" | "lg";
@@ -10,7 +10,6 @@ interface LogoProps {
 }
 
 export function Logo({ size = "md", variant = "dark", className }: LogoProps) {
-  const copy = useCopy();
   const sizes = {
     sm: { box: "h-8 w-8", icon: "h-3.5 w-3.5", title: "text-sm", sub: "hidden" },
     md: { box: "h-9 w-9", icon: "h-4 w-4", title: "text-[15px]", sub: "text-[10px]" },

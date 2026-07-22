@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Trash2, Table2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useCopy } from "@/lib/i18n/locale-context";
+import { copy } from "@/lib/copy";
 
 interface ReviewTableProps {
   rows: OcrRow[];
@@ -14,7 +14,6 @@ interface ReviewTableProps {
 }
 
 export function ReviewTable({ rows, onRowsChange }: ReviewTableProps) {
-  const copy = useCopy();
   const updateRow = (id: string, field: keyof OcrRow, value: string) => {
     onRowsChange(rows.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
   };

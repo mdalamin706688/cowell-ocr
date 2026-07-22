@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { LogOut, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useCopy } from "@/lib/i18n/locale-context";
+import { copy } from "@/lib/copy";
 import { Button } from "@/components/ui/button";
 import {
   clearClientSession,
@@ -19,7 +19,6 @@ interface LogoutButtonProps {
 }
 
 export function LogoutButton({ variant = "sidebar", className }: LogoutButtonProps) {
-  const copy = useCopy();
   const [loading, setLoading] = useState(false);
 
   const handleLogout = async () => {

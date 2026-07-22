@@ -75,21 +75,23 @@ export default function HomePage() {
     `"use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { DashboardContent } from "@/components/dashboard/dashboard-content";
-import { getBasePath, readClientSession } from "@/lib/client-auth";
+import { readClientSession } from "@/lib/client-auth";
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [user, setUser] = useState<{ email: string; name: string } | null>(null);
 
   useEffect(() => {
     const session = readClientSession();
     if (!session) {
-      window.location.replace(\`\${getBasePath()}/login/\`);
+      router.replace("/login/");
       return;
     }
     setUser(session);
-  }, []);
+  }, [router]);
 
   if (!user) return null;
 

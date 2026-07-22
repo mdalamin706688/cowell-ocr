@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Syne, Noto_Sans_JP } from "next/font/google";
-import { LocaleProvider } from "@/lib/i18n/locale-context";
 import "./globals.css";
 
 const syne = Syne({
@@ -42,20 +41,15 @@ export default function RootLayout({
   const appleHref = `${basePath}/apple-touch-icon.svg`;
 
   return (
-    <html lang="ja" suppressHydrationWarning translate="no">
+    <html lang="ja">
       <head>
-        <meta name="google" content="notranslate" />
         <link rel="icon" href={iconHref} type="image/svg+xml" sizes="any" />
         <link rel="shortcut icon" href={iconHref} />
         <link rel="apple-touch-icon" href={appleHref} />
       </head>
-      <body
-        className={`${syne.variable} ${noto.variable} font-sans antialiased notranslate`}
-        suppressHydrationWarning
-        translate="no"
-      >
+      <body className={`${syne.variable} ${noto.variable} font-sans antialiased`}>
         <div className="grain" aria-hidden="true" />
-        <LocaleProvider>{children}</LocaleProvider>
+        {children}
       </body>
     </html>
   );
