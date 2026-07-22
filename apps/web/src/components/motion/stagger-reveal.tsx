@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { usePageReady } from "@/hooks/use-page-ready";
 import { useSafeMotion } from "@/hooks/use-safe-motion";
 import { staggerContainer, staggerItem } from "@/lib/motion";
 import { cn } from "@/lib/utils";
@@ -10,12 +11,13 @@ interface StaggerRevealProps {
   className?: string;
 }
 
-/** Staggered section reveal after route transition lands */
+/** Staggered section reveal — synced to finish after route slide (matches dashboard) */
 export function StaggerReveal({ children, className }: StaggerRevealProps) {
   const safeMotion = useSafeMotion();
+  const pageReady = usePageReady();
 
-  if (!safeMotion) {
-    return <div className={className}>{children}</div>;
+  if (!safeMotion || !pageReady) {
+    return <div className={cn(className, "invisible")}>{children}</div>;
   }
 
   return (
@@ -38,8 +40,9 @@ export function StaggerItem({
   className?: string;
 }) {
   const safeMotion = useSafeMotion();
+  const pageReady = usePageReady();
 
-  if (!safeMotion) {
+  if (!safeMotion || !pageReady) {
     return <div className={className}>{children}</div>;
   }
 

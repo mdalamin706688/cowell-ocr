@@ -1,8 +1,11 @@
 /** Shared motion tokens — premium easing, consistent across the app */
 export const easeOutExpo = [0.22, 1, 0.36, 1] as const;
 
-/** Target duration for route transitions + progress bar sync */
-export const PAGE_TRANSITION_MS = 480;
+/** Route slide duration — synced with progress bar */
+export const PAGE_TRANSITION_MS = 620;
+
+/** Delay before content stagger starts (after route slide begins) */
+export const PAGE_STAGGER_DELAY_MS = 220;
 
 export const springSnappy = {
   type: "spring" as const,
@@ -11,22 +14,23 @@ export const springSnappy = {
   mass: 0.85,
 };
 
+/** Softer spring — more visible, premium page slide */
 export const springPage = {
   type: "spring" as const,
-  stiffness: 260,
-  damping: 30,
-  mass: 0.95,
+  stiffness: 165,
+  damping: 24,
+  mass: 1.05,
 };
 
 export const springSoft = {
   type: "spring" as const,
-  stiffness: 220,
-  damping: 28,
+  stiffness: 200,
+  damping: 26,
   mass: 1,
 };
 
-export const tweenReveal = {
-  duration: 0.45,
+export const pageTransitionTween = {
+  duration: 0.58,
   ease: easeOutExpo,
 };
 
@@ -35,14 +39,14 @@ export const staggerContainer = {
   show: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.07,
-      delayChildren: 0.12,
+      staggerChildren: 0.09,
+      delayChildren: 0.14,
     },
   },
 };
 
 export const staggerItem = {
-  hidden: { opacity: 0, y: 18 },
+  hidden: { opacity: 0, y: 22 },
   show: {
     opacity: 1,
     y: 0,
@@ -61,13 +65,13 @@ export function getPageMotion(
   exit: { opacity: number; x: number; scale: number };
 } {
   const forward = direction >= 0;
-  const distance = variant === "workspace" ? 36 : 24;
+  const distance = variant === "workspace" ? 52 : 28;
   const enterX = forward ? distance : -distance;
-  const exitX = forward ? -distance * 0.65 : distance * 0.65;
+  const exitX = forward ? -distance * 0.7 : distance * 0.7;
 
   return {
-    initial: { opacity: 0, x: enterX, scale: 0.985 },
+    initial: { opacity: 0, x: enterX, scale: 0.982 },
     animate: { opacity: 1, x: 0, scale: 1 },
-    exit: { opacity: 0, x: exitX, scale: 0.99 },
+    exit: { opacity: 0, x: exitX, scale: 0.988 },
   };
 }

@@ -26,3 +26,22 @@ export function ContentSkeleton() {
     </div>
   );
 }
+
+export function SurveyPageSkeleton() {
+  return (
+    <div className="space-y-6">
+      <Block className="h-4 w-24" />
+      <div className="flex gap-4">
+        <Block className="h-12 w-12 shrink-0 rounded-xl" />
+        <div className="flex-1 space-y-2">
+          <Block className="h-7 w-48" />
+          <Block className="h-4 w-full max-w-md" />
+        </div>
+      </div>
+      <Block className="h-px w-full" />
+      <Block className="h-10 w-full max-w-lg" />
+      <Block className="h-56 w-full rounded-xl" />
+      <Block className="h-36 w-full rounded-xl" />
+    </div>
+  );
+}

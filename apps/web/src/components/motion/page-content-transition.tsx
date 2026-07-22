@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { useNavigation } from "@/contexts/navigation-context";
 import { useSafeMotion } from "@/hooks/use-safe-motion";
-import { getPageMotion, springPage, type PageMotionVariant } from "@/lib/motion";
+import { getPageMotion, pageTransitionTween, type PageMotionVariant } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 interface PageContentTransitionProps {
@@ -13,10 +13,6 @@ interface PageContentTransitionProps {
   variant?: PageMotionVariant;
 }
 
-/**
- * Direction-aware route transition with exit + enter when motion is safe.
- * Falls back to static markup when browser translate is active.
- */
 export function PageContentTransition({
   children,
   className,
@@ -36,14 +32,14 @@ export function PageContentTransition({
   }
 
   return (
-    <div className={cn("relative", className)}>
+    <div className={cn("relative min-h-[50vh] overflow-x-hidden", className)}>
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
           key={pathname}
           initial={pageMotion.initial}
           animate={pageMotion.animate}
           exit={pageMotion.exit}
-          transition={springPage}
+          transition={pageTransitionTween}
           className="w-full"
         >
           {children}
