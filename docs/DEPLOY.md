@@ -1,51 +1,49 @@
 # Deployment
 
+## AWS S3 + CloudFront (static frontend)
+
+Live URL (after deploy): `https://d1xs8fe440jh05.cloudfront.net`
+
+### Required GitHub Actions secrets
+
+| Secret | Example |
+|--------|---------|
+| `AWS_ACCESS_KEY_ID` | IAM access key |
+| `AWS_SECRET_ACCESS_KEY` | IAM secret |
+| `AWS_REGION` | `ap-northeast-1` |
+| `S3_BUCKET_NAME` | `cowell-ocr-frontend` |
+| `CLOUDFRONT_DISTRIBUTION_ID` | `E310HKOK8I8549` |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | OAuth Web client ID |
+| `NEXT_PUBLIC_APP_URL` | `https://d1xs8fe440jh05.cloudfront.net` (optional) |
+
+Push to `main` runs **Deploy AWS (S3 + CloudFront)**.
+
+> Static only (same as GitHub Pages): mock OCR demo, FE Google Sheets OAuth. No server Gemini API.
+
+### CloudFront checklist
+
+1. **Default root object** = `index.html` (Settings → Edit)
+2. Google OAuth **Authorized JavaScript origins** add:
+   `https://d1xs8fe440jh05.cloudfront.net`
+
 ## GitHub Pages (UI preview)
 
 1. Open **Settings → Pages → Build and deployment**
-2. Under **Source**, select **GitHub Actions** (not “Deploy from a branch”)
-3. Do **not** use the suggested “Next.js” workflow — the repo already has `pages.yml` (“Deploy GitHub Pages”)
-4. Go to **Actions** → **Deploy GitHub Pages** → **Re-run all jobs**
+2. Under **Source**, select **GitHub Actions**
+3. Use existing `pages.yml` (“Deploy GitHub Pages”)
 
-After success, the site is live at:
-   `https://mdalamin706688.github.io/cowell-ocr/`
+Live: `https://mdalamin706688.github.io/cowell-ocr/`
 
-> **Note:** GitHub Pages is static-only. OCR uses **demo/mock data**; Google Sheets export uses FE OAuth when `NEXT_PUBLIC_GOOGLE_CLIENT_ID` is set in repo secrets.
+## Full production (Vercel / Amplify — real OCR API)
 
-Optional GitHub Actions secrets for Pages demo:
+Needed for server-side Gemini OCR. S3 + CloudFront cannot host `/api/ocr`.
 
-| Secret | Description |
-|--------|-------------|
-| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | OAuth Web client ID (add `https://mdalamin706688.github.io` as authorized origin) |
-| `NEXT_PUBLIC_GOOGLE_SHEETS_FOLDER_ID` | Optional Drive folder |
-| `DEMO_LOGIN_EMAIL` / `DEMO_LOGIN_PASSWORD` | Preview login defaults |
-
-## Full production (Vercel — recommended)
-
-1. Create a project at [vercel.com](https://vercel.com) linked to `mdalamin706688/cowell-ocr`
-2. Add these **GitHub repository secrets** (Settings → Secrets → Actions):
-
-| Secret | Description |
-|--------|-------------|
-| `GEMINI_API_KEY` | Google Gemini API key |
-| `AUTH_SECRET` | Random string (32+ chars) |
-| `ADMIN_EMAIL` | Admin login email |
-| `ADMIN_PASSWORD` | Admin login password |
-| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | OAuth Web client ID (FE Google connect) |
-| `GOOGLE_SERVICE_ACCOUNT_EMAIL` | Sheets service account (fallback) |
-| `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` | Service account private key |
-| `GOOGLE_SHEETS_FOLDER_ID` | Optional Drive folder ID |
-| `VERCEL_TOKEN` | From Vercel account settings |
-| `VERCEL_ORG_ID` | From Vercel project settings |
-| `VERCEL_PROJECT_ID` | From Vercel project settings |
-
-3. Push to `main` — `deploy.yml` builds and deploys the full Next.js app.
+See previous Vercel secrets (`GEMINI_API_KEY`, auth, etc.) in `deploy.yml`.
 
 ## Local development
 
 ```bash
 npm install
 cp .env.example apps/web/.env.local
-# Edit apps/web/.env.local
 npm run dev
 ```

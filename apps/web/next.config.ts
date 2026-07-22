@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const isGitHubPages = process.env.GITHUB_PAGES === "true";
+const isAwsStatic = process.env.AWS_STATIC === "true";
+const isStaticExport = isGitHubPages || isAwsStatic;
 const repoName = process.env.GITHUB_REPOSITORY?.split("/")[1] ?? "cowell-ocr";
+/** GitHub Pages needs /repo basePath; CloudFront/S3 is served from domain root */
 const basePath = isGitHubPages ? `/${repoName}` : "";
 
 const nextConfig: NextConfig = {
@@ -10,15 +13,19 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_BASE_PATH: basePath,
   },
   images: {
-    unoptimized: isGitHubPages,
+    unoptimized: isStaticExport,
     remotePatterns: [],
   },
-  ...(isGitHubPages
+  ...(isStaticExport
     ? {
         output: "export" as const,
-        basePath: `/${repoName}`,
-        assetPrefix: `/${repoName}/`,
         trailingSlash: true,
+        ...(basePath
+          ? {
+              basePath,
+              assetPrefix: `${basePath}/`,
+            }
+          : {}),
       }
     : {}),
   experimental: {
