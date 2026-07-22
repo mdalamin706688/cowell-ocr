@@ -3,7 +3,6 @@
 import { useCallback, useState } from "react";
 import { StepPanel } from "@/components/motion/step-panel";
 import { StaggerItem, StaggerReveal } from "@/components/motion/stagger-reveal";
-import { SurveyPageSkeleton } from "@/components/layout/content-skeleton";
 import {
   ArrowLeft, ArrowRight, CheckCircle2, ChevronDown, Download,
   ExternalLink, Loader2, ScanLine, Sparkles,
@@ -25,7 +24,7 @@ import { formatCurrencyJpy, formatDuration } from "@/lib/utils";
 
 function SurveyWorkflow() {
   const {
-    step, files, quality, prompt, ocrResult, rows, exportUrl, error, hydrated,
+    step, files, quality, prompt, ocrResult, rows, exportUrl, error,
     setStep, setFiles, setQuality, setPrompt, setOcrResult, setRows, setExportUrl, setError, reset,
   } = useSurvey();
   const [processing, setProcessing] = useState(false);
@@ -82,9 +81,7 @@ function SurveyWorkflow() {
     }
   }, [rows, setStep, setError, setExportUrl]);
 
-  const stepContent = !hydrated ? (
-    <SurveyPageSkeleton />
-  ) : (
+  const stepContent = (
     <>
       {step === "upload" && (
         <StepPanel className="space-y-4">
@@ -245,7 +242,7 @@ function SurveyWorkflow() {
   );
 
   return (
-    <StaggerReveal className="space-y-8" fallback={<SurveyPageSkeleton />}>
+    <StaggerReveal className="space-y-8">
       <StaggerItem>
         <TransitionLink
           href="/dashboard/"

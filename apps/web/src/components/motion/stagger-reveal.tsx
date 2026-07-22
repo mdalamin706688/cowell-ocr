@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { usePageReady } from "@/hooks/use-page-ready";
 import { useSafeMotion } from "@/hooks/use-safe-motion";
 import { staggerContainer, staggerItem } from "@/lib/motion";
@@ -9,12 +9,10 @@ import { cn } from "@/lib/utils";
 interface StaggerRevealProps {
   children: React.ReactNode;
   className?: string;
-  /** Shown while the route slide runs (skeleton loader) */
-  fallback?: React.ReactNode;
 }
 
-/** Staggered section reveal — synced to finish after route slide (matches dashboard) */
-export function StaggerReveal({ children, className, fallback }: StaggerRevealProps) {
+/** Staggered section reveal — one smooth pass after route slide (loading.tsx handles skeleton) */
+export function StaggerReveal({ children, className }: StaggerRevealProps) {
   const safeMotion = useSafeMotion();
   const pageReady = usePageReady();
 
@@ -23,30 +21,14 @@ export function StaggerReveal({ children, className, fallback }: StaggerRevealPr
   }
 
   return (
-    <div className={cn(className, "overflow-x-clip")}>
-      <AnimatePresence mode="wait" initial={false}>
-        {!pageReady ? (
-          <motion.div
-            key="skeleton"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-          >
-            {fallback}
-          </motion.div>
-        ) : (
-          <motion.div
-            key="content"
-            variants={staggerContainer}
-            initial="hidden"
-            animate="show"
-          >
-            {children}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+    <motion.div
+      className={cn(className, "overflow-x-clip")}
+      variants={staggerContainer}
+      initial="hidden"
+      animate={pageReady ? "show" : "hidden"}
+    >
+      {children}
+    </motion.div>
   );
 }
 
@@ -58,9 +40,8 @@ export function StaggerItem({
   className?: string;
 }) {
   const safeMotion = useSafeMotion();
-  const pageReady = usePageReady();
 
-  if (!safeMotion || !pageReady) {
+  if (!safeMotion) {
     return <div className={className}>{children}</div>;
   }
 

@@ -1,19 +1,33 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { PAGE_STAGGER_DELAY_MS } from "@/lib/motion";
+import { useNavigation } from "@/contexts/navigation-context";
+import { PAGE_REVEAL_DELAY_MS } from "@/lib/motion";
 
-/** Delays content stagger until the route slide has started */
+/** Unlocks stagger reveal after route slide finishes — avoids double skeleton/content flash */
 export function usePageReady(): boolean {
   const pathname = usePathname();
+  const { isNavigating } = useNavigation();
   const [ready, setReady] = useState(false);
+  const pathRef = useRef(pathname);
 
   useEffect(() => {
+    pathRef.current = pathname;
     setReady(false);
-    const timer = window.setTimeout(() => setReady(true), PAGE_STAGGER_DELAY_MS);
-    return () => window.clearTimeout(timer);
   }, [pathname]);
+
+  useEffect(() => {
+    if (isNavigating) return;
+
+    const timer = window.setTimeout(() => {
+      if (pathRef.current === pathname) {
+        setReady(true);
+      }
+    }, PAGE_REVEAL_DELAY_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [pathname, isNavigating]);
 
   return ready;
 }

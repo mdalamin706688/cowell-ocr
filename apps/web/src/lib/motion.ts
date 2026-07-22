@@ -4,8 +4,8 @@ export const easeOutExpo = [0.22, 1, 0.36, 1] as const;
 /** Route slide duration — synced with progress bar */
 export const PAGE_TRANSITION_MS = 620;
 
-/** Delay before content stagger starts (after route slide begins) */
-export const PAGE_STAGGER_DELAY_MS = 220;
+/** Brief pause after slide before stagger reveal */
+export const PAGE_REVEAL_DELAY_MS = 48;
 
 export const springSnappy = {
   type: "spring" as const,
@@ -46,11 +46,11 @@ export const staggerContainer = {
 };
 
 export const staggerItem = {
-  hidden: { opacity: 0, y: 14 },
+  hidden: { opacity: 0, y: 10 },
   show: {
     opacity: 1,
     y: 0,
-    transition: springSoft,
+    transition: { duration: 0.42, ease: easeOutExpo },
   },
 };
 
@@ -70,8 +70,8 @@ export function getPageMotion(
   const exitX = forward ? -distance * 0.7 : distance * 0.7;
 
   return {
-    initial: { opacity: 0, x: enterX, scale: 0.982 },
+    initial: { opacity: 1, x: enterX, scale: 0.99 },
     animate: { opacity: 1, x: 0, scale: 1 },
-    exit: { opacity: 0, x: exitX, scale: 0.988 },
+    exit: { opacity: 0, x: exitX, scale: 0.995 },
   };
 }
