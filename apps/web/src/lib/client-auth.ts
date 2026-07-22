@@ -8,12 +8,15 @@ export interface SessionUser {
 export const DEMO_EMAIL = "admin@cowell.local";
 export const DEMO_PASSWORD = "change-me";
 
-/** GitHub Pages preview — no server API */
+/** Static hosts (GitHub Pages / CloudFront) — no server API */
 export function isPreviewEnvironment(): boolean {
+  // Build-time flag for S3/CloudFront and Pages static exports
+  if (process.env.NEXT_PUBLIC_STATIC_PREVIEW === "true") return true;
   if (typeof window !== "undefined") {
-    return window.location.hostname.endsWith("github.io");
+    const host = window.location.hostname;
+    return host.endsWith("github.io") || host.endsWith("cloudfront.net");
   }
-  return process.env.NEXT_PUBLIC_STATIC_PREVIEW === "true";
+  return false;
 }
 
 export function getDemoEmail(): string {
