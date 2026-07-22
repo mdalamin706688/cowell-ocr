@@ -54,7 +54,11 @@ export interface OcrRow {
   location: string;
   fixtureModel: string;
   existingProduct: string;
+  /** UI preview URL (blob/data); not persisted in draft */
   photoUrl?: string;
+  /** Persisted photo bytes for spreadsheet export */
+  photoBase64?: string;
+  photoMimeType?: string;
   quantity: string;
   notes: string;
   confidence?: number;

@@ -22,6 +22,7 @@ import {
   emptySurveyDraft,
   loadSurveyDraft,
   reviveDraftFiles,
+  reviveDraftRows,
   saveSurveyDraft,
   stabilizeStep,
 } from "@/lib/survey-draft";
@@ -75,7 +76,7 @@ export function SurveyProvider({ children }: { children: ReactNode }) {
           quality: draft.quality,
           prompt: draft.prompt || DEFAULT_OCR_PROMPT,
           ocrResult: draft.ocrResult,
-          rows: draft.rows,
+          rows: reviveDraftRows(draft.rows),
           exportUrl: draft.exportUrl,
           error: null,
         });

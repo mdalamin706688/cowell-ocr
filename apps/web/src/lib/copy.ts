@@ -103,6 +103,11 @@ export const copy = {
   table: {
     empty: "読み取り結果がありません",
     footer: (n: number) => `${n}件 — セルをクリックして編集`,
+    photo: "写真",
+    attachPhoto: "写真を添付",
+    changePhoto: "変更",
+    removePhoto: "削除",
+    photoAttached: "添付済み",
   },
   auth: {
     logout: "ログアウト",

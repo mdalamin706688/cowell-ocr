@@ -60,6 +60,18 @@ export function reviveDraftFiles(files: UploadedFile[]): UploadedFile[] {
   }));
 }
 
+/** Restore row photo preview URLs after refresh */
+export function reviveDraftRows(rows: OcrRow[]): OcrRow[] {
+  return rows.map((row) => ({
+    ...row,
+    photoUrl:
+      row.photoUrl ||
+      (row.photoBase64 && row.photoMimeType
+        ? previewFromBase64(row.photoBase64, row.photoMimeType)
+        : undefined),
+  }));
+}
+
 /** Mid-flight steps are not safe to resume; snap to a stable step. */
 export function stabilizeStep(
   step: WorkflowStep,
@@ -97,6 +109,7 @@ export async function saveSurveyDraft(
     ...draft,
     // Drop ephemeral blob: URLs — rebuilt from base64 on restore
     files: draft.files.map(({ previewUrl: _p, ...file }) => file),
+    rows: draft.rows.map(({ photoUrl: _u, ...row }) => row),
     savedAt: Date.now(),
   };
   try {

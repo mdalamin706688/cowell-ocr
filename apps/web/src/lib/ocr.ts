@@ -69,10 +69,18 @@ export function parseTsvToRows(text: string, sourceFile?: string): OcrRow[] {
 }
 
 export function rowsToTsv(rows: OcrRow[]): string {
-  const header = SURVEY_COLUMNS.filter((c) => c !== "写真").join("\t");
+  const header = [...SURVEY_COLUMNS].join("\t");
   const body = rows
     .map((r) =>
-      [r.floor, r.location, r.fixtureModel, r.existingProduct, r.quantity, r.notes].join("\t")
+      [
+        r.floor,
+        r.location,
+        r.fixtureModel,
+        r.existingProduct,
+        r.photoBase64 ? "添付済み" : "",
+        r.quantity,
+        r.notes,
+      ].join("\t")
     )
     .join("\n");
   return `${header}\n${body}`;
