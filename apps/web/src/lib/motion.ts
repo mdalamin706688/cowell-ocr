@@ -5,7 +5,7 @@ export const easeOutExpo = [0.22, 1, 0.36, 1] as const;
 export const PAGE_TRANSITION_MS = 620;
 
 /** Brief pause after slide before stagger reveal */
-export const PAGE_REVEAL_DELAY_MS = 48;
+export const PAGE_REVEAL_DELAY_MS = 72;
 
 export const springSnappy = {
   type: "spring" as const,
@@ -38,17 +38,18 @@ export const staggerContainer = {
   hidden: {},
   show: {
     transition: {
-      staggerChildren: 0.07,
-      delayChildren: 0.06,
+      staggerChildren: 0.09,
+      delayChildren: 0.1,
     },
   },
 };
 
 export const staggerItem = {
-  hidden: { opacity: 0 },
+  hidden: { opacity: 0, y: 8 },
   show: {
     opacity: 1,
-    transition: { duration: 0.36, ease: easeOutExpo },
+    y: 0,
+    transition: springSoft,
   },
 };
 
@@ -68,8 +69,8 @@ export function getPageMotion(
   const exitX = forward ? -distance * 0.7 : distance * 0.7;
 
   return {
-    initial: { opacity: 1, x: enterX, scale: 0.99 },
+    initial: { opacity: 0.92, x: enterX, scale: 0.992 },
     animate: { opacity: 1, x: 0, scale: 1 },
-    exit: { opacity: 0, x: exitX, scale: 0.995 },
+    exit: { opacity: 0, x: exitX, scale: 0.996 },
   };
 }

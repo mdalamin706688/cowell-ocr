@@ -1,9 +1,9 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { usePageReady } from "@/hooks/use-page-ready";
 import { useSafeMotion } from "@/hooks/use-safe-motion";
-import { staggerContainer, staggerItem } from "@/lib/motion";
+import { easeOutExpo, staggerContainer, staggerItem } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 interface StaggerRevealProps {
@@ -14,8 +14,8 @@ interface StaggerRevealProps {
 }
 
 /**
- * Staggered section reveal — opacity only (no y-shift) so sections never overlap.
- * Children mount once pageReady to avoid mixing with route skeleton below.
+ * Staggered section reveal — spring fade + subtle rise, clipped per section.
+ * Children mount only when ready so text never mixes with skeleton below.
  */
 export function StaggerReveal({ children, className, placeholder }: StaggerRevealProps) {
   const safeMotion = useSafeMotion();
@@ -25,23 +25,33 @@ export function StaggerReveal({ children, className, placeholder }: StaggerRevea
     return <div className={cn(className)}>{children}</div>;
   }
 
-  if (!pageReady) {
-    return (
-      <div className={cn("flex w-full flex-col gap-8 overflow-x-clip", className)} aria-busy>
-        {placeholder}
-      </div>
-    );
-  }
-
   return (
-    <motion.div
-      className={cn("flex w-full flex-col gap-8 overflow-x-clip", className)}
-      variants={staggerContainer}
-      initial="hidden"
-      animate="show"
-    >
-      {children}
-    </motion.div>
+    <div className={cn("flex w-full flex-col gap-8 overflow-x-clip", className)}>
+      <AnimatePresence mode="wait" initial={false}>
+        {!pageReady ? (
+          <motion.div
+            key="placeholder"
+            initial={{ opacity: 1 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.24, ease: easeOutExpo }}
+            aria-busy
+          >
+            {placeholder}
+          </motion.div>
+        ) : (
+          <motion.div
+            key="content"
+            variants={staggerContainer}
+            initial="hidden"
+            animate="show"
+            className="flex w-full flex-col gap-8"
+          >
+            {children}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -59,7 +69,10 @@ export function StaggerItem({
   }
 
   return (
-    <motion.div className={cn("w-full shrink-0", className)} variants={staggerItem}>
+    <motion.div
+      className={cn("w-full shrink-0 overflow-hidden", className)}
+      variants={staggerItem}
+    >
       {children}
     </motion.div>
   );
