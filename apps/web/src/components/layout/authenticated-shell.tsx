@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
+import { ShellSkeleton } from "@/components/layout/shell-skeleton";
 import { WorkspaceSessionProvider } from "@/contexts/workspace-session";
 import {
   isPreviewEnvironment,
-  readClientSession,
+  peekClientSession,
   type SessionUser,
 } from "@/lib/client-auth";
 
@@ -18,15 +17,23 @@ interface AuthenticatedShellProps {
 
 export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   const router = useRouter();
-  const [user, setUser] = useState<SessionUser | null>(null);
-  const [ready, setReady] = useState(false);
+  const preview = isPreviewEnvironment();
+  const [user, setUser] = useState<SessionUser | null>(() =>
+    preview ? peekClientSession() : null
+  );
+  const [ready, setReady] = useState(() => preview && !!peekClientSession());
+
+  useEffect(() => {
+    router.prefetch("/dashboard/");
+    router.prefetch("/survey/new/");
+  }, [router]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadSession() {
-      if (isPreviewEnvironment()) {
-        const session = readClientSession();
+      if (preview) {
+        const session = peekClientSession();
         if (!session) {
           router.replace("/login/");
           return;
@@ -57,31 +64,19 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
       }
     }
 
-    void loadSession();
+    if (!ready) void loadSession();
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [preview, ready, router]);
 
   if (!ready || !user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center paper-canvas">
-        <Loader2 className="h-7 w-7 animate-spin text-lumen" aria-label="Loading" />
-      </div>
-    );
+    return <ShellSkeleton />;
   }
 
   return (
     <WorkspaceSessionProvider user={user}>
-      <AppShell user={user}>
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2, ease: "easeOut" }}
-        >
-          {children}
-        </motion.div>
-      </AppShell>
+      <AppShell user={user}>{children}</AppShell>
     </WorkspaceSessionProvider>
   );
 }

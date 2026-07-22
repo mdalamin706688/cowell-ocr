@@ -6,6 +6,7 @@ import { LogOut, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { copy } from "@/lib/copy";
 import { Button } from "@/components/ui/button";
+import { useNavigation } from "@/contexts/navigation-context";
 import {
   clearClientSession,
   FLASH_LOGGED_OUT,
@@ -20,6 +21,7 @@ interface LogoutButtonProps {
 
 export function LogoutButton({ variant = "sidebar", className }: LogoutButtonProps) {
   const router = useRouter();
+  const { startNavigation } = useNavigation();
   const [loading, setLoading] = useState(false);
 
   const handleLogout = async () => {
@@ -28,6 +30,7 @@ export function LogoutButton({ variant = "sidebar", className }: LogoutButtonPro
       if (isPreviewEnvironment()) {
         clearClientSession();
         setFlash(FLASH_LOGGED_OUT);
+        startNavigation();
         router.replace("/login/");
         return;
       }
@@ -37,6 +40,7 @@ export function LogoutButton({ variant = "sidebar", className }: LogoutButtonPro
         headers: { Accept: "application/json" },
       });
       setFlash(FLASH_LOGGED_OUT);
+      startNavigation();
       router.replace("/login/");
     } catch {
       setLoading(false);

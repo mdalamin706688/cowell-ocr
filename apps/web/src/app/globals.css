@@ -36,6 +36,10 @@
 
   html { font-size: 16px; scroll-behavior: smooth; }
 
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1, "palt" 1;
@@ -230,19 +234,11 @@
   }
 
   .nav-link-active {
-    @apply bg-accent/70 font-semibold text-foreground shadow-sm;
+    @apply font-semibold text-foreground;
   }
 
   .nav-link-active::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 2px;
-    height: 60%;
-    border-radius: 1px;
-    background: linear-gradient(180deg, hsl(var(--lumen-glow)), hsl(var(--lumen)));
+    display: none;
   }
 
   /* ── Timeline ── */

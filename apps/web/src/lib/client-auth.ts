@@ -54,18 +54,33 @@ export function parseSessionToken(token: string): SessionUser | null {
 }
 
 export function setClientSession(user: SessionUser): void {
+  cachedSession = user;
   const token = createSessionToken(user);
   document.cookie = `${SESSION_COOKIE}=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
 }
 
 export function clearClientSession(): void {
+  cachedSession = null;
   document.cookie = `${SESSION_COOKIE}=; path=/; max-age=0; SameSite=Lax`;
 }
 
-export function readClientSession(): SessionUser | null {
+let cachedSession: SessionUser | null | undefined;
+
+/** In-memory + cookie session read — avoids auth flash on client navigations */
+export function peekClientSession(): SessionUser | null {
+  if (cachedSession !== undefined) return cachedSession;
+  cachedSession = readClientSessionFromCookie();
+  return cachedSession;
+}
+
+function readClientSessionFromCookie(): SessionUser | null {
   const match = document.cookie.match(/cowell_session=([^;]+)/);
   if (!match) return null;
   return parseSessionToken(match[1]);
+}
+
+export function readClientSession(): SessionUser | null {
+  return peekClientSession();
 }
 
 export function demoLogin(email: string, password: string): SessionUser | null {

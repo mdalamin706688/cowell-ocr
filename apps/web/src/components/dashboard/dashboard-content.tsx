@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import {
   ArrowRight,
   FileImage,
@@ -12,6 +11,7 @@ import {
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TransitionLink } from "@/components/ui/transition-link";
 import { copy } from "@/lib/copy";
 
 interface DashboardContentProps {
@@ -40,10 +40,10 @@ export function DashboardContent({ userName = "管理者" }: DashboardContentPro
           </h1>
         </div>
         <Button asChild size="lg" className="shadow-none">
-          <Link href="/survey/new/">
+          <TransitionLink href="/survey/new/">
             {copy.dashboard.cta}
             <ArrowRight className="h-4 w-4" />
-          </Link>
+          </TransitionLink>
         </Button>
       </div>
 
@@ -61,10 +61,10 @@ export function DashboardContent({ userName = "管理者" }: DashboardContentPro
             <div className="copper-rule mt-6" />
             <div className="mt-6 flex flex-wrap gap-3">
               <Button asChild variant="elevated" size="lg">
-                <Link href="/survey/new/">
+                <TransitionLink href="/survey/new/">
                   <Upload className="h-4 w-4" />
                   {copy.dashboard.cta}
-                </Link>
+                </TransitionLink>
               </Button>
             </div>
           </div>

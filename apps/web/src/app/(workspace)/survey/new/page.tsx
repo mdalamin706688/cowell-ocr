@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -13,6 +12,7 @@ import { StepIndicator } from "@/components/workflow/step-indicator";
 import { FileUploadZone } from "@/components/upload/file-upload-zone";
 import { ReviewTable } from "@/components/review/review-table";
 import { Button } from "@/components/ui/button";
+import { TransitionLink } from "@/components/ui/transition-link";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { copy } from "@/lib/copy";
@@ -92,12 +92,12 @@ function SurveyWorkflow() {
 
   return (
     <div>
-      <Link
+      <TransitionLink
         href="/dashboard/"
         className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
       >
         <ArrowLeft className="h-3.5 w-3.5" />{copy.survey.back}
-      </Link>
+      </TransitionLink>
 
       <div className="flex items-start gap-4 mb-6">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent/80 text-lumen shadow-sm">

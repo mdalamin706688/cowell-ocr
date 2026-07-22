@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/brand/logo";
 import { copy } from "@/lib/copy";
+import { useNavigation } from "@/contexts/navigation-context";
 import {
   consumeFlash,
   createPreviewSession,
@@ -22,6 +23,7 @@ const DEV_AUTO_LOGIN = process.env.NEXT_PUBLIC_DEV_AUTO_LOGIN === "true";
 
 export function LoginForm() {
   const router = useRouter();
+  const { startNavigation } = useNavigation();
   const searchParams = useSearchParams();
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
@@ -34,7 +36,12 @@ export function LoginForm() {
 
   const completePreviewLogin = useCallback(() => {
     setClientSession(createPreviewSession());
+    startNavigation();
     router.replace("/dashboard/");
+  }, [router, startNavigation]);
+
+  useEffect(() => {
+    router.prefetch("/dashboard/");
   }, [router]);
 
   useEffect(() => {
@@ -69,6 +76,7 @@ export function LoginForm() {
           throw new Error(data.error || copy.errors.loginFailed);
         }
 
+        startNavigation();
         router.push("/dashboard/");
         router.refresh();
       } catch (err) {
@@ -76,7 +84,7 @@ export function LoginForm() {
         setLoading(false);
       }
     },
-    [completePreviewLogin, router]
+    [completePreviewLogin, router, startNavigation]
   );
 
   useEffect(() => {

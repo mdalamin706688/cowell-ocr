@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Syne, Noto_Sans_JP } from "next/font/google";
+import { AppProviders } from "@/components/providers/app-providers";
 import "./globals.css";
 
 const syne = Syne({
@@ -52,7 +53,7 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <div className="grain" aria-hidden="true" />
-        {children}
+        <AppProviders>{children}</AppProviders>
       </body>
     </html>
   );
