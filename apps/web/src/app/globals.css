@@ -34,7 +34,7 @@
 
   * { @apply border-border; }
 
-  html { font-size: 16px; scroll-behavior: smooth; }
+  html { font-size: 16px; scroll-behavior: smooth; overflow-x: clip; }
 
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
@@ -43,6 +43,7 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1, "palt" 1;
+    overflow-x: clip;
   }
 
   ::selection {

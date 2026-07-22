@@ -4,7 +4,7 @@ import { SkeletonBlock } from "@/components/layout/skeleton-primitives";
 
 export function ShellSkeleton() {
   return (
-    <div className="min-h-screen paper-canvas">
+    <div className="min-h-screen overflow-x-clip paper-canvas">
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[260px] border-r border-border/60 bg-card/95 lg:block">
         <div className="flex h-full flex-col p-6">
           <SkeletonBlock className="mb-10 h-10 w-36" />

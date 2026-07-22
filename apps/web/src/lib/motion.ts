@@ -46,7 +46,7 @@ export const staggerContainer = {
 };
 
 export const staggerItem = {
-  hidden: { opacity: 0, y: 22 },
+  hidden: { opacity: 0, y: 14 },
   show: {
     opacity: 1,
     y: 0,
@@ -65,7 +65,7 @@ export function getPageMotion(
   exit: { opacity: number; x: number; scale: number };
 } {
   const forward = direction >= 0;
-  const distance = variant === "workspace" ? 52 : 28;
+  const distance = variant === "workspace" ? 40 : 24;
   const enterX = forward ? distance : -distance;
   const exitX = forward ? -distance * 0.7 : distance * 0.7;
 

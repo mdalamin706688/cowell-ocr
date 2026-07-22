@@ -32,7 +32,7 @@ export function PageContentTransition({
   }
 
   return (
-    <div className={cn("relative min-h-[50vh] overflow-x-hidden", className)}>
+    <div className={cn("relative isolate overflow-x-clip", className)}>
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
           key={pathname}
@@ -40,7 +40,7 @@ export function PageContentTransition({
           animate={pageMotion.animate}
           exit={pageMotion.exit}
           transition={pageTransitionTween}
-          className="w-full"
+          className="w-full overflow-x-clip"
         >
           {children}
         </motion.div>

@@ -23,7 +23,7 @@ export function StaggerReveal({ children, className, fallback }: StaggerRevealPr
   }
 
   return (
-    <div className={cn(className)}>
+    <div className={cn(className, "overflow-x-clip")}>
       <AnimatePresence mode="wait" initial={false}>
         {!pageReady ? (
           <motion.div
