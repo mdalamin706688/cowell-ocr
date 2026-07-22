@@ -4,12 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { copy } from "@/lib/copy";
+import { useCopy } from "@/lib/i18n/locale-context";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/brand/logo";
 import { LogoutButton } from "@/components/auth/logout-button";
-
-const nav = [{ href: "/dashboard", label: copy.nav.home }];
+import { LanguageSwitcher } from "@/components/ui/language-switcher";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -17,7 +16,10 @@ interface AppShellProps {
 }
 
 export function AppShell({ children, user }: AppShellProps) {
+  const copy = useCopy();
   const pathname = usePathname();
+
+  const nav = [{ href: "/dashboard", label: copy.nav.home }];
 
   return (
     <div className="min-h-screen paper-canvas">
@@ -47,6 +49,7 @@ export function AppShell({ children, user }: AppShellProps) {
           </nav>
 
           <div className="mt-auto space-y-3 border-t border-border/50 pt-5">
+            <LanguageSwitcher className="px-1" />
             <Link href="/survey/new">
               <Button size="sm" className="w-full shadow-none">
                 <Plus className="h-3.5 w-3.5" />
@@ -69,6 +72,7 @@ export function AppShell({ children, user }: AppShellProps) {
       <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border/60 bg-card/90 px-4 backdrop-blur-md shadow-sm lg:hidden">
         <Link href="/dashboard"><Logo size="sm" /></Link>
         <div className="flex items-center gap-2">
+          <LanguageSwitcher />
           <Link href="/survey/new">
             <Button size="sm"><Plus className="h-3.5 w-3.5" />{copy.nav.newShort}</Button>
           </Link>

@@ -9,7 +9,7 @@ import {
   type UploadedFile,
 } from "@cowell/shared";
 import { cn, formatBytes, generateId } from "@/lib/utils";
-import { copy } from "@/lib/copy";
+import { useCopy } from "@/lib/i18n/locale-context";
 import { compressImage, fileToBase64 } from "@/lib/ocr";
 import {
   Select,
@@ -32,6 +32,7 @@ export function FileUploadZone({
   quality,
   onQualityChange,
 }: FileUploadZoneProps) {
+  const copy = useCopy();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

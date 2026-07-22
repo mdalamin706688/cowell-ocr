@@ -7,20 +7,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/brand/logo";
-import { copy } from "@/lib/copy";
+import { LanguageSwitcher } from "@/components/ui/language-switcher";
+import { useCopy } from "@/lib/i18n/locale-context";
 import {
   consumeFlash,
+  createPreviewSession,
   demoLogin,
   FLASH_LOGGED_OUT,
   getDemoEmail,
   getDemoPassword,
   isPreviewEnvironment,
+  redirectAfterLogin,
   setClientSession,
 } from "@/lib/client-auth";
 
 const DEV_AUTO_LOGIN = process.env.NEXT_PUBLIC_DEV_AUTO_LOGIN === "true";
 
 export function LoginForm() {
+  const copy = useCopy();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState(getDemoEmail());
@@ -29,10 +33,9 @@ export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const autoLoginAttempted = useRef(false);
+  const preview = isPreviewEnvironment();
 
   useEffect(() => {
-    const preview = isPreviewEnvironment();
-    // Production server: clear prefilled demo creds unless dev auto-login
     if (!preview && !DEV_AUTO_LOGIN) {
       setEmail("");
       setPassword("");
@@ -45,7 +48,7 @@ export function LoginForm() {
     if (fromLegacyLogout) {
       router.replace("/login/");
     }
-  }, [router, searchParams]);
+  }, [preview, router, searchParams]);
 
   const login = useCallback(
     async (loginEmail: string, loginPassword: string) => {
@@ -53,15 +56,12 @@ export function LoginForm() {
       setError(null);
 
       try {
-        const useClientAuth = isPreviewEnvironment();
-
-        if (useClientAuth) {
-          const user = demoLogin(loginEmail, loginPassword);
-          if (!user) {
-            throw new Error(copy.errors.loginFailed);
-          }
+        if (preview) {
+          const user =
+            demoLogin(loginEmail, loginPassword, copy.auth.demoName) ??
+            createPreviewSession(copy.auth.demoName);
           setClientSession(user);
-          router.push("/dashboard");
+          redirectAfterLogin();
           return;
         }
 
@@ -83,7 +83,7 @@ export function LoginForm() {
         setLoading(false);
       }
     },
-    [router]
+    [copy.auth.demoName, copy.errors.loginFailed, preview, router]
   );
 
   useEffect(() => {
@@ -94,18 +94,11 @@ export function LoginForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isPreviewEnvironment()) {
-      // Prefer demo creds on static host — browser translation can corrupt inputs
-      const user =
-        demoLogin(email, password) ?? demoLogin(getDemoEmail(), getDemoPassword());
-      if (!user) {
-        setError(copy.errors.loginFailed);
-        return;
-      }
+    if (preview) {
       setLoading(true);
       setError(null);
-      setClientSession(user);
-      router.push("/dashboard");
+      setClientSession(createPreviewSession(copy.auth.demoName));
+      redirectAfterLogin();
       return;
     }
     await login(email, password);
@@ -114,9 +107,12 @@ export function LoginForm() {
   const heroLines = copy.login.heroTitle.split("\n");
 
   return (
-    <div className="min-h-screen flex paper-canvas">
+    <div className="min-h-screen flex paper-canvas" translate="no">
       <div className="hidden lg:flex lg:w-[48%] forest-hero flex-col justify-between p-10 sm:p-12">
-        <Logo size="lg" variant="light" />
+        <div className="flex items-start justify-between gap-4">
+          <Logo size="lg" variant="light" />
+          <LanguageSwitcher variant="light" />
+        </div>
 
         <div className="relative z-10 max-w-md">
           <p className="text-eyebrow text-lumen-glow/80">{copy.login.heroEyebrow}</p>
@@ -138,8 +134,9 @@ export function LoginForm() {
 
       <div className="flex flex-1 flex-col items-center justify-center px-6 py-12">
         <div className="w-full max-w-[360px]">
-          <div className="mb-8 lg:hidden">
+          <div className="mb-8 flex items-center justify-between gap-4 lg:hidden">
             <Logo size="md" />
+            <LanguageSwitcher />
           </div>
 
           <div className="form-surface">
@@ -152,7 +149,7 @@ export function LoginForm() {
               </p>
             )}
 
-            <form onSubmit={handleSubmit} className="mt-6 space-y-4" autoComplete="on">
+            <form onSubmit={handleSubmit} className="mt-6 space-y-4" autoComplete="on" translate="no">
               <div className="space-y-1.5">
                 <Label htmlFor="email" className="text-label">{copy.login.email}</Label>
                 <Input
@@ -161,7 +158,7 @@ export function LoginForm() {
                   name="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  required
+                  required={!preview}
                   autoComplete="email"
                   translate="no"
                   className="notranslate"
@@ -175,7 +172,7 @@ export function LoginForm() {
                   name="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  required
+                  required={!preview}
                   autoComplete="current-password"
                   translate="no"
                   className="notranslate"
@@ -188,7 +185,7 @@ export function LoginForm() {
                 </p>
               )}
 
-              <Button type="submit" className="w-full" size="lg" disabled={loading}>
+              <Button type="submit" className="w-full notranslate" size="lg" disabled={loading} translate="no">
                 {loading ? (
                   <><Loader2 className="h-4 w-4 animate-spin" />{copy.login.submitting}</>
                 ) : (
