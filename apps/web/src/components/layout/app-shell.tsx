@@ -1,7 +1,6 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { copy } from "@/lib/copy";
@@ -9,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/brand/logo";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { TransitionLink } from "@/components/ui/transition-link";
-import { springSnappy } from "@/lib/motion";
 
 const nav = [{ href: "/dashboard/", label: copy.nav.home }];
 
@@ -43,10 +41,9 @@ export function AppShell({ children, user }: AppShellProps) {
                   )}
                 >
                   {active && (
-                    <motion.span
-                      layoutId="workspace-nav-active"
-                      className="absolute inset-0 rounded-lg bg-accent/70"
-                      transition={springSnappy}
+                    <span
+                      className="absolute inset-0 rounded-lg bg-accent/70 shadow-sm transition-opacity duration-200"
+                      aria-hidden
                     />
                   )}
                   <span className="relative pl-2">{label}</span>

@@ -1,41 +1,40 @@
 "use client";
 
-import { AnimatePresence, motion, useReducedMotion, type Variants } from "framer-motion";
+import { motion } from "framer-motion";
 import { usePathname } from "next/navigation";
-import { tweenPage } from "@/lib/motion";
+import { useSafeMotion } from "@/hooks/use-safe-motion";
+import { tweenFast } from "@/lib/motion";
 
 interface PageContentTransitionProps {
   children: React.ReactNode;
-  variants?: Variants;
   className?: string;
 }
 
-export function PageContentTransition({
-  children,
-  variants,
-  className,
-}: PageContentTransitionProps) {
+/**
+ * Enter-only route transition. Avoids AnimatePresence exit animations that crash
+ * when browser translation has rewritten the DOM (removeChild errors).
+ */
+export function PageContentTransition({ children, className }: PageContentTransitionProps) {
   const pathname = usePathname();
-  const reduced = useReducedMotion();
+  const safeMotion = useSafeMotion();
 
-  if (reduced) {
-    return <div className={className}>{children}</div>;
+  if (!safeMotion) {
+    return (
+      <div className={className} key={pathname}>
+        {children}
+      </div>
+    );
   }
 
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      <motion.div
-        key={pathname}
-        variants={variants}
-        initial="initial"
-        animate="animate"
-        exit="exit"
-        transition={tweenPage}
-        className={className}
-        style={{ willChange: "opacity, transform, filter" }}
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
+    <motion.div
+      key={pathname}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={tweenFast}
+      className={className}
+    >
+      {children}
+    </motion.div>
   );
 }

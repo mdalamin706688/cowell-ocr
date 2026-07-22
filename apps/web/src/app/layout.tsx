@@ -45,6 +45,7 @@ export default function RootLayout({
     <html lang="ja" suppressHydrationWarning>
       <head>
         <link rel="icon" href={iconHref} type="image/svg+xml" sizes="any" />
+        <link rel="icon" href={iconHref} />
         <link rel="shortcut icon" href={iconHref} />
         <link rel="apple-touch-icon" href={appleHref} />
       </head>

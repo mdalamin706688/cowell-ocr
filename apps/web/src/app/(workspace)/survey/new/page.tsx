@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { StepPanel } from "@/components/motion/step-panel";
 import {
   ArrowLeft, ArrowRight, CheckCircle2, ChevronDown, Download,
   ExternalLink, Loader2, ScanLine, Sparkles,
@@ -119,9 +119,8 @@ function SurveyWorkflow() {
         </div>
       )}
 
-      <AnimatePresence mode="wait">
-        {step === "upload" && (
-          <motion.div key="u" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+      {step === "upload" && (
+        <StepPanel className="space-y-4">
             <div className="ui-card">
               <div className="ui-card-header"><p className="text-base font-medium">{copy.survey.files}</p></div>
               <div className="ui-card-body">
@@ -158,11 +157,11 @@ function SurveyWorkflow() {
                 <ScanLine className="h-4 w-4" />{copy.survey.runOcr}<ArrowRight className="h-4 w-4" />
               </Button>
             </div>
-          </motion.div>
-        )}
+        </StepPanel>
+      )}
 
-        {step === "processing" && (
-          <motion.div key="p" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="ui-card">
+      {step === "processing" && (
+        <StepPanel className="ui-card">
             <div className="ui-card-body flex flex-col items-center gap-4 py-16 text-center">
               <div className="relative">
                 <div className="absolute inset-0 rounded-full bg-lumen/20 blur-xl" />
@@ -174,11 +173,11 @@ function SurveyWorkflow() {
               </div>
               <Progress value={progress} className="w-full max-w-xs h-1.5" />
             </div>
-          </motion.div>
-        )}
+        </StepPanel>
+      )}
 
-        {step === "review" && ocrResult && (
-          <motion.div key="r" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+      {step === "review" && ocrResult && (
+        <StepPanel className="space-y-4">
             <div className="flex flex-wrap gap-3">
               {[
                 { label: copy.survey.usage.duration, value: formatDuration(ocrResult.usage.elapsedMs) },
@@ -228,10 +227,10 @@ function SurveyWorkflow() {
                 )}
               </Button>
             </div>
-          </motion.div>
-        )}
+        </StepPanel>
+      )}
 
-        {step === "export" && (
+      {step === "export" && (
           <div className="ui-card">
             <div className="ui-card-body flex flex-col items-center gap-3 py-16">
               <Loader2 className="h-7 w-7 animate-spin text-lumen" />
@@ -244,8 +243,8 @@ function SurveyWorkflow() {
           </div>
         )}
 
-        {step === "complete" && (
-          <motion.div key="c" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="ui-card">
+      {step === "complete" && (
+        <StepPanel className="ui-card">
             <div className="ui-card-body flex flex-col items-center gap-4 py-16 text-center">
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-lumen/10">
                 <CheckCircle2 className="h-8 w-8 text-lumen" />
@@ -273,9 +272,8 @@ function SurveyWorkflow() {
                 </Button>
               </div>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        </StepPanel>
+      )}
     </div>
   );
 }

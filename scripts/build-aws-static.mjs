@@ -3,7 +3,7 @@
  * Static export for AWS S3 + CloudFront (domain root, no /cowell-ocr basePath).
  * Same UI preview mode as GitHub Pages — no server API routes.
  */
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync, copyFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { execSync } from "child_process";
@@ -89,6 +89,12 @@ export default function HomePage() {
   });
 
   console.log("AWS static export ready:", join(web, "out"));
+
+  const faviconSvg = join(web, "public/favicon.svg");
+  const faviconOut = join(web, "out/favicon.ico");
+  if (existsSync(faviconSvg)) {
+    copyFileSync(faviconSvg, faviconOut);
+  }
 } finally {
   restore();
 }
