@@ -41,13 +41,16 @@ export default function RootLayout({
   const appleHref = `${basePath}/apple-touch-icon.svg`;
 
   return (
-    <html lang="ja">
+    <html lang="ja" suppressHydrationWarning>
       <head>
         <link rel="icon" href={iconHref} type="image/svg+xml" sizes="any" />
         <link rel="shortcut icon" href={iconHref} />
         <link rel="apple-touch-icon" href={appleHref} />
       </head>
-      <body className={`${syne.variable} ${noto.variable} font-sans antialiased`}>
+      <body
+        className={`${syne.variable} ${noto.variable} font-sans antialiased`}
+        suppressHydrationWarning
+      >
         <div className="grain" aria-hidden="true" />
         {children}
       </body>

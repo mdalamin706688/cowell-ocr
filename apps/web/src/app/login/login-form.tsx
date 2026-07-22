@@ -10,11 +10,12 @@ import { Logo } from "@/components/brand/logo";
 import { copy } from "@/lib/copy";
 import {
   consumeFlash,
-  demoLogin,
+  createPreviewSession,
   FLASH_LOGGED_OUT,
   getDemoEmail,
   getDemoPassword,
   isPreviewEnvironment,
+  redirectAfterLogin,
   setClientSession,
 } from "@/lib/client-auth";
 
@@ -23,21 +24,21 @@ const DEV_AUTO_LOGIN = process.env.NEXT_PUBLIC_DEV_AUTO_LOGIN === "true";
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [email, setEmail] = useState(getDemoEmail());
-  const [password, setPassword] = useState(getDemoPassword());
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
   const [loggedOutMessage, setLoggedOutMessage] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const autoLoginAttempted = useRef(false);
+  const preview = isPreviewEnvironment();
+  const prefilled = preview || DEV_AUTO_LOGIN;
+
+  const completePreviewLogin = useCallback(() => {
+    setClientSession(createPreviewSession());
+    redirectAfterLogin();
+  }, []);
 
   useEffect(() => {
-    const preview = isPreviewEnvironment();
-    // Production server: clear prefilled demo creds unless dev auto-login
-    if (!preview && !DEV_AUTO_LOGIN) {
-      setEmail("");
-      setPassword("");
-    }
-
     const fromLegacyLogout = searchParams.get("from") === "logout";
     if (consumeFlash(FLASH_LOGGED_OUT) || fromLegacyLogout) {
       setLoggedOutMessage(true);
@@ -49,22 +50,15 @@ export function LoginForm() {
 
   const login = useCallback(
     async (loginEmail: string, loginPassword: string) => {
+      if (isPreviewEnvironment()) {
+        completePreviewLogin();
+        return;
+      }
+
       setLoading(true);
       setError(null);
 
       try {
-        const useClientAuth = isPreviewEnvironment();
-
-        if (useClientAuth) {
-          const user = demoLogin(loginEmail, loginPassword);
-          if (!user) {
-            throw new Error(copy.errors.loginFailed);
-          }
-          setClientSession(user);
-          router.push("/dashboard");
-          return;
-        }
-
         const res = await fetch("/api/auth/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -83,32 +77,26 @@ export function LoginForm() {
         setLoading(false);
       }
     },
-    [router]
+    [completePreviewLogin, router]
   );
 
   useEffect(() => {
     if (!DEV_AUTO_LOGIN || autoLoginAttempted.current || loggedOutMessage) return;
     autoLoginAttempted.current = true;
-    void login(getDemoEmail(), getDemoPassword());
-  }, [login, loggedOutMessage]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
     if (isPreviewEnvironment()) {
-      // Prefer demo creds on static host — browser translation can corrupt inputs
-      const user =
-        demoLogin(email, password) ?? demoLogin(getDemoEmail(), getDemoPassword());
-      if (!user) {
-        setError(copy.errors.loginFailed);
-        return;
-      }
-      setLoading(true);
-      setError(null);
-      setClientSession(user);
-      router.push("/dashboard");
+      completePreviewLogin();
       return;
     }
-    await login(email, password);
+    void login(getDemoEmail(), getDemoPassword());
+  }, [completePreviewLogin, login, loggedOutMessage]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (preview) {
+      completePreviewLogin();
+      return;
+    }
+    void login(emailRef.current?.value ?? "", passwordRef.current?.value ?? "");
   };
 
   const heroLines = copy.login.heroTitle.split("\n");
@@ -156,29 +144,25 @@ export function LoginForm() {
               <div className="space-y-1.5">
                 <Label htmlFor="email" className="text-label">{copy.login.email}</Label>
                 <Input
+                  ref={emailRef}
                   id="email"
                   type="email"
                   name="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
+                  defaultValue={prefilled ? getDemoEmail() : ""}
+                  required={!preview}
                   autoComplete="email"
-                  translate="no"
-                  className="notranslate"
                 />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="password" className="text-label">{copy.login.password}</Label>
                 <Input
+                  ref={passwordRef}
                   id="password"
                   type="password"
                   name="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
+                  defaultValue={prefilled ? getDemoPassword() : ""}
+                  required={!preview}
                   autoComplete="current-password"
-                  translate="no"
-                  className="notranslate"
                 />
               </div>
 
@@ -188,8 +172,8 @@ export function LoginForm() {
                 </p>
               )}
 
-              <Button type="submit" className="w-full" size="lg" disabled={loading}>
-                {loading ? (
+              <Button type="submit" className="w-full" size="lg" disabled={loading && !preview}>
+                {loading && !preview ? (
                   <><Loader2 className="h-4 w-4 animate-spin" />{copy.login.submitting}</>
                 ) : (
                   <>{copy.login.submit}<ArrowRight className="h-4 w-4" /></>
