@@ -199,38 +199,66 @@ async function createDriveFile(
   }
 
   const fileId = created.id as string;
-  const parents: string[] = Array.isArray(created.parents) ? created.parents : [];
-  if (!parents.includes(parentFolderId)) {
-    await ensureExclusiveParent(accessToken, fileId, parentFolderId);
-  }
+  // Always normalize parents — Drive may omit them or use the real root id vs "root"
+  await ensureExclusiveParent(accessToken, fileId, parentFolderId);
   return fileId;
 }
 
-/** Confirm a file/folder is nested under the expected parent (Drive query). */
+/** Resolve My Drive root folder id (Drive never returns the alias "root" in parents). */
+async function getMyDriveRootId(accessToken: string): Promise<string | null> {
+  const res = await fetch(
+    "https://www.googleapis.com/drive/v3/files/root?fields=id",
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (!res.ok) return null;
+  const data = await res.json();
+  return typeof data.id === "string" ? data.id : null;
+}
+
+/**
+ * Confirm nesting via files.get (not files.list — `id =` is not a valid Drive query field,
+ * which caused false failures and duplicate survey folders on retry).
+ */
 async function confirmNestedInParent(
   accessToken: string,
   fileId: string,
   parentFolderId: string
 ): Promise<boolean> {
-  const q = `'${parentFolderId}' in parents and id = '${fileId}' and trashed = false`;
   const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&pageSize=1&fields=files(id)&q=${encodeURIComponent(q)}`,
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?supportsAllDrives=true&fields=parents,trashed`,
     { headers: { Authorization: `Bearer ${accessToken}` } }
   );
   if (!res.ok) return false;
   const data = await res.json();
-  return Array.isArray(data.files) && data.files.length > 0;
+  if (data.trashed) return false;
+  const parents: string[] = Array.isArray(data.parents) ? data.parents : [];
+  if (parents.includes(parentFolderId)) return true;
+  if (parentFolderId === "root") {
+    const rootId = await getMyDriveRootId(accessToken);
+    return Boolean(rootId && parents.includes(rootId));
+  }
+  return false;
 }
 
 /**
  * Force a file to have EXACTLY one parent.
- * Drive allows multi-parent; that makes one folder show under My Drive AND JBC-COWELL.
+ * Drive historically allowed multi-parent; we strip extras so the folder
+ * only appears under JBC-COWELL (not also under My Drive root).
  */
 async function ensureExclusiveParent(
   accessToken: string,
   fileId: string,
   expectedParentId: string
 ): Promise<void> {
+  let canonicalParent = expectedParentId;
+  if (expectedParentId === "root") {
+    const rootId = await getMyDriveRootId(accessToken);
+    if (!rootId) {
+      throw new Error("My Drive のルートを確認できませんでした");
+    }
+    canonicalParent = rootId;
+  }
+
   const res = await fetch(
     `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?supportsAllDrives=true&fields=parents`,
     { headers: { Authorization: `Bearer ${accessToken}` } }
@@ -240,13 +268,16 @@ async function ensureExclusiveParent(
   }
   const data = await res.json();
   const parents: string[] = Array.isArray(data.parents) ? data.parents : [];
-  const extra = parents.filter((p) => p !== expectedParentId);
-  const needsAdd = !parents.includes(expectedParentId);
+  const extra = parents.filter((p) => p !== canonicalParent);
+  const needsAdd = !parents.includes(canonicalParent);
 
   if (!extra.length && !needsAdd) return;
 
   const params = new URLSearchParams({ supportsAllDrives: "true" });
-  if (needsAdd) params.set("addParents", expectedParentId);
+  // Prefer alias "root" when moving under My Drive root (API accepts it)
+  if (needsAdd) {
+    params.set("addParents", expectedParentId === "root" ? "root" : canonicalParent);
+  }
   if (extra.length) params.set("removeParents", extra.join(","));
 
   const patchRes = await fetch(
@@ -265,7 +296,6 @@ async function ensureExclusiveParent(
     );
   }
 
-  // Verify exclusivity
   const check = await fetch(
     `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?supportsAllDrives=true&fields=parents`,
     { headers: { Authorization: `Bearer ${accessToken}` } }
@@ -273,7 +303,7 @@ async function ensureExclusiveParent(
   if (check.ok) {
     const verified = await check.json();
     const finalParents: string[] = verified.parents || [];
-    if (finalParents.length !== 1 || finalParents[0] !== expectedParentId) {
+    if (finalParents.length !== 1 || finalParents[0] !== canonicalParent) {
       throw new Error("調査フォルダが My Drive 直下にも残っています。再エクスポートしてください。");
     }
   }
