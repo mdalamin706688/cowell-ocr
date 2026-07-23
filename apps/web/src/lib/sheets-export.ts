@@ -5,31 +5,36 @@ export const GOOGLE_SHEETS_SCOPES = [
   "https://www.googleapis.com/auth/drive.file",
 ].join(" ");
 
+/** Root Drive folder where every survey process is stored */
+export const DRIVE_PARENT_FOLDER_NAME = "JBC-COWELL";
+
 export interface SheetsExportResult {
   spreadsheetId: string;
   spreadsheetUrl: string;
   rowCount: number;
   photoCount: number;
-  /** Drive folder that holds this process's row photos (like "project A") */
   processFolderId?: string;
   processFolderUrl?: string;
+  parentFolderId?: string;
+  parentFolderUrl?: string;
 }
 
 export interface SheetsExportOptions {
   accessToken: string;
   rows: OcrRow[];
-  /** Process name — becomes the Drive folder name (like "project A") */
+  /** Process / survey name → folder under JBC-COWELL */
   title: string;
   /**
- * Optional parent Drive folder (= "space for this project").
- *
- * Layout per process:
- *   [parent space]
- *     └── {title}/                 ← process folder (like "project A")
- *           ├── row_001.jpg
- *           ├── …
- *           └── 結果シート         ← spreadsheet inside the same folder
- */
+   * Optional: existing JBC-COWELL folder id (from env).
+   * If omitted, the app finds or creates a folder named "JBC-COWELL".
+   *
+   * Layout:
+   *   JBC-COWELL/
+   *     └── 現調_YYYY-MM-DD_HHMM/     ← one folder per survey process
+   *           ├── 00_結果シート       ← sheet first
+   *           ├── row_001.jpg
+   *           └── …
+   */
   folderId?: string | null;
 }
 
@@ -38,9 +43,9 @@ const SHEET_TAB_TITLE = "現調データ";
 const DRIVE_FOLDER_MIME = "application/vnd.google-apps.folder";
 const DRIVE_SHEET_MIME = "application/vnd.google-apps.spreadsheet";
 
-/** Spreadsheet Drive file name — mirrors client "result sheet" */
+/** Prefix so the sheet sorts before row_*.jpg in Drive name order */
 function resultSheetDriveName(): string {
-  return "結果シート";
+  return "00_結果シート";
 }
 
 function authHeaders(accessToken: string): HeadersInit {
@@ -113,23 +118,52 @@ async function createDriveFile(
     throw new Error(
       created.error?.message ||
         (mimeType === DRIVE_FOLDER_MIME
-          ? "プロセス用フォルダの作成に失敗しました"
+          ? "フォルダの作成に失敗しました"
           : "スプレッドシートの作成に失敗しました")
     );
   }
   return created.id as string;
 }
 
-/** Process folder = "project A" / "project B" — stores that run's images only */
+/** Find existing JBC-COWELL folder, or create it under My Drive */
+async function ensureParentFolder(
+  accessToken: string,
+  configuredFolderId?: string | null
+): Promise<string> {
+  if (configuredFolderId?.trim()) {
+    return configuredFolderId.trim();
+  }
+
+  const q = [
+    `name = '${DRIVE_PARENT_FOLDER_NAME}'`,
+    `mimeType = '${DRIVE_FOLDER_MIME}'`,
+    "trashed = false",
+    "'root' in parents",
+  ].join(" and ");
+
+  const searchRes = await fetch(
+    `https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&pageSize=1&fields=files(id,name)&q=${encodeURIComponent(q)}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  const searchData = await searchRes.json();
+  if (!searchRes.ok) {
+    throw new Error(searchData.error?.message || "親フォルダの検索に失敗しました");
+  }
+
+  const existingId = searchData.files?.[0]?.id as string | undefined;
+  if (existingId) return existingId;
+
+  return createDriveFile(accessToken, DRIVE_PARENT_FOLDER_NAME, DRIVE_FOLDER_MIME, null);
+}
+
 async function createProcessFolder(
   accessToken: string,
   processName: string,
-  parentFolderId?: string | null
+  parentFolderId: string
 ): Promise<string> {
   return createDriveFile(accessToken, processName, DRIVE_FOLDER_MIME, parentFolderId);
 }
 
-/** Spreadsheet = "result sheet" — placed inside the process folder */
 async function createResultSpreadsheet(
   accessToken: string,
   processFolderId: string
@@ -254,7 +288,6 @@ async function attachRowPhotos(
     const cell = `${columnLetter(PHOTO_COLUMN_INDEX)}${sheetRow}`;
     updates.push({
       range: `${SHEET_TAB_TITLE}!${cell}`,
-      // mode 1 = fit to cell (mode 4 requires height+width and caused #N/A)
       values: [[`=IMAGE("${imageUrl}", 1)`]],
     });
   }
@@ -313,14 +346,11 @@ async function attachRowPhotos(
 }
 
 /**
- * Export one survey process to Drive + Sheets.
- *
- * One process = one folder (like "project A") containing photos + 結果シート:
- *   [space for this project]
- *     └── 現調_YYYY-MM-DD_HHMM/
- *           ├── row_001.jpg
- *           ├── …
- *           └── 結果シート
+ * Export one survey process under JBC-COWELL:
+ *   JBC-COWELL/
+ *     └── {process}/
+ *           ├── 00_結果シート
+ *           └── row_001.jpg …
  */
 export async function exportRowsWithAccessToken(
   options: SheetsExportOptions
@@ -329,10 +359,10 @@ export async function exportRowsWithAccessToken(
   const headers = authHeaders(accessToken);
   const processName = sanitizeDriveName(title);
 
-  // Process folder first (like "project A")
-  const processFolderId = await createProcessFolder(accessToken, processName, folderId);
+  const parentFolderId = await ensureParentFolder(accessToken, folderId);
+  const processFolderId = await createProcessFolder(accessToken, processName, parentFolderId);
 
-  // Result sheet inside that same folder
+  // Sheet first, then images
   const spreadsheetId = await createResultSpreadsheet(accessToken, processFolderId);
 
   const updateRes = await fetch(
@@ -361,5 +391,7 @@ export async function exportRowsWithAccessToken(
     photoCount,
     processFolderId,
     processFolderUrl: driveFolderUrl(processFolderId),
+    parentFolderId,
+    parentFolderUrl: driveFolderUrl(parentFolderId),
   };
 }

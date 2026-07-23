@@ -32,11 +32,15 @@ User clicks export → Google account picker → spreadsheet is created in **the
 
 ```bash
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=xxxxx.apps.googleusercontent.com
-# Optional: parent Drive folder = "space for this project".
-# Each export creates one process folder under it (or My Drive if empty):
-#   └── 現調_YYYY-MM-DD_HHMM/     ← like "project A"
-#         ├── row_001.jpg
-#         └── 結果シート           ← spreadsheet inside the same folder
+# Optional: ID of the parent folder **JBC-COWELL**.
+# If empty, the app finds or creates a My Drive folder named `JBC-COWELL`.
+#
+# Layout on every export:
+#   JBC-COWELL/
+#     └── 現調_YYYY-MM-DD_HHMM/     ← one folder per survey
+#           ├── 00_結果シート       ← sheet first
+#           ├── row_001.jpg
+#           └── …
 NEXT_PUBLIC_GOOGLE_SHEETS_FOLDER_ID=
 GOOGLE_SHEETS_FOLDER_ID=
 ```
@@ -48,12 +52,13 @@ Restart `npm run dev` after changing env.
 1. Review OCR rows and attach one photo per row
 2. Click **スプレッドシートに登録**
 3. Approve Google access (once per session)
-4. App creates one process folder (under parent space or My Drive):
+4. App creates under **JBC-COWELL** (finds or creates that parent folder):
    ```
-   現調_2026-07-23_1328/          ← like "project A"
-     ├── row_001.jpg
-     ├── row_002.jpg
-     └── 結果シート               ← spreadsheet in the same folder
+   JBC-COWELL/
+     └── 現調_2026-07-23_1328/     ← one folder per survey process
+           ├── 00_結果シート       ← sheet first
+           ├── row_001.jpg
+           └── row_002.jpg
    ```
 5. Open the created sheet from the success screen
 
