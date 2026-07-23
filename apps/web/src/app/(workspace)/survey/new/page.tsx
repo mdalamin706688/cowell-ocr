@@ -62,7 +62,10 @@ function SurveyWorkflow() {
     setExporting(true);
     setError(null);
     setStep("export");
-    const title = `現調_${new Date().toISOString().slice(0, 10)}`;
+    const now = new Date();
+    const date = now.toISOString().slice(0, 10);
+    const time = now.toISOString().slice(11, 16).replace(":", "");
+    const title = `現調_${date}_${time}`;
     setExportTitle(title);
     try {
       const result = await surveyExport(rows, title);

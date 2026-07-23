@@ -32,9 +32,10 @@ User clicks export → Google account picker → spreadsheet is created in **the
 
 ```bash
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=xxxxx.apps.googleusercontent.com
-# Optional: parent Drive folder (project space). Each export creates:
-#   ├── {title}/   ← process folder with all row photos
-#   └── {title}    ← spreadsheet (sibling)
+# Optional: parent Drive folder = "space for this project" in the client example.
+# Each export creates siblings under this folder (or My Drive if empty):
+#   ├── 現調_YYYY-MM-DD_HHMM/           ← process folder (like "project A") — photos only
+#   └── 結果シート - 現調_YYYY-MM-DD_HHMM  ← spreadsheet (like "result sheet")
 NEXT_PUBLIC_GOOGLE_SHEETS_FOLDER_ID=
 GOOGLE_SHEETS_FOLDER_ID=
 ```
@@ -46,9 +47,14 @@ Restart `npm run dev` after changing env.
 1. Review OCR rows and attach one photo per row
 2. Click **スプレッドシートに登録**
 3. Approve Google access (once per session)
-4. App creates (under parent folder or My Drive):
-   - **Process folder** `{title}/` with compressed row photos (`row_001.jpg` …)
-   - **Spreadsheet** `{title}` as a sibling, with OCR text + `IMAGE()` in 写真
+4. App creates under the parent space (or My Drive), matching the client layout:
+   ```
+   [space for this project]
+     ├── 現調_2026-07-23_1328/              ← process folder (like "project A")
+     │     ├── row_001.jpg
+     │     └── …
+     └── 結果シート - 現調_2026-07-23_1328   ← spreadsheet (like "result sheet")
+   ```
 5. Open the created sheet from the success screen
 
 Row photos are compressed to ~720px JPEG (~65% quality) so 100+ images stay manageable.
