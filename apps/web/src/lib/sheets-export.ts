@@ -21,13 +21,15 @@ export interface SheetsExportOptions {
   /** Process name — becomes the Drive folder name (like "project A") */
   title: string;
   /**
-   * Optional parent Drive folder (= "space for this project" in client example).
-   *
-   * Layout (matches client screenshot):
-   *   [parent space]
-   *     ├── {title}/              ← process folder (photos only)
-   *     └── 結果シート - {title}   ← spreadsheet (sibling, like "result sheet")
-   */
+ * Optional parent Drive folder (= "space for this project").
+ *
+ * Layout per process:
+ *   [parent space]
+ *     └── {title}/                 ← process folder (like "project A")
+ *           ├── row_001.jpg
+ *           ├── …
+ *           └── 結果シート         ← spreadsheet inside the same folder
+ */
   folderId?: string | null;
 }
 
@@ -37,8 +39,8 @@ const DRIVE_FOLDER_MIME = "application/vnd.google-apps.folder";
 const DRIVE_SHEET_MIME = "application/vnd.google-apps.spreadsheet";
 
 /** Spreadsheet Drive file name — mirrors client "result sheet" */
-function resultSheetDriveName(processName: string): string {
-  return `結果シート - ${sanitizeDriveName(processName)}`;
+function resultSheetDriveName(): string {
+  return "結果シート";
 }
 
 function authHeaders(accessToken: string): HeadersInit {
@@ -127,18 +129,17 @@ async function createProcessFolder(
   return createDriveFile(accessToken, processName, DRIVE_FOLDER_MIME, parentFolderId);
 }
 
-/** Spreadsheet = "result sheet" — sibling of the process folder */
+/** Spreadsheet = "result sheet" — placed inside the process folder */
 async function createResultSpreadsheet(
   accessToken: string,
-  processName: string,
-  parentFolderId?: string | null
+  processFolderId: string
 ): Promise<string> {
   const headers = authHeaders(accessToken);
   const spreadsheetId = await createDriveFile(
     accessToken,
-    resultSheetDriveName(processName),
+    resultSheetDriveName(),
     DRIVE_SHEET_MIME,
-    parentFolderId
+    processFolderId
   );
 
   await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
@@ -314,11 +315,12 @@ async function attachRowPhotos(
 /**
  * Export one survey process to Drive + Sheets.
  *
- * Matches client example:
- *   space for this project/
- *     ├── project A/          ← process folder (images)
- *     ├── project B/
- *     └── result sheet        ← spreadsheet sibling
+ * One process = one folder (like "project A") containing photos + 結果シート:
+ *   [space for this project]
+ *     └── 現調_YYYY-MM-DD_HHMM/
+ *           ├── row_001.jpg
+ *           ├── …
+ *           └── 結果シート
  */
 export async function exportRowsWithAccessToken(
   options: SheetsExportOptions
@@ -327,11 +329,11 @@ export async function exportRowsWithAccessToken(
   const headers = authHeaders(accessToken);
   const processName = sanitizeDriveName(title);
 
-  // Always create process folder first (like "project A")
+  // Process folder first (like "project A")
   const processFolderId = await createProcessFolder(accessToken, processName, folderId);
 
-  // Spreadsheet as sibling (like "result sheet")
-  const spreadsheetId = await createResultSpreadsheet(accessToken, processName, folderId);
+  // Result sheet inside that same folder
+  const spreadsheetId = await createResultSpreadsheet(accessToken, processFolderId);
 
   const updateRes = await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/A1?valueInputOption=USER_ENTERED`,

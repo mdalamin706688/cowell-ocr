@@ -32,10 +32,11 @@ User clicks export → Google account picker → spreadsheet is created in **the
 
 ```bash
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=xxxxx.apps.googleusercontent.com
-# Optional: parent Drive folder = "space for this project" in the client example.
-# Each export creates siblings under this folder (or My Drive if empty):
-#   ├── 現調_YYYY-MM-DD_HHMM/           ← process folder (like "project A") — photos only
-#   └── 結果シート - 現調_YYYY-MM-DD_HHMM  ← spreadsheet (like "result sheet")
+# Optional: parent Drive folder = "space for this project".
+# Each export creates one process folder under it (or My Drive if empty):
+#   └── 現調_YYYY-MM-DD_HHMM/     ← like "project A"
+#         ├── row_001.jpg
+#         └── 結果シート           ← spreadsheet inside the same folder
 NEXT_PUBLIC_GOOGLE_SHEETS_FOLDER_ID=
 GOOGLE_SHEETS_FOLDER_ID=
 ```
@@ -47,13 +48,12 @@ Restart `npm run dev` after changing env.
 1. Review OCR rows and attach one photo per row
 2. Click **スプレッドシートに登録**
 3. Approve Google access (once per session)
-4. App creates under the parent space (or My Drive), matching the client layout:
+4. App creates one process folder (under parent space or My Drive):
    ```
-   [space for this project]
-     ├── 現調_2026-07-23_1328/              ← process folder (like "project A")
-     │     ├── row_001.jpg
-     │     └── …
-     └── 結果シート - 現調_2026-07-23_1328   ← spreadsheet (like "result sheet")
+   現調_2026-07-23_1328/          ← like "project A"
+     ├── row_001.jpg
+     ├── row_002.jpg
+     └── 結果シート               ← spreadsheet in the same folder
    ```
 5. Open the created sheet from the success screen
 
