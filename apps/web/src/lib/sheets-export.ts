@@ -25,15 +25,8 @@ export interface SheetsExportOptions {
   /** Process / survey name → folder under JBC-COWELL */
   title: string;
   /**
-   * Optional: existing JBC-COWELL folder id (from env).
-   * If omitted, the app finds or creates a folder named "JBC-COWELL".
-   *
-   * Layout:
-   *   JBC-COWELL/
-   *     └── 現調_YYYY-MM-DD_HHMM/     ← one folder per survey process
-   *           ├── 00_結果シート       ← sheet first
-   *           ├── row_001.jpg
-   *           └── …
+   * Optional known id for JBC-COWELL. Verified before use.
+   * If missing/invalid, app creates JBC-COWELL under My Drive and caches the id.
    */
   folderId?: string | null;
 }
@@ -42,6 +35,7 @@ const PHOTO_COLUMN_INDEX = SURVEY_COLUMNS.indexOf("写真");
 const SHEET_TAB_TITLE = "現調データ";
 const DRIVE_FOLDER_MIME = "application/vnd.google-apps.folder";
 const DRIVE_SHEET_MIME = "application/vnd.google-apps.spreadsheet";
+const PARENT_FOLDER_CACHE_KEY = "cowell_drive_jbc_folder_id";
 
 /** Prefix so the sheet sorts before row_*.jpg in Drive name order */
 function resultSheetDriveName(): string {
@@ -93,20 +87,62 @@ function base64ToBytes(base64: string): Uint8Array {
   return bytes;
 }
 
+function readCachedParentFolderId(): string | null {
+  if (typeof localStorage === "undefined") return null;
+  try {
+    return localStorage.getItem(PARENT_FOLDER_CACHE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedParentFolderId(id: string): void {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(PARENT_FOLDER_CACHE_KEY, id);
+  } catch {
+    // private mode / quota
+  }
+}
+
+/** Return folder id if it exists and is a folder; otherwise null */
+async function getFolderIfExists(
+  accessToken: string,
+  folderId: string
+): Promise<string | null> {
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(folderId)}?supportsAllDrives=true&fields=id,name,mimeType,trashed`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (!res.ok) return null;
+  const data = await res.json();
+  if (data.trashed) return null;
+  if (data.mimeType !== DRIVE_FOLDER_MIME) return null;
+  return data.id as string;
+}
+
+/**
+ * Always require an explicit parent id ("root" for My Drive top level).
+ * This prevents survey folders from landing loose in My Drive.
+ */
 async function createDriveFile(
   accessToken: string,
   name: string,
   mimeType: string,
-  parentFolderId?: string | null
+  parentFolderId: string
 ): Promise<string> {
-  const metadata: Record<string, unknown> = {
+  if (!parentFolderId) {
+    throw new Error("親フォルダが指定されていません");
+  }
+
+  const metadata = {
     name: sanitizeDriveName(name),
     mimeType,
+    parents: [parentFolderId],
   };
-  if (parentFolderId) metadata.parents = [parentFolderId];
 
   const res = await fetch(
-    "https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id",
+    "https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id,parents",
     {
       method: "POST",
       headers: authHeaders(accessToken),
@@ -125,35 +161,36 @@ async function createDriveFile(
   return created.id as string;
 }
 
-/** Find existing JBC-COWELL folder, or create it under My Drive */
+/**
+ * Resolve parent folder JBC-COWELL under My Drive.
+ * drive.file cannot reliably search by name, so we verify cached/env ids
+ * or create JBC-COWELL under root and remember the id in localStorage.
+ */
 async function ensureParentFolder(
   accessToken: string,
   configuredFolderId?: string | null
 ): Promise<string> {
-  if (configuredFolderId?.trim()) {
-    return configuredFolderId.trim();
+  const candidates = [configuredFolderId?.trim(), readCachedParentFolderId()].filter(
+    Boolean
+  ) as string[];
+
+  for (const id of candidates) {
+    const valid = await getFolderIfExists(accessToken, id);
+    if (valid) {
+      writeCachedParentFolderId(valid);
+      return valid;
+    }
   }
 
-  const q = [
-    `name = '${DRIVE_PARENT_FOLDER_NAME}'`,
-    `mimeType = '${DRIVE_FOLDER_MIME}'`,
-    "trashed = false",
-    "'root' in parents",
-  ].join(" and ");
-
-  const searchRes = await fetch(
-    `https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&pageSize=1&fields=files(id,name)&q=${encodeURIComponent(q)}`,
-    { headers: { Authorization: `Bearer ${accessToken}` } }
+  // Create JBC-COWELL under My Drive root — parents MUST be ["root"]
+  const createdId = await createDriveFile(
+    accessToken,
+    DRIVE_PARENT_FOLDER_NAME,
+    DRIVE_FOLDER_MIME,
+    "root"
   );
-  const searchData = await searchRes.json();
-  if (!searchRes.ok) {
-    throw new Error(searchData.error?.message || "親フォルダの検索に失敗しました");
-  }
-
-  const existingId = searchData.files?.[0]?.id as string | undefined;
-  if (existingId) return existingId;
-
-  return createDriveFile(accessToken, DRIVE_PARENT_FOLDER_NAME, DRIVE_FOLDER_MIME, null);
+  writeCachedParentFolderId(createdId);
+  return createdId;
 }
 
 async function createProcessFolder(
@@ -161,6 +198,9 @@ async function createProcessFolder(
   processName: string,
   parentFolderId: string
 ): Promise<string> {
+  if (!parentFolderId) {
+    throw new Error("親フォルダ JBC-COWELL を作成できませんでした");
+  }
   return createDriveFile(accessToken, processName, DRIVE_FOLDER_MIME, parentFolderId);
 }
 
@@ -201,7 +241,7 @@ async function uploadPhotoToDrive(
   fileName: string,
   processFolderId: string
 ): Promise<string> {
-  const metadata: Record<string, unknown> = {
+  const metadata = {
     name: fileName,
     mimeType,
     parents: [processFolderId],
@@ -346,11 +386,8 @@ async function attachRowPhotos(
 }
 
 /**
- * Export one survey process under JBC-COWELL:
- *   JBC-COWELL/
- *     └── {process}/
- *           ├── 00_結果シート
- *           └── row_001.jpg …
+ * Export one survey under JBC-COWELL:
+ *   My Drive / JBC-COWELL / {process} / 00_結果シート + row_*.jpg
  */
 export async function exportRowsWithAccessToken(
   options: SheetsExportOptions
@@ -360,6 +397,10 @@ export async function exportRowsWithAccessToken(
   const processName = sanitizeDriveName(title);
 
   const parentFolderId = await ensureParentFolder(accessToken, folderId);
+  if (!parentFolderId) {
+    throw new Error("親フォルダ JBC-COWELL を作成できませんでした");
+  }
+
   const processFolderId = await createProcessFolder(accessToken, processName, parentFolderId);
 
   // Sheet first, then images
