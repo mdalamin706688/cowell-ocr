@@ -85,23 +85,9 @@ export const copy = {
     completeTitle: "登録が完了しました",
     completeBody: (n: number) => `${n}件のデータをスプレッドシートに登録しました`,
     completeBodyCsv: (n: number) => `${n}件のデータをCSVファイルとして保存しました`,
-    completeBodyWithPhotos: (rows: number, photos: number) =>
-      `${rows}件のデータと${photos}件の写真をスプレッドシートに登録しました`,
-    completeBodyCsvNoPhotos:
-      "CSVには写真は含まれません。写真付きで登録するには Google 連携を有効にし、確認画面で各行に写真を添付してください。",
     openSheet: "スプレッドシートを開く",
     downloadCsv: "CSVを再ダウンロード",
     newSurvey: "続けて調査する",
-    photoReviewHint:
-      "スプレッドシートの「写真」列に表示する画像は、下の表で行ごとに添付してください（調査ファイルのアップロードとは別です）。",
-    photoReviewCount: (attached: number, total: number) =>
-      `写真添付: ${attached} / ${total} 行`,
-    photoReviewMissing: (n: number) =>
-      `${n}行に写真がありません。Googleスプレッドシートへ画像を出力するには、各行に写真を添付してください。`,
-    photoReviewCsvNote:
-      "現在は CSV エクスポートです。写真をシートに表示するには Google 連携が必要です。",
-    applySurveyPhotoToAll: "調査画像を全行に適用",
-    exportUploadingPhotos: (n: number) => `${n}件の写真をアップロード中…`,
     usage: {
       duration: "処理時間",
       tokens: "トークン",
@@ -112,15 +98,11 @@ export const copy = {
     drop: "ファイルを選択またはドラッグ",
     dropActive: "ドロップしてアップロード",
     formats: "画像（任意の形式）· PDF — 最大 20MB · 複数選択可",
-    ocrHint:
-      "ここのアップロードは表の読み取り用です。各行の現場写真は、読み取り後の確認画面で「写真」列から添付してください。",
     quality: "画質設定",
   },
   table: {
     empty: "読み取り結果がありません",
     footer: (n: number) => `${n}件 — セルをクリックして編集`,
-    footerWithPhotos: (attached: number, total: number) =>
-      `${total}件 — 写真 ${attached}/${total} 行`,
     photo: "写真",
     attachPhoto: "写真を添付",
     changePhoto: "変更",

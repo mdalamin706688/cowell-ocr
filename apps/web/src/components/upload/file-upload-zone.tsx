@@ -132,10 +132,6 @@ export function FileUploadZone({
         </p>
       </div>
 
-      <p className="rounded-lg border border-border/70 bg-muted/20 px-3.5 py-2.5 text-xs text-muted-foreground leading-relaxed">
-        {copy.upload.ocrHint}
-      </p>
-
       <div className="flex items-center justify-between text-sm">
         <span className="text-label">{copy.upload.quality}</span>
         <Select value={quality} onValueChange={(v) => onQualityChange(v as QualityPreset)}>

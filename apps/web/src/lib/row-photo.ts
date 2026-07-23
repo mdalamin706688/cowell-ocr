@@ -1,4 +1,4 @@
-import type { OcrRow, UploadedFile } from "@cowell/shared";
+import type { OcrRow } from "@cowell/shared";
 import { compressImage, fileToBase64 } from "./ocr";
 import { imageFileErrorMessage, isImageFile } from "./image-file";
 
@@ -14,34 +14,6 @@ export interface RowPhotoPayload {
 
 export function countRowsWithPhotos(rows: OcrRow[]): number {
   return rows.filter((row) => row.photoBase64 && row.photoMimeType).length;
-}
-
-function previewFromUploaded(file: UploadedFile): string {
-  return (
-    file.previewUrl ||
-    (isImageFile(file)
-      ? `data:${file.mimeType};base64,${file.base64}`
-      : "")
-  );
-}
-
-/** Demo helper — copy the first uploaded survey image onto every row */
-export function applySurveyImageToAllRows(
-  files: UploadedFile[],
-  rows: OcrRow[]
-): OcrRow[] {
-  const imageFile = files.find((f) => isImageFile(f));
-  if (!imageFile) {
-    throw new Error("調査ファイルに画像がありません。画像ファイルをアップロードしてください。");
-  }
-
-  const photoUrl = previewFromUploaded(imageFile);
-  return rows.map((row) => ({
-    ...row,
-    photoBase64: imageFile.base64,
-    photoMimeType: imageFile.mimeType,
-    photoUrl: photoUrl || row.photoUrl,
-  }));
 }
 
 /** Compress a user-selected row photo for draft storage and Sheets export */
