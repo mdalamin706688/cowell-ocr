@@ -25,8 +25,8 @@ export interface SheetsExportOptions {
   /** Process / survey name → folder under JBC-COWELL */
   title: string;
   /**
-   * Optional known id for JBC-COWELL. Verified before use.
-   * If missing/invalid, app creates JBC-COWELL under My Drive and caches the id.
+   * Optional known id for JBC-COWELL. Verified by name before use.
+   * If missing/invalid, app finds or creates JBC-COWELL under My Drive.
    */
   folderId?: string | null;
 }
@@ -37,7 +37,9 @@ const DRIVE_FOLDER_MIME = "application/vnd.google-apps.folder";
 const DRIVE_SHEET_MIME = "application/vnd.google-apps.spreadsheet";
 const PARENT_FOLDER_CACHE_KEY = "cowell_drive_jbc_folder_id";
 
-/** Name sorts before 1_row_*.jpg; also touched last so it tops "Date modified" */
+/** Prevent parallel exports from creating duplicate survey folders */
+let exportMutex: Promise<unknown> = Promise.resolve();
+
 function resultSheetDriveName(): string {
   return "0_結果シート";
 }
@@ -105,7 +107,15 @@ function writeCachedParentFolderId(id: string): void {
   }
 }
 
-/** Return folder meta if it exists and is a folder; otherwise null */
+function clearCachedParentFolderId(): void {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.removeItem(PARENT_FOLDER_CACHE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
 async function getFolderMeta(
   accessToken: string,
   folderId: string
@@ -123,7 +133,6 @@ async function getFolderMeta(
   return { id: data.id as string, name: String(data.name || "") };
 }
 
-/** Only JBC-COWELL is a valid parent — never My Drive root */
 async function getJbcCowellFolderIfValid(
   accessToken: string,
   folderId: string
@@ -134,10 +143,25 @@ async function getJbcCowellFolderIfValid(
   return meta.id;
 }
 
-/**
- * Always require an explicit parent id ("root" for My Drive top level).
- * This prevents survey folders from landing loose in My Drive.
- */
+/** Find an existing app-visible JBC-COWELL folder (drive.file scope). */
+async function findExistingJbcCowellFolder(accessToken: string): Promise<string | null> {
+  const q = [
+    `name = '${DRIVE_PARENT_FOLDER_NAME}'`,
+    `mimeType = '${DRIVE_FOLDER_MIME}'`,
+    "trashed = false",
+  ].join(" and ");
+
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&pageSize=10&fields=files(id,name,parents)&q=${encodeURIComponent(q)}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (!res.ok) return null;
+  const data = await res.json();
+  const files = (data.files || []) as Array<{ id: string; name: string }>;
+  const match = files.find((f) => f.name === DRIVE_PARENT_FOLDER_NAME);
+  return match?.id ?? null;
+}
+
 async function createDriveFile(
   accessToken: string,
   name: string,
@@ -148,18 +172,16 @@ async function createDriveFile(
     throw new Error("親フォルダが指定されていません");
   }
 
-  const metadata = {
-    name: sanitizeDriveName(name),
-    mimeType,
-    parents: [parentFolderId],
-  };
-
   const res = await fetch(
     "https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id,parents",
     {
       method: "POST",
       headers: authHeaders(accessToken),
-      body: JSON.stringify(metadata),
+      body: JSON.stringify({
+        name: sanitizeDriveName(name),
+        mimeType,
+        parents: [parentFolderId],
+      }),
     }
   );
   const created = await res.json();
@@ -174,8 +196,11 @@ async function createDriveFile(
   return created.id as string;
 }
 
-/** If a file ended up under My Drive root, move it into JBC-COWELL */
-async function ensureFileParent(
+/**
+ * Force a file to have EXACTLY one parent.
+ * Drive allows multi-parent; that makes one folder show under My Drive AND JBC-COWELL.
+ */
+async function ensureExclusiveParent(
   accessToken: string,
   fileId: string,
   expectedParentId: string
@@ -184,26 +209,50 @@ async function ensureFileParent(
     `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?supportsAllDrives=true&fields=parents`,
     { headers: { Authorization: `Bearer ${accessToken}` } }
   );
-  if (!res.ok) return;
+  if (!res.ok) {
+    throw new Error("フォルダの親確認に失敗しました");
+  }
   const data = await res.json();
-  const parents: string[] = data.parents || [];
-  if (parents.includes(expectedParentId)) return;
+  const parents: string[] = Array.isArray(data.parents) ? data.parents : [];
+  const extra = parents.filter((p) => p !== expectedParentId);
+  const needsAdd = !parents.includes(expectedParentId);
 
-  const previous = parents.length ? parents.join(",") : "root";
-  await fetch(
-    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?supportsAllDrives=true&addParents=${encodeURIComponent(expectedParentId)}&removeParents=${encodeURIComponent(previous)}`,
+  if (!extra.length && !needsAdd) return;
+
+  const params = new URLSearchParams({ supportsAllDrives: "true" });
+  if (needsAdd) params.set("addParents", expectedParentId);
+  if (extra.length) params.set("removeParents", extra.join(","));
+
+  const patchRes = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?${params.toString()}`,
     {
       method: "PATCH",
       headers: authHeaders(accessToken),
       body: JSON.stringify({}),
     }
   );
+  if (!patchRes.ok) {
+    const err = await patchRes.json().catch(() => ({}));
+    throw new Error(
+      (err as { error?: { message?: string } }).error?.message ||
+        "フォルダを JBC-COWELL へ移動できませんでした"
+    );
+  }
+
+  // Verify exclusivity
+  const check = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?supportsAllDrives=true&fields=parents`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (check.ok) {
+    const verified = await check.json();
+    const finalParents: string[] = verified.parents || [];
+    if (finalParents.length !== 1 || finalParents[0] !== expectedParentId) {
+      throw new Error("調査フォルダが My Drive 直下にも残っています。再エクスポートしてください。");
+    }
+  }
 }
 
-/**
- * Resolve parent folder JBC-COWELL under My Drive.
- * Rejects My Drive root / wrong-named folders (common cause of duplicate surveys at root).
- */
 async function ensureParentFolder(
   accessToken: string,
   configuredFolderId?: string | null
@@ -220,14 +269,14 @@ async function ensureParentFolder(
     }
   }
 
-  // Stale cache pointed at My Drive / wrong folder — clear it
-  try {
-    localStorage.removeItem(PARENT_FOLDER_CACHE_KEY);
-  } catch {
-    // ignore
+  const found = await findExistingJbcCowellFolder(accessToken);
+  if (found) {
+    writeCachedParentFolderId(found);
+    return found;
   }
 
-  // Create JBC-COWELL under My Drive root
+  clearCachedParentFolderId();
+
   const createdId = await createDriveFile(
     accessToken,
     DRIVE_PARENT_FOLDER_NAME,
@@ -252,8 +301,8 @@ async function createProcessFolder(
     DRIVE_FOLDER_MIME,
     parentFolderId
   );
-  // Guard against Drive placing the folder at root
-  await ensureFileParent(accessToken, folderId, parentFolderId);
+  // Critical: strip My Drive root if Drive also attached it as a second parent
+  await ensureExclusiveParent(accessToken, folderId, parentFolderId);
   return folderId;
 }
 
@@ -268,6 +317,7 @@ async function createResultSpreadsheet(
     DRIVE_SHEET_MIME,
     processFolderId
   );
+  await ensureExclusiveParent(accessToken, spreadsheetId, processFolderId);
 
   await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
     method: "POST",
@@ -316,7 +366,7 @@ async function uploadPhotoToDrive(
   ]);
 
   const uploadRes = await fetch(
-    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id",
+    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,parents",
     {
       method: "POST",
       headers: {
@@ -332,6 +382,7 @@ async function uploadPhotoToDrive(
   }
 
   const fileId = uploaded.id as string;
+  await ensureExclusiveParent(accessToken, fileId, processFolderId);
 
   const permRes = await fetch(
     `https://www.googleapis.com/drive/v3/files/${fileId}/permissions`,
@@ -438,7 +489,6 @@ async function attachRowPhotos(
   return photoRows.length;
 }
 
-/** Bump spreadsheet modified time so it appears above photos (Drive default: newest first) */
 async function touchSpreadsheetFile(
   accessToken: string,
   spreadsheetId: string
@@ -455,11 +505,7 @@ async function touchSpreadsheetFile(
   );
 }
 
-/**
- * Export one survey under JBC-COWELL:
- *   My Drive / JBC-COWELL / {process} / 0_結果シート + 1_row_*.jpg
- */
-export async function exportRowsWithAccessToken(
+async function exportRowsWithAccessTokenUnlocked(
   options: SheetsExportOptions
 ): Promise<SheetsExportResult> {
   const { accessToken, rows, title, folderId } = options;
@@ -472,7 +518,6 @@ export async function exportRowsWithAccessToken(
   }
 
   const processFolderId = await createProcessFolder(accessToken, processName, parentFolderId);
-
   const spreadsheetId = await createResultSpreadsheet(accessToken, processFolderId);
 
   const updateRes = await fetch(
@@ -494,8 +539,10 @@ export async function exportRowsWithAccessToken(
     photoCount = await attachRowPhotos(accessToken, spreadsheetId, rows, processFolderId);
   }
 
-  // Sheet last in modified-time → shows first when Drive sorts by date (newest first)
   await touchSpreadsheetFile(accessToken, spreadsheetId);
+
+  // Final guarantee: survey folder only under JBC-COWELL
+  await ensureExclusiveParent(accessToken, processFolderId, parentFolderId);
 
   return {
     spreadsheetId,
@@ -507,4 +554,21 @@ export async function exportRowsWithAccessToken(
     parentFolderId,
     parentFolderUrl: driveFolderUrl(parentFolderId),
   };
+}
+
+/**
+ * Export one survey under JBC-COWELL only (never also under My Drive root).
+ */
+export async function exportRowsWithAccessToken(
+  options: SheetsExportOptions
+): Promise<SheetsExportResult> {
+  const run = exportMutex.then(
+    () => exportRowsWithAccessTokenUnlocked(options),
+    () => exportRowsWithAccessTokenUnlocked(options)
+  );
+  exportMutex = run.then(
+    () => undefined,
+    () => undefined
+  );
+  return run;
 }
