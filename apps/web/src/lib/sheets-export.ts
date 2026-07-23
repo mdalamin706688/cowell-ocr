@@ -244,7 +244,7 @@ async function attachRowPhotos(
     const cell = `${columnLetter(PHOTO_COLUMN_INDEX)}${sheetRow}`;
     updates.push({
       range: `${SHEET_TITLE}!${cell}`,
-      values: [[`=IMAGE("${imageUrl}", 4)`]],
+      values: [[`=IMAGE("${imageUrl}", 1)`]],
     });
   }
 
