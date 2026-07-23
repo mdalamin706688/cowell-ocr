@@ -34,6 +34,7 @@ function SurveyWorkflow() {
   const [exporting, setExporting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [promptOpen, setPromptOpen] = useState(false);
+  const [projectNameOpen, setProjectNameOpen] = useState(false);
   const [csvExport, setCsvExport] = useState(false);
   const [exportTitle, setExportTitle] = useState("");
   const [projectName, setProjectName] = useState("");
@@ -158,16 +159,20 @@ function SurveyWorkflow() {
               </div>
             ))}
           </div>
-          <div className="ui-card">
-            <div className="ui-card-header">
-              <p className="text-base font-medium">{copy.survey.reviewTitle}</p>
-              <span className="text-label">{copy.survey.reviewRows(rows.length)}</span>
-            </div>
-            <div className="ui-card-body pt-3 space-y-4">
-              <div className="space-y-1.5">
-                <label htmlFor="project-name" className="text-sm font-medium">
-                  {copy.survey.projectName}
-                </label>
+          <div className="ui-card overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setProjectNameOpen((v) => !v)}
+              className="ui-card-header w-full text-left hover:bg-muted/20 transition-colors"
+            >
+              <div>
+                <p className="text-base font-medium">{copy.survey.projectName}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{copy.survey.projectNameHint}</p>
+              </div>
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${projectNameOpen ? "rotate-180" : ""}`} />
+            </button>
+            {projectNameOpen && (
+              <div className="ui-card-body border-t border-border/60 pt-4 space-y-1.5">
                 <Input
                   id="project-name"
                   value={projectName}
@@ -175,11 +180,19 @@ function SurveyWorkflow() {
                   placeholder={copy.survey.projectNamePlaceholder}
                   className="h-10"
                 />
-                <p className="text-xs text-muted-foreground">{copy.survey.projectNameHint}</p>
                 <p className="text-xs text-muted-foreground font-mono">
                   → {buildSurveyProcessName(projectName)}
                 </p>
               </div>
+            )}
+          </div>
+
+          <div className="ui-card">
+            <div className="ui-card-header">
+              <p className="text-base font-medium">{copy.survey.reviewTitle}</p>
+              <span className="text-label">{copy.survey.reviewRows(rows.length)}</span>
+            </div>
+            <div className="ui-card-body pt-3">
               <Tabs defaultValue="table">
                 <TabsList className="mb-3">
                   <TabsTrigger value="table">{copy.survey.tabTable}</TabsTrigger>
