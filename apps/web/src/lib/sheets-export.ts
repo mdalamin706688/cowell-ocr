@@ -40,6 +40,9 @@ const PARENT_FOLDER_CACHE_KEY = "cowell_drive_jbc_folder_id";
 /** Prevent parallel exports from creating duplicate survey folders */
 let exportMutex: Promise<unknown> = Promise.resolve();
 
+/** Serialize JBC-COWELL lookup/creation across tabs in the same session */
+let parentFolderMutex: Promise<unknown> = Promise.resolve();
+
 function resultSheetDriveName(): string {
   return "0_結果シート";
 }
@@ -143,11 +146,12 @@ async function getJbcCowellFolderIfValid(
   return meta.id;
 }
 
-/** Find an existing app-visible JBC-COWELL folder (drive.file scope). */
+/** Find an existing app-visible JBC-COWELL folder at My Drive root (drive.file scope). */
 async function findExistingJbcCowellFolder(accessToken: string): Promise<string | null> {
   const q = [
     `name = '${DRIVE_PARENT_FOLDER_NAME}'`,
     `mimeType = '${DRIVE_FOLDER_MIME}'`,
+    "'root' in parents",
     "trashed = false",
   ].join(" and ");
 
@@ -193,7 +197,29 @@ async function createDriveFile(
           : "スプレッドシートの作成に失敗しました")
     );
   }
-  return created.id as string;
+
+  const fileId = created.id as string;
+  const parents: string[] = Array.isArray(created.parents) ? created.parents : [];
+  if (!parents.includes(parentFolderId)) {
+    await ensureExclusiveParent(accessToken, fileId, parentFolderId);
+  }
+  return fileId;
+}
+
+/** Confirm a file/folder is nested under the expected parent (Drive query). */
+async function confirmNestedInParent(
+  accessToken: string,
+  fileId: string,
+  parentFolderId: string
+): Promise<boolean> {
+  const q = `'${parentFolderId}' in parents and id = '${fileId}' and trashed = false`;
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&pageSize=1&fields=files(id)&q=${encodeURIComponent(q)}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (!res.ok) return false;
+  const data = await res.json();
+  return Array.isArray(data.files) && data.files.length > 0;
 }
 
 /**
@@ -253,7 +279,7 @@ async function ensureExclusiveParent(
   }
 }
 
-async function ensureParentFolder(
+async function ensureParentFolderUnlocked(
   accessToken: string,
   configuredFolderId?: string | null
 ): Promise<string> {
@@ -283,8 +309,30 @@ async function ensureParentFolder(
     DRIVE_FOLDER_MIME,
     "root"
   );
+
+  const nested = await confirmNestedInParent(accessToken, createdId, "root");
+  if (!nested) {
+    clearCachedParentFolderId();
+    throw new Error("JBC-COWELL フォルダの作成に失敗しました。再エクスポートしてください。");
+  }
+
   writeCachedParentFolderId(createdId);
   return createdId;
+}
+
+async function ensureParentFolder(
+  accessToken: string,
+  configuredFolderId?: string | null
+): Promise<string> {
+  const run = parentFolderMutex.then(
+    () => ensureParentFolderUnlocked(accessToken, configuredFolderId),
+    () => ensureParentFolderUnlocked(accessToken, configuredFolderId)
+  );
+  parentFolderMutex = run.then(
+    () => undefined,
+    () => undefined
+  );
+  return run;
 }
 
 async function createProcessFolder(
@@ -301,8 +349,14 @@ async function createProcessFolder(
     DRIVE_FOLDER_MIME,
     parentFolderId
   );
-  // Critical: strip My Drive root if Drive also attached it as a second parent
   await ensureExclusiveParent(accessToken, folderId, parentFolderId);
+
+  const nested = await confirmNestedInParent(accessToken, folderId, parentFolderId);
+  if (!nested) {
+    throw new Error(
+      "調査フォルダを JBC-COWELL 内に作成できませんでした。Google Drive の権限を確認して再エクスポートしてください。"
+    );
+  }
   return folderId;
 }
 
