@@ -166,6 +166,127 @@ async function findExistingJbcCowellFolder(accessToken: string): Promise<string 
   return match?.id ?? null;
 }
 
+async function getFileParents(
+  accessToken: string,
+  fileId: string
+): Promise<string[] | null> {
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?supportsAllDrives=true&fields=parents`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (!res.ok) return null;
+  const data = await res.json();
+  return Array.isArray(data.parents) ? (data.parents as string[]) : [];
+}
+
+/** True if Drive lists this file as a child of parentId (works when GET parents is empty). */
+async function fileAppearsInFolder(
+  accessToken: string,
+  fileId: string,
+  parentId: string
+): Promise<boolean> {
+  let pageToken: string | undefined;
+  for (let page = 0; page < 20; page++) {
+    const params = new URLSearchParams({
+      supportsAllDrives: "true",
+      includeItemsFromAllDrives: "true",
+      pageSize: "100",
+      fields: "nextPageToken,files(id)",
+      q: `'${parentId}' in parents and trashed = false`,
+    });
+    if (pageToken) params.set("pageToken", pageToken);
+
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    const files = (data.files || []) as Array<{ id: string }>;
+    if (files.some((f) => f.id === fileId)) return true;
+    pageToken = data.nextPageToken as string | undefined;
+    if (!pageToken) break;
+  }
+  return false;
+}
+
+async function patchParents(
+  accessToken: string,
+  fileId: string,
+  addParents: string | null,
+  removeParents: string | null
+): Promise<boolean> {
+  const params = new URLSearchParams({ supportsAllDrives: "true" });
+  if (addParents) params.set("addParents", addParents);
+  if (removeParents) params.set("removeParents", removeParents);
+  if (!addParents && !removeParents) return true;
+
+  const patchRes = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?${params.toString()}`,
+    {
+      method: "PATCH",
+      headers: authHeaders(accessToken),
+      body: JSON.stringify({}),
+    }
+  );
+  return patchRes.ok;
+}
+
+/**
+ * Force a file to have EXACTLY one parent (non-root only).
+ * Strips My Drive root so survey folders don't also appear outside JBC-COWELL.
+ * (drive.file often returns empty parents right after create — we still move + verify.)
+ */
+async function ensureExclusiveParent(
+  accessToken: string,
+  fileId: string,
+  expectedParentId: string
+): Promise<void> {
+  if (!expectedParentId || expectedParentId === "root") {
+    return;
+  }
+
+  const parents = (await getFileParents(accessToken, fileId)) ?? [];
+  if (parents.length === 1 && parents[0] === expectedParentId) {
+    return;
+  }
+
+  const extra = parents.filter((p) => p !== expectedParentId);
+  // Always add expected parent. Remove known extras; also strip alias "root"
+  // so multi-parent "inside JBC + My Drive root" cannot linger.
+  const removeSet = new Set<string>(extra);
+  if (!parents.includes(expectedParentId) || parents.length !== 1) {
+    removeSet.add("root");
+  }
+  const removeParents = [...removeSet].join(",") || null;
+
+  let ok = await patchParents(accessToken, fileId, expectedParentId, removeParents);
+  if (!ok && removeParents?.includes("root")) {
+    // Retry without root alias if Drive rejects it
+    const onlyExtras = extra.join(",") || null;
+    ok = await patchParents(accessToken, fileId, expectedParentId, onlyExtras);
+  }
+  if (!ok) {
+    throw new Error("フォルダを JBC-COWELL へ移動できませんでした");
+  }
+
+  const after = (await getFileParents(accessToken, fileId)) ?? [];
+  if (after.length === 1 && after[0] === expectedParentId) {
+    return;
+  }
+
+  // GET parents empty/unreliable under drive.file — confirm via folder listing
+  const listed = await fileAppearsInFolder(accessToken, fileId, expectedParentId);
+  if (listed) {
+    // Best-effort: strip root again so UI doesn't show a My Drive duplicate
+    await patchParents(accessToken, fileId, expectedParentId, "root");
+    return;
+  }
+
+  throw new Error(
+    "調査フォルダが My Drive 直下にも残っています。再エクスポートしてください。"
+  );
+}
+
 async function createDriveFile(
   accessToken: string,
   name: string,
@@ -199,71 +320,10 @@ async function createDriveFile(
   }
 
   const fileId = created.id as string;
-  // drive.file scope cannot GET /files/root — skip parent normalize for My Drive root
   if (parentFolderId !== "root") {
     await ensureExclusiveParent(accessToken, fileId, parentFolderId);
   }
   return fileId;
-}
-
-/**
- * Force a file to have EXACTLY one parent (non-root only).
- * Strips extras so a survey folder only appears under JBC-COWELL.
- */
-async function ensureExclusiveParent(
-  accessToken: string,
-  fileId: string,
-  expectedParentId: string
-): Promise<void> {
-  if (!expectedParentId || expectedParentId === "root") {
-    return;
-  }
-
-  const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?supportsAllDrives=true&fields=parents`,
-    { headers: { Authorization: `Bearer ${accessToken}` } }
-  );
-  if (!res.ok) {
-    throw new Error("フォルダの親確認に失敗しました");
-  }
-  const data = await res.json();
-  const parents: string[] = Array.isArray(data.parents) ? data.parents : [];
-  const extra = parents.filter((p) => p !== expectedParentId);
-  const needsAdd = !parents.includes(expectedParentId);
-
-  if (!extra.length && !needsAdd) return;
-
-  const params = new URLSearchParams({ supportsAllDrives: "true" });
-  if (needsAdd) params.set("addParents", expectedParentId);
-  if (extra.length) params.set("removeParents", extra.join(","));
-
-  const patchRes = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?${params.toString()}`,
-    {
-      method: "PATCH",
-      headers: authHeaders(accessToken),
-      body: JSON.stringify({}),
-    }
-  );
-  if (!patchRes.ok) {
-    const err = await patchRes.json().catch(() => ({}));
-    throw new Error(
-      (err as { error?: { message?: string } }).error?.message ||
-        "フォルダを JBC-COWELL へ移動できませんでした"
-    );
-  }
-
-  const check = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?supportsAllDrives=true&fields=parents`,
-    { headers: { Authorization: `Bearer ${accessToken}` } }
-  );
-  if (check.ok) {
-    const verified = await check.json();
-    const finalParents: string[] = verified.parents || [];
-    if (finalParents.length !== 1 || finalParents[0] !== expectedParentId) {
-      throw new Error("調査フォルダが My Drive 直下にも残っています。再エクスポートしてください。");
-    }
-  }
 }
 
 async function ensureParentFolderUnlocked(
@@ -331,13 +391,20 @@ async function createProcessFolder(
   if (!parentFolderId || parentFolderId === "root") {
     throw new Error("親フォルダ JBC-COWELL を作成できませんでした");
   }
+  // Re-validate JBC still exists (stale cache after user delete)
+  const jbc = await getJbcCowellFolderIfValid(accessToken, parentFolderId);
+  if (!jbc) {
+    throw new Error("親フォルダ JBC-COWELL を作成できませんでした");
+  }
+
   const folderId = await createDriveFile(
     accessToken,
     processName,
     DRIVE_FOLDER_MIME,
-    parentFolderId
+    jbc
   );
-  // createDriveFile already ran ensureExclusiveParent for non-root parents
+  // Photo uploads touch many Drive files; re-assert nesting before continuing
+  await ensureExclusiveParent(accessToken, folderId, jbc);
   return folderId;
 }
 
@@ -352,7 +419,6 @@ async function createResultSpreadsheet(
     DRIVE_SHEET_MIME,
     processFolderId
   );
-  await ensureExclusiveParent(accessToken, spreadsheetId, processFolderId);
 
   await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
     method: "POST",
@@ -372,6 +438,10 @@ async function createResultSpreadsheet(
   return spreadsheetId;
 }
 
+/**
+ * Two-step upload: metadata+parents first, then media.
+ * Multipart often dropped parents so photos (and Drive UI) drifted to My Drive root.
+ */
 async function uploadPhotoToDrive(
   accessToken: string,
   base64: string,
@@ -379,44 +449,52 @@ async function uploadPhotoToDrive(
   fileName: string,
   processFolderId: string
 ): Promise<string> {
-  const metadata = {
-    name: fileName,
-    mimeType,
-    parents: [processFolderId],
-  };
-
-  const boundary = `cowell_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-  const metaPart =
-    `--${boundary}\r\n` +
-    `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
-    `${JSON.stringify(metadata)}\r\n`;
-  const filePart = `--${boundary}\r\n` + `Content-Type: ${mimeType}\r\n\r\n`;
-  const closePart = `\r\n--${boundary}--`;
-  const fileBytes = base64ToBytes(base64);
-  const fileBlob = new Blob([
-    fileBytes.buffer.slice(
-      fileBytes.byteOffset,
-      fileBytes.byteOffset + fileBytes.byteLength
-    ) as ArrayBuffer,
-  ]);
-
-  const uploadRes = await fetch(
-    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,parents",
+  const createRes = await fetch(
+    "https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id,parents",
     {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": `multipart/related; boundary=${boundary}`,
-      },
-      body: new Blob([metaPart, filePart, fileBlob, closePart]),
+      headers: authHeaders(accessToken),
+      body: JSON.stringify({
+        name: fileName,
+        mimeType,
+        parents: [processFolderId],
+      }),
     }
   );
-  const uploaded = await uploadRes.json();
-  if (!uploadRes.ok) {
-    throw new Error(uploaded.error?.message || "写真のアップロードに失敗しました");
+  const created = await createRes.json();
+  if (!createRes.ok) {
+    throw new Error(created.error?.message || "写真のアップロードに失敗しました");
   }
 
-  const fileId = uploaded.id as string;
+  const fileId = created.id as string;
+  await ensureExclusiveParent(accessToken, fileId, processFolderId);
+
+  const fileBytes = base64ToBytes(base64);
+  const mediaBody = fileBytes.buffer.slice(
+    fileBytes.byteOffset,
+    fileBytes.byteOffset + fileBytes.byteLength
+  ) as ArrayBuffer;
+
+  const uploadRes = await fetch(
+    `https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(fileId)}?uploadType=media&supportsAllDrives=true`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": mimeType,
+      },
+      body: mediaBody,
+    }
+  );
+  if (!uploadRes.ok) {
+    const uploaded = await uploadRes.json().catch(() => ({}));
+    throw new Error(
+      (uploaded as { error?: { message?: string } }).error?.message ||
+        "写真のアップロードに失敗しました"
+    );
+  }
+
+  // Media PATCH can reset parents in some cases — lock nesting again
   await ensureExclusiveParent(accessToken, fileId, processFolderId);
 
   const permRes = await fetch(
@@ -547,7 +625,11 @@ async function exportRowsWithAccessTokenUnlocked(
   const headers = authHeaders(accessToken);
   const processName = sanitizeDriveName(title);
 
-  const parentFolderId = await ensureParentFolder(accessToken, folderId);
+  let parentFolderId = await ensureParentFolder(accessToken, folderId);
+  if (!(await getJbcCowellFolderIfValid(accessToken, parentFolderId))) {
+    clearCachedParentFolderId();
+    parentFolderId = await ensureParentFolder(accessToken, folderId);
+  }
   if (!parentFolderId) {
     throw new Error("親フォルダ JBC-COWELL を作成できませんでした");
   }
@@ -572,11 +654,13 @@ async function exportRowsWithAccessTokenUnlocked(
   let photoCount = 0;
   if (countPhotoRows(rows) > 0) {
     photoCount = await attachRowPhotos(accessToken, spreadsheetId, rows, processFolderId);
+    // Photo media uploads can disturb nesting — pin survey folder under JBC again
+    await ensureExclusiveParent(accessToken, processFolderId, parentFolderId);
   }
 
   await touchSpreadsheetFile(accessToken, spreadsheetId);
 
-  // Final guarantee: survey folder only under JBC-COWELL
+  // Final guarantee: survey folder only under JBC-COWELL (not also My Drive root)
   await ensureExclusiveParent(accessToken, processFolderId, parentFolderId);
 
   return {
