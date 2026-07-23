@@ -207,29 +207,6 @@ async function createDriveFile(
 }
 
 /**
- * Confirm nesting via files.get (not files.list — `id =` is not a valid Drive query field).
- * For parent "root": accept any single parent (drive.file cannot resolve root folder id).
- */
-async function confirmNestedInParent(
-  accessToken: string,
-  fileId: string,
-  parentFolderId: string
-): Promise<boolean> {
-  const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?supportsAllDrives=true&fields=parents,trashed`,
-    { headers: { Authorization: `Bearer ${accessToken}` } }
-  );
-  if (!res.ok) return false;
-  const data = await res.json();
-  if (data.trashed) return false;
-  const parents: string[] = Array.isArray(data.parents) ? data.parents : [];
-  if (parentFolderId === "root") {
-    return parents.length === 1;
-  }
-  return parents.length === 1 && parents[0] === parentFolderId;
-}
-
-/**
  * Force a file to have EXACTLY one parent (non-root only).
  * Strips extras so a survey folder only appears under JBC-COWELL.
  */
@@ -305,24 +282,25 @@ async function ensureParentFolderUnlocked(
     }
   }
 
+  // Stale env/cache ids (e.g. user deleted JBC-COWELL) — drop local cache
+  clearCachedParentFolderId();
+
   const found = await findExistingJbcCowellFolder(accessToken);
   if (found) {
     writeCachedParentFolderId(found);
     return found;
   }
 
-  clearCachedParentFolderId();
-
+  // Create under My Drive root. Trust the create response — with drive.file,
+  // GET parents on a brand-new root folder is often empty and used to fail the
+  // first export even though JBC-COWELL was created (second try then worked).
   const createdId = await createDriveFile(
     accessToken,
     DRIVE_PARENT_FOLDER_NAME,
     DRIVE_FOLDER_MIME,
     "root"
   );
-
-  const nested = await confirmNestedInParent(accessToken, createdId, "root");
-  if (!nested) {
-    clearCachedParentFolderId();
+  if (!createdId) {
     throw new Error("JBC-COWELL フォルダの作成に失敗しました。再エクスポートしてください。");
   }
 
@@ -359,14 +337,7 @@ async function createProcessFolder(
     DRIVE_FOLDER_MIME,
     parentFolderId
   );
-  await ensureExclusiveParent(accessToken, folderId, parentFolderId);
-
-  const nested = await confirmNestedInParent(accessToken, folderId, parentFolderId);
-  if (!nested) {
-    throw new Error(
-      "調査フォルダを JBC-COWELL 内に作成できませんでした。Google Drive の権限を確認して再エクスポートしてください。"
-    );
-  }
+  // createDriveFile already ran ensureExclusiveParent for non-root parents
   return folderId;
 }
 
