@@ -32,7 +32,9 @@ User clicks export → Google account picker → spreadsheet is created in **the
 
 ```bash
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=xxxxx.apps.googleusercontent.com
-# Optional: place new sheets in a shared folder the user can write to
+# Optional: parent Drive folder (project space). Each export creates:
+#   ├── {title}/   ← process folder with all row photos
+#   └── {title}    ← spreadsheet (sibling)
 NEXT_PUBLIC_GOOGLE_SHEETS_FOLDER_ID=
 GOOGLE_SHEETS_FOLDER_ID=
 ```
@@ -41,10 +43,15 @@ Restart `npm run dev` after changing env.
 
 ### 3. Flow
 
-1. Review OCR rows
+1. Review OCR rows and attach one photo per row
 2. Click **スプレッドシートに登録**
 3. Approve Google access (once per session)
-4. Open the created sheet from the success screen
+4. App creates (under parent folder or My Drive):
+   - **Process folder** `{title}/` with compressed row photos (`row_001.jpg` …)
+   - **Spreadsheet** `{title}` as a sibling, with OCR text + `IMAGE()` in 写真
+5. Open the created sheet from the success screen
+
+Row photos are compressed to ~720px JPEG (~65% quality) so 100+ images stay manageable.
 
 ---
 

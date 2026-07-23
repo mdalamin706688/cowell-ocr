@@ -1,7 +1,10 @@
+import type { OcrRow, UploadedFile } from "@cowell/shared";
 import { compressImage, fileToBase64 } from "./ocr";
+import { imageFileErrorMessage, isImageFile } from "./image-file";
 
-const ROW_PHOTO_MAX_PX = 1024;
-const ROW_PHOTO_QUALITY = 0.82;
+/** Stronger compression — one process can exceed 100 row photos */
+const ROW_PHOTO_MAX_PX = 720;
+const ROW_PHOTO_QUALITY = 0.65;
 
 export interface RowPhotoPayload {
   photoBase64: string;
@@ -9,18 +12,54 @@ export interface RowPhotoPayload {
   photoUrl: string;
 }
 
-/** Compress a user-selected row photo for draft storage and Sheets export */
-export async function prepareRowPhoto(file: File): Promise<RowPhotoPayload> {
-  if (!file.type.startsWith("image/")) {
-    throw new Error("画像ファイルを選択してください");
+export function countRowsWithPhotos(rows: OcrRow[]): number {
+  return rows.filter((row) => row.photoBase64 && row.photoMimeType).length;
+}
+
+function previewFromUploaded(file: UploadedFile): string {
+  return (
+    file.previewUrl ||
+    (isImageFile(file)
+      ? `data:${file.mimeType};base64,${file.base64}`
+      : "")
+  );
+}
+
+/** Demo helper — copy the first uploaded survey image onto every row */
+export function applySurveyImageToAllRows(
+  files: UploadedFile[],
+  rows: OcrRow[]
+): OcrRow[] {
+  const imageFile = files.find((f) => isImageFile(f));
+  if (!imageFile) {
+    throw new Error("調査ファイルに画像がありません。画像ファイルをアップロードしてください。");
   }
 
-  const { blob, previewUrl } = await compressImage(file, ROW_PHOTO_MAX_PX, ROW_PHOTO_QUALITY);
-  const photoBase64 = await fileToBase64(blob);
+  const photoUrl = previewFromUploaded(imageFile);
+  return rows.map((row) => ({
+    ...row,
+    photoBase64: imageFile.base64,
+    photoMimeType: imageFile.mimeType,
+    photoUrl: photoUrl || row.photoUrl,
+  }));
+}
 
-  return {
-    photoBase64,
-    photoMimeType: "image/jpeg",
-    photoUrl: previewUrl,
-  };
+/** Compress a user-selected row photo for draft storage and Sheets export */
+export async function prepareRowPhoto(file: File): Promise<RowPhotoPayload> {
+  if (!isImageFile(file)) {
+    throw new Error(imageFileErrorMessage(file.name));
+  }
+
+  try {
+    const { blob, previewUrl } = await compressImage(file, ROW_PHOTO_MAX_PX, ROW_PHOTO_QUALITY);
+    const photoBase64 = await fileToBase64(blob);
+
+    return {
+      photoBase64,
+      photoMimeType: "image/jpeg",
+      photoUrl: previewUrl,
+    };
+  } catch {
+    throw new Error(imageFileErrorMessage(file.name));
+  }
 }

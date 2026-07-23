@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { copy } from "@/lib/copy";
-import { prepareRowPhoto } from "@/lib/row-photo";
+import { countRowsWithPhotos, prepareRowPhoto } from "@/lib/row-photo";
 
 interface ReviewTableProps {
   rows: OcrRow[];
@@ -202,7 +202,9 @@ export function ReviewTable({ rows, onRowsChange }: ReviewTableProps) {
           </table>
         </div>
         <div className="border-t border-border px-4 py-2">
-          <span className="text-xs text-muted-foreground">{copy.table.footer(rows.length)}</span>
+          <span className="text-xs text-muted-foreground">
+            {copy.table.footerWithPhotos(countRowsWithPhotos(rows), rows.length)}
+          </span>
         </div>
       </div>
     </>

@@ -11,6 +11,7 @@ import {
 import { cn, formatBytes, generateId } from "@/lib/utils";
 import { copy } from "@/lib/copy";
 import { compressImage, fileToBase64 } from "@/lib/ocr";
+import { IMAGE_DROPZONE_ACCEPT, isImageFile } from "@/lib/image-file";
 import {
   Select,
   SelectContent,
@@ -60,7 +61,7 @@ export function FileUploadZone({
             compressedSizeKB: originalSizeKB,
             base64,
           });
-        } else if (file.type.startsWith("image/")) {
+        } else if (isImageFile(file)) {
           try {
             const { blob, width, height, previewUrl } = await compressImage(
               file,
@@ -80,8 +81,10 @@ export function FileUploadZone({
               base64,
             });
           } catch {
-            setError(`${file.name} の処理に失敗しました`);
+            setError(`${file.name} の処理に失敗しました。別の画像形式をお試しください。`);
           }
+        } else if (!file.type || file.type === "application/octet-stream") {
+          setError(`${file.name} は対応していない形式です。画像または PDF を選択してください。`);
         }
       }
 
@@ -94,7 +97,7 @@ export function FileUploadZone({
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: processFiles,
     accept: {
-      "image/*": [".png", ".jpg", ".jpeg", ".webp", ".gif"],
+      ...IMAGE_DROPZONE_ACCEPT,
       "application/pdf": [".pdf"],
     },
     multiple: true,
@@ -128,6 +131,10 @@ export function FileUploadZone({
           {copy.upload.formats}
         </p>
       </div>
+
+      <p className="rounded-lg border border-border/70 bg-muted/20 px-3.5 py-2.5 text-xs text-muted-foreground leading-relaxed">
+        {copy.upload.ocrHint}
+      </p>
 
       <div className="flex items-center justify-between text-sm">
         <span className="text-label">{copy.upload.quality}</span>

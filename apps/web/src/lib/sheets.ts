@@ -1,5 +1,6 @@
 import { exportRowsWithAccessToken, type SheetsExportResult } from "./sheets-export";
 import type { OcrRow } from "@cowell/shared";
+import { countRowsWithPhotos } from "./row-photo";
 
 const SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
@@ -80,6 +81,7 @@ export async function exportToGoogleSheets(
         spreadsheetId: mockId,
         spreadsheetUrl: `https://docs.google.com/spreadsheets/d/${mockId}`,
         rowCount: rows.length,
+        photoCount: countRowsWithPhotos(rows),
       };
     }
     throw new Error(

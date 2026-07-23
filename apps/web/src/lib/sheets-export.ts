@@ -9,18 +9,29 @@ export interface SheetsExportResult {
   spreadsheetId: string;
   spreadsheetUrl: string;
   rowCount: number;
+  photoCount: number;
+  /** Drive folder that holds this process's row photos */
+  processFolderId?: string;
+  processFolderUrl?: string;
 }
 
 export interface SheetsExportOptions {
   accessToken: string;
   rows: OcrRow[];
   title: string;
-  /** Optional Drive folder to place the new spreadsheet in */
+  /**
+   * Optional parent Drive folder (project space).
+   * Layout under parent (or My Drive root):
+   *   ├── {title}/          ← process folder (row photos)
+   *   └── {title}           ← spreadsheet (sibling)
+   */
   folderId?: string | null;
 }
 
 const PHOTO_COLUMN_INDEX = SURVEY_COLUMNS.indexOf("写真");
 const SHEET_TITLE = "現調データ";
+const DRIVE_FOLDER_MIME = "application/vnd.google-apps.folder";
+const DRIVE_SHEET_MIME = "application/vnd.google-apps.spreadsheet";
 
 function authHeaders(accessToken: string): HeadersInit {
   return {
@@ -37,7 +48,7 @@ function buildSheetValues(rows: OcrRow[]): string[][] {
       r.location,
       r.fixtureModel,
       r.existingProduct,
-      r.photoBase64 ? "" : "",
+      "",
       r.quantity,
       r.notes,
     ]),
@@ -48,29 +59,124 @@ function driveImageUrl(fileId: string): string {
   return `https://drive.google.com/uc?export=view&id=${fileId}`;
 }
 
+function driveFolderUrl(folderId: string): string {
+  return `https://drive.google.com/drive/folders/${folderId}`;
+}
+
+function sanitizeDriveName(name: string): string {
+  return name.replace(/[\\/:*?"<>|]/g, "_").trim() || "現調";
+}
+
+function countPhotoRows(rows: OcrRow[]): number {
+  return rows.filter((r) => r.photoBase64 && r.photoMimeType).length;
+}
+
+function base64ToBytes(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+/** Create one Drive folder for this export process (holds all row photos). */
+async function createProcessFolder(
+  accessToken: string,
+  title: string,
+  parentFolderId?: string | null
+): Promise<string> {
+  const metadata: Record<string, unknown> = {
+    name: sanitizeDriveName(title),
+    mimeType: DRIVE_FOLDER_MIME,
+  };
+  if (parentFolderId) metadata.parents = [parentFolderId];
+
+  const res = await fetch(
+    "https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id",
+    {
+      method: "POST",
+      headers: authHeaders(accessToken),
+      body: JSON.stringify(metadata),
+    }
+  );
+  const created = await res.json();
+  if (!res.ok) {
+    throw new Error(created.error?.message || "プロセス用フォルダの作成に失敗しました");
+  }
+  return created.id as string;
+}
+
+/** Create spreadsheet as sibling of the process folder (same parent / My Drive). */
+async function createSpreadsheetInParent(
+  accessToken: string,
+  title: string,
+  parentFolderId?: string | null
+): Promise<string> {
+  const headers = authHeaders(accessToken);
+  const metadata: Record<string, unknown> = {
+    name: sanitizeDriveName(title),
+    mimeType: DRIVE_SHEET_MIME,
+  };
+  if (parentFolderId) metadata.parents = [parentFolderId];
+
+  const createFileRes = await fetch(
+    "https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id",
+    {
+      method: "POST",
+      headers,
+      body: JSON.stringify(metadata),
+    }
+  );
+  const createdFile = await createFileRes.json();
+  if (!createFileRes.ok) {
+    throw new Error(createdFile.error?.message || "スプレッドシートの作成に失敗しました");
+  }
+  const spreadsheetId = createdFile.id as string;
+
+  await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      requests: [
+        {
+          updateSheetProperties: {
+            properties: { sheetId: 0, title: SHEET_TITLE },
+            fields: "title",
+          },
+        },
+      ],
+    }),
+  });
+
+  return spreadsheetId;
+}
+
 async function uploadPhotoToDrive(
   accessToken: string,
   base64: string,
   mimeType: string,
   fileName: string,
-  folderId?: string | null
+  processFolderId: string
 ): Promise<string> {
   const metadata: Record<string, unknown> = {
     name: fileName,
     mimeType,
+    parents: [processFolderId],
   };
-  if (folderId) metadata.parents = [folderId];
 
-  const boundary = `cowell_${Date.now()}`;
-  const body =
+  const boundary = `cowell_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const metaPart =
     `--${boundary}\r\n` +
     `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
-    `${JSON.stringify(metadata)}\r\n` +
-    `--${boundary}\r\n` +
-    `Content-Type: ${mimeType}\r\n` +
-    `Content-Transfer-Encoding: base64\r\n\r\n` +
-    `${base64}\r\n` +
-    `--${boundary}--`;
+    `${JSON.stringify(metadata)}\r\n`;
+  const filePart = `--${boundary}\r\n` + `Content-Type: ${mimeType}\r\n\r\n`;
+  const closePart = `\r\n--${boundary}--`;
+  const fileBytes = base64ToBytes(base64);
+  const fileBlob = new Blob([
+    fileBytes.buffer.slice(
+      fileBytes.byteOffset,
+      fileBytes.byteOffset + fileBytes.byteLength
+    ) as ArrayBuffer,
+  ]);
 
   const uploadRes = await fetch(
     "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id",
@@ -80,7 +186,7 @@ async function uploadPhotoToDrive(
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": `multipart/related; boundary=${boundary}`,
       },
-      body,
+      body: new Blob([metaPart, filePart, fileBlob, closePart]),
     }
   );
   const uploaded = await uploadRes.json();
@@ -90,11 +196,21 @@ async function uploadPhotoToDrive(
 
   const fileId = uploaded.id as string;
 
-  await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
-    method: "POST",
-    headers: authHeaders(accessToken),
-    body: JSON.stringify({ role: "reader", type: "anyone" }),
-  });
+  const permRes = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}/permissions`,
+    {
+      method: "POST",
+      headers: authHeaders(accessToken),
+      body: JSON.stringify({ role: "reader", type: "anyone" }),
+    }
+  );
+  if (!permRes.ok) {
+    const permErr = await permRes.json().catch(() => ({}));
+    throw new Error(
+      (permErr as { error?: { message?: string } }).error?.message ||
+        "写真の共有設定に失敗しました。GoogleアカウントのDrive権限を確認してください。"
+    );
+  }
 
   return driveImageUrl(fileId);
 }
@@ -107,13 +223,13 @@ async function attachRowPhotos(
   accessToken: string,
   spreadsheetId: string,
   rows: OcrRow[],
-  folderId?: string | null
-): Promise<void> {
+  processFolderId: string
+): Promise<number> {
   const photoRows = rows
     .map((row, index) => ({ row, sheetRow: index + 2 }))
     .filter((item) => item.row.photoBase64 && item.row.photoMimeType);
 
-  if (!photoRows.length) return;
+  if (!photoRows.length) return 0;
 
   const updates: Array<{ range: string; values: string[][] }> = [];
 
@@ -122,13 +238,13 @@ async function attachRowPhotos(
       accessToken,
       row.photoBase64!,
       row.photoMimeType!,
-      `gencho_row_${sheetRow}.jpg`,
-      folderId
+      `row_${String(sheetRow - 1).padStart(3, "0")}.jpg`,
+      processFolderId
     );
     const cell = `${columnLetter(PHOTO_COLUMN_INDEX)}${sheetRow}`;
     updates.push({
       range: `${SHEET_TITLE}!${cell}`,
-      values: [[`=IMAGE("${imageUrl}")`]],
+      values: [[`=IMAGE("${imageUrl}", 4)`]],
     });
   }
 
@@ -181,11 +297,17 @@ async function attachRowPhotos(
       ],
     }),
   });
+
+  return photoRows.length;
 }
 
 /**
  * Create a spreadsheet and write OCR rows using a Google OAuth / service-account token.
- * Safe to call from browser (user token) or server (service account token).
+ *
+ * Drive layout (client example):
+ *   [parent project space or My Drive]
+ *     ├── 現調_YYYY-MM-DD/     ← process folder (all row photos)
+ *     └── 現調_YYYY-MM-DD      ← spreadsheet (sibling)
  */
 export async function exportRowsWithAccessToken(
   options: SheetsExportOptions
@@ -193,56 +315,7 @@ export async function exportRowsWithAccessToken(
   const { accessToken, rows, title, folderId } = options;
   const headers = authHeaders(accessToken);
 
-  let spreadsheetId: string;
-
-  if (folderId) {
-    const createFileRes = await fetch(
-      "https://www.googleapis.com/drive/v3/files?supportsAllDrives=true",
-      {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          name: title,
-          mimeType: "application/vnd.google-apps.spreadsheet",
-          parents: [folderId],
-        }),
-      }
-    );
-    const createdFile = await createFileRes.json();
-    if (!createFileRes.ok) {
-      throw new Error(createdFile.error?.message || "スプレッドシートの作成に失敗しました");
-    }
-    spreadsheetId = createdFile.id as string;
-
-    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        requests: [
-          {
-            updateSheetProperties: {
-              properties: { sheetId: 0, title: SHEET_TITLE },
-              fields: "title",
-            },
-          },
-        ],
-      }),
-    });
-  } else {
-    const createRes = await fetch("https://sheets.googleapis.com/v4/spreadsheets", {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        properties: { title },
-        sheets: [{ properties: { title: SHEET_TITLE } }],
-      }),
-    });
-    const created = await createRes.json();
-    if (!createRes.ok) {
-      throw new Error(created.error?.message || "スプレッドシートの作成に失敗しました");
-    }
-    spreadsheetId = created.spreadsheetId as string;
-  }
+  const spreadsheetId = await createSpreadsheetInParent(accessToken, title, folderId);
 
   const updateRes = await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/A1?valueInputOption=USER_ENTERED`,
@@ -258,11 +331,20 @@ export async function exportRowsWithAccessToken(
     throw new Error(err.error?.message || "データの書き込みに失敗しました");
   }
 
-  await attachRowPhotos(accessToken, spreadsheetId, rows, folderId);
+  let processFolderId: string | undefined;
+  let photoCount = 0;
+
+  if (countPhotoRows(rows) > 0) {
+    processFolderId = await createProcessFolder(accessToken, title, folderId);
+    photoCount = await attachRowPhotos(accessToken, spreadsheetId, rows, processFolderId);
+  }
 
   return {
     spreadsheetId,
     spreadsheetUrl: `https://docs.google.com/spreadsheets/d/${spreadsheetId}`,
     rowCount: rows.length,
+    photoCount,
+    processFolderId,
+    processFolderUrl: processFolderId ? driveFolderUrl(processFolderId) : undefined,
   };
 }

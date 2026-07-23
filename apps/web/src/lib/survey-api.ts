@@ -50,6 +50,7 @@ export async function surveyRunOcr(
 export interface SurveyExportResult {
   spreadsheetUrl: string;
   rowCount: number;
+  photoCount?: number;
   downloadOnly?: boolean;
 }
 
@@ -85,7 +86,11 @@ export async function surveyExport(
         title,
         folderId,
       });
-      return { spreadsheetUrl: result.spreadsheetUrl, rowCount: result.rowCount };
+      return {
+        spreadsheetUrl: result.spreadsheetUrl,
+        rowCount: result.rowCount,
+        photoCount: result.photoCount,
+      };
     }
     downloadCsv(rows, title);
     return { spreadsheetUrl: "", rowCount: rows.length, downloadOnly: true };
@@ -108,6 +113,14 @@ export async function surveyExport(
     throw new Error(data.error || "スプレッドシートへの登録に失敗しました");
   }
 
-  const data = await parseJsonResponse<{ spreadsheetUrl: string; rowCount: number }>(res);
-  return { spreadsheetUrl: data.spreadsheetUrl, rowCount: data.rowCount };
+  const data = await parseJsonResponse<{
+    spreadsheetUrl: string;
+    rowCount: number;
+    photoCount?: number;
+  }>(res);
+  return {
+    spreadsheetUrl: data.spreadsheetUrl,
+    rowCount: data.rowCount,
+    photoCount: data.photoCount,
+  };
 }

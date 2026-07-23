@@ -6,7 +6,7 @@ import { SurveyPageSkeleton } from "@/components/layout/content-skeleton";
 import { StaggerItem, StaggerReveal } from "@/components/motion/stagger-reveal";
 import {
   ArrowLeft, ArrowRight, CheckCircle2, ChevronDown, Download,
-  ExternalLink, Loader2, ScanLine, Sparkles,
+  ExternalLink, ImageIcon, Loader2, ScanLine, Sparkles,
 } from "lucide-react";
 import { DEFAULT_OCR_PROMPT } from "@cowell/shared";
 import { SurveyProvider, useSurvey } from "@/contexts/survey-context";
@@ -22,6 +22,8 @@ import { isPreviewEnvironment } from "@/lib/client-auth";
 import { isGoogleClientConfigured } from "@/lib/google-auth-client";
 import { surveyExport, surveyRunOcr, triggerCsvDownload } from "@/lib/survey-api";
 import { formatCurrencyJpy, formatDuration } from "@/lib/utils";
+import { applySurveyImageToAllRows, countRowsWithPhotos } from "@/lib/row-photo";
+import { isImageFile } from "@/lib/image-file";
 
 function SurveyWorkflow() {
   const {
@@ -34,6 +36,13 @@ function SurveyWorkflow() {
   const [promptOpen, setPromptOpen] = useState(false);
   const [csvExport, setCsvExport] = useState(false);
   const [exportTitle, setExportTitle] = useState("");
+  const [exportedPhotoCount, setExportedPhotoCount] = useState(0);
+  const [exportPhotoTotal, setExportPhotoTotal] = useState(0);
+
+  const photoCount = countRowsWithPhotos(rows);
+  const hasSurveyImage = files.some((f) => isImageFile(f));
+  const googleExport = isGoogleClientConfigured();
+  const csvOnlyExport = isPreviewEnvironment() && !googleExport;
 
   const runOcr = useCallback(async () => {
     if (!files.length) return;
@@ -64,14 +73,17 @@ function SurveyWorkflow() {
     setStep("export");
     const title = `現調_${new Date().toISOString().slice(0, 10)}`;
     setExportTitle(title);
+    setExportPhotoTotal(photoCount);
     try {
       const result = await surveyExport(rows, title);
       if (result.downloadOnly) {
         setCsvExport(true);
         setExportUrl("");
+        setExportedPhotoCount(0);
       } else {
         setCsvExport(false);
         setExportUrl(result.spreadsheetUrl);
+        setExportedPhotoCount(result.photoCount ?? photoCount);
       }
       setStep("complete");
     } catch (e) {
@@ -79,8 +91,18 @@ function SurveyWorkflow() {
       setStep("review");
     } finally {
       setExporting(false);
+      setExportPhotoTotal(0);
     }
-  }, [rows, setStep, setError, setExportUrl]);
+  }, [rows, photoCount, setStep, setError, setExportUrl]);
+
+  const applySurveyPhotoToAll = useCallback(() => {
+    try {
+      setRows(applySurveyImageToAllRows(files, rows));
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : copy.errors.exportFailed);
+    }
+  }, [files, rows, setRows, setError]);
 
   const stepContent = (
     <>
@@ -160,7 +182,34 @@ function SurveyWorkflow() {
               <p className="text-base font-medium">{copy.survey.reviewTitle}</p>
               <span className="text-label">{copy.survey.reviewRows(rows.length)}</span>
             </div>
-            <div className="ui-card-body pt-3">
+            <div className="ui-card-body pt-3 space-y-3">
+              <div className="rounded-lg border border-lumen/20 bg-lumen/5 px-3.5 py-3 space-y-2">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {copy.survey.photoReviewHint}
+                </p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs font-medium text-foreground">
+                    {copy.survey.photoReviewCount(photoCount, rows.length)}
+                  </span>
+                  {hasSurveyImage ? (
+                    <Button type="button" variant="outline" size="sm" onClick={applySurveyPhotoToAll}>
+                      <ImageIcon className="h-3.5 w-3.5" />
+                      {copy.survey.applySurveyPhotoToAll}
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+
+              {csvOnlyExport ? (
+                <p className="rounded-lg border border-border/70 bg-muted/20 px-3.5 py-2.5 text-xs text-muted-foreground">
+                  {copy.survey.photoReviewCsvNote}
+                </p>
+              ) : googleExport && photoCount < rows.length ? (
+                <p className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3.5 py-2.5 text-xs text-amber-900 dark:text-amber-200">
+                  {copy.survey.photoReviewMissing(rows.length - photoCount)}
+                </p>
+              ) : null}
+
               <Tabs defaultValue="table">
                 <TabsList className="mb-3">
                   <TabsTrigger value="table">{copy.survey.tabTable}</TabsTrigger>
@@ -200,9 +249,11 @@ function SurveyWorkflow() {
           <div className="ui-card-body flex flex-col items-center gap-3 py-16">
             <Loader2 className="h-7 w-7 animate-spin text-lumen" />
             <p className="text-sm font-medium">
-              {isGoogleClientConfigured()
-                ? copy.survey.connectingGoogle
-                : copy.survey.exportProgress}
+              {exportPhotoTotal > 0
+                ? copy.survey.exportUploadingPhotos(exportPhotoTotal)
+                : isGoogleClientConfigured()
+                  ? copy.survey.connectingGoogle
+                  : copy.survey.exportProgress}
             </p>
           </div>
         </StepPanel>
@@ -217,8 +268,17 @@ function SurveyWorkflow() {
             <div>
               <p className="font-display text-lg font-semibold">{copy.survey.completeTitle}</p>
               <p className="text-sm text-muted-foreground mt-1.5">
-                {csvExport ? copy.survey.completeBodyCsv(rows.length) : copy.survey.completeBody(rows.length)}
+                {csvExport
+                  ? copy.survey.completeBodyCsv(rows.length)
+                  : exportedPhotoCount > 0
+                    ? copy.survey.completeBodyWithPhotos(rows.length, exportedPhotoCount)
+                    : copy.survey.completeBody(rows.length)}
               </p>
+              {csvExport && photoCount > 0 ? (
+                <p className="text-xs text-amber-800 dark:text-amber-200 mt-2">
+                  {copy.survey.completeBodyCsvNoPhotos}
+                </p>
+              ) : null}
             </div>
             <div className="flex gap-2 pt-2">
               {csvExport ? (
@@ -232,7 +292,7 @@ function SurveyWorkflow() {
                   </a>
                 </Button>
               ) : null}
-              <Button variant="outline" onClick={() => { reset(); setCsvExport(false); setStep("upload"); }}>
+              <Button variant="outline" onClick={() => { reset(); setCsvExport(false); setExportedPhotoCount(0); setStep("upload"); }}>
                 {copy.survey.newSurvey}
               </Button>
             </div>

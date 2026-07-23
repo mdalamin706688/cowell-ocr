@@ -91,39 +91,93 @@ export async function compressImage(
   maxPx: number,
   quality: number
 ): Promise<{ blob: Blob; width: number; height: number; previewUrl: string }> {
+  if (typeof createImageBitmap !== "undefined") {
+    try {
+      const bitmap = await createImageBitmap(file);
+      try {
+        return await rasterizeBitmap(bitmap, maxPx, quality);
+      } finally {
+        bitmap.close();
+      }
+    } catch {
+      // Fall back to <img> for formats createImageBitmap cannot decode in this browser
+    }
+  }
+
+  return compressImageWithElement(file, maxPx, quality);
+}
+
+function scaleDimensions(
+  width: number,
+  height: number,
+  maxPx: number
+): { width: number; height: number } {
+  let w = width;
+  let h = height;
+  if (w > maxPx || h > maxPx) {
+    if (w >= h) {
+      h = Math.round(h * (maxPx / w));
+      w = maxPx;
+    } else {
+      w = Math.round(w * (maxPx / h));
+      h = maxPx;
+    }
+  }
+  return { width: w, height: h };
+}
+
+function canvasToJpegBlob(
+  canvas: HTMLCanvasElement,
+  quality: number
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error("Compression failed"))),
+      "image/jpeg",
+      quality
+    );
+  });
+}
+
+async function rasterizeBitmap(
+  source: ImageBitmap,
+  maxPx: number,
+  quality: number
+): Promise<{ blob: Blob; width: number; height: number; previewUrl: string }> {
+  const { width: w, height: h } = scaleDimensions(source.width, source.height, maxPx);
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  canvas.getContext("2d")!.drawImage(source, 0, 0, w, h);
+  const blob = await canvasToJpegBlob(canvas, quality);
+  return { blob, width: w, height: h, previewUrl: URL.createObjectURL(blob) };
+}
+
+function compressImageWithElement(
+  file: File,
+  maxPx: number,
+  quality: number
+): Promise<{ blob: Blob; width: number; height: number; previewUrl: string }> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
-      let w = img.width;
-      let h = img.height;
-      if (w > maxPx || h > maxPx) {
-        if (w >= h) {
-          h = Math.round(h * (maxPx / w));
-          w = maxPx;
-        } else {
-          w = Math.round(w * (maxPx / h));
-          h = maxPx;
-        }
-      }
+      const { width: w, height: h } = scaleDimensions(img.width, img.height, maxPx);
       const canvas = document.createElement("canvas");
       canvas.width = w;
       canvas.height = h;
       canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
-      canvas.toBlob(
-        (blob) => {
+      canvasToJpegBlob(canvas, quality)
+        .then((blob) => {
           URL.revokeObjectURL(url);
-          if (!blob) return reject(new Error("Compression failed"));
           resolve({
             blob,
             width: w,
             height: h,
             previewUrl: URL.createObjectURL(blob),
           });
-        },
-        "image/jpeg",
-        quality
-      );
+        })
+        .catch(reject);
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
