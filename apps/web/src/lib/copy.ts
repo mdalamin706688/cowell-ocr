@@ -88,6 +88,9 @@ export const copy = {
     openSheet: "スプレッドシートを開く",
     downloadCsv: "CSVを再ダウンロード",
     newSurvey: "続けて調査する",
+    projectName: "案件名 / プロジェクト名",
+    projectNameHint: "Driveフォルダ名に使います（例: Tokyo_HQ → Tokyo_HQ_Survey_2026-07-23_1356）",
+    projectNamePlaceholder: "例: Tokyo HQ / 本社ビル",
     usage: {
       duration: "処理時間",
       tokens: "トークン",

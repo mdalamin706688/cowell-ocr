@@ -14,6 +14,7 @@ import { StepIndicator } from "@/components/workflow/step-indicator";
 import { FileUploadZone } from "@/components/upload/file-upload-zone";
 import { ReviewTable } from "@/components/review/review-table";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { TransitionLink } from "@/components/ui/transition-link";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -21,6 +22,7 @@ import { copy } from "@/lib/copy";
 import { isPreviewEnvironment } from "@/lib/client-auth";
 import { isGoogleClientConfigured } from "@/lib/google-auth-client";
 import { surveyExport, surveyRunOcr, triggerCsvDownload } from "@/lib/survey-api";
+import { buildSurveyProcessName } from "@/lib/survey-process-name";
 import { formatCurrencyJpy, formatDuration } from "@/lib/utils";
 
 function SurveyWorkflow() {
@@ -34,6 +36,7 @@ function SurveyWorkflow() {
   const [promptOpen, setPromptOpen] = useState(false);
   const [csvExport, setCsvExport] = useState(false);
   const [exportTitle, setExportTitle] = useState("");
+  const [projectName, setProjectName] = useState("");
 
   const runOcr = useCallback(async () => {
     if (!files.length) return;
@@ -62,10 +65,7 @@ function SurveyWorkflow() {
     setExporting(true);
     setError(null);
     setStep("export");
-    const now = new Date();
-    const date = now.toISOString().slice(0, 10);
-    const time = now.toISOString().slice(11, 16).replace(":", "");
-    const title = `現調_${date}_${time}`;
+    const title = buildSurveyProcessName(projectName);
     setExportTitle(title);
     try {
       const result = await surveyExport(rows, title);
@@ -83,7 +83,7 @@ function SurveyWorkflow() {
     } finally {
       setExporting(false);
     }
-  }, [rows, setStep, setError, setExportUrl]);
+  }, [rows, projectName, setStep, setError, setExportUrl]);
 
   const stepContent = (
     <>
@@ -163,7 +163,23 @@ function SurveyWorkflow() {
               <p className="text-base font-medium">{copy.survey.reviewTitle}</p>
               <span className="text-label">{copy.survey.reviewRows(rows.length)}</span>
             </div>
-            <div className="ui-card-body pt-3">
+            <div className="ui-card-body pt-3 space-y-4">
+              <div className="space-y-1.5">
+                <label htmlFor="project-name" className="text-sm font-medium">
+                  {copy.survey.projectName}
+                </label>
+                <Input
+                  id="project-name"
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                  placeholder={copy.survey.projectNamePlaceholder}
+                  className="h-10"
+                />
+                <p className="text-xs text-muted-foreground">{copy.survey.projectNameHint}</p>
+                <p className="text-xs text-muted-foreground font-mono">
+                  → {buildSurveyProcessName(projectName)}
+                </p>
+              </div>
               <Tabs defaultValue="table">
                 <TabsList className="mb-3">
                   <TabsTrigger value="table">{copy.survey.tabTable}</TabsTrigger>
@@ -235,7 +251,7 @@ function SurveyWorkflow() {
                   </a>
                 </Button>
               ) : null}
-              <Button variant="outline" onClick={() => { reset(); setCsvExport(false); setStep("upload"); }}>
+              <Button variant="outline" onClick={() => { reset(); setCsvExport(false); setProjectName(""); setStep("upload"); }}>
                 {copy.survey.newSurvey}
               </Button>
             </div>
