@@ -37,9 +37,9 @@ const DRIVE_FOLDER_MIME = "application/vnd.google-apps.folder";
 const DRIVE_SHEET_MIME = "application/vnd.google-apps.spreadsheet";
 const PARENT_FOLDER_CACHE_KEY = "cowell_drive_jbc_folder_id";
 
-/** Prefix so the sheet sorts before row_*.jpg in Drive name order */
+/** Name sorts before 1_row_*.jpg; also touched last so it tops "Date modified" */
 function resultSheetDriveName(): string {
-  return "00_結果シート";
+  return "0_結果シート";
 }
 
 function authHeaders(accessToken: string): HeadersInit {
@@ -322,7 +322,7 @@ async function attachRowPhotos(
       accessToken,
       row.photoBase64!,
       row.photoMimeType!,
-      `row_${String(sheetRow - 1).padStart(3, "0")}.jpg`,
+      `1_row_${String(sheetRow - 1).padStart(3, "0")}.jpg`,
       processFolderId
     );
     const cell = `${columnLetter(PHOTO_COLUMN_INDEX)}${sheetRow}`;
@@ -385,9 +385,26 @@ async function attachRowPhotos(
   return photoRows.length;
 }
 
+/** Bump spreadsheet modified time so it appears above photos (Drive default: newest first) */
+async function touchSpreadsheetFile(
+  accessToken: string,
+  spreadsheetId: string
+): Promise<void> {
+  await fetch(
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(spreadsheetId)}?supportsAllDrives=true`,
+    {
+      method: "PATCH",
+      headers: authHeaders(accessToken),
+      body: JSON.stringify({
+        description: `Cowell OCR · ${new Date().toISOString()}`,
+      }),
+    }
+  );
+}
+
 /**
  * Export one survey under JBC-COWELL:
- *   My Drive / JBC-COWELL / {process} / 00_結果シート + row_*.jpg
+ *   My Drive / JBC-COWELL / {process} / 0_結果シート + 1_row_*.jpg
  */
 export async function exportRowsWithAccessToken(
   options: SheetsExportOptions
@@ -403,7 +420,6 @@ export async function exportRowsWithAccessToken(
 
   const processFolderId = await createProcessFolder(accessToken, processName, parentFolderId);
 
-  // Sheet first, then images
   const spreadsheetId = await createResultSpreadsheet(accessToken, processFolderId);
 
   const updateRes = await fetch(
@@ -424,6 +440,9 @@ export async function exportRowsWithAccessToken(
   if (countPhotoRows(rows) > 0) {
     photoCount = await attachRowPhotos(accessToken, spreadsheetId, rows, processFolderId);
   }
+
+  // Sheet last in modified-time → shows first when Drive sorts by date (newest first)
+  await touchSpreadsheetFile(accessToken, spreadsheetId);
 
   return {
     spreadsheetId,
