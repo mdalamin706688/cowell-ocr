@@ -105,11 +105,13 @@ function writeCachedParentFolderId(id: string): void {
   }
 }
 
-/** Return folder id if it exists and is a folder; otherwise null */
-async function getFolderIfExists(
+/** Return folder meta if it exists and is a folder; otherwise null */
+async function getFolderMeta(
   accessToken: string,
   folderId: string
-): Promise<string | null> {
+): Promise<{ id: string; name: string } | null> {
+  if (!folderId || folderId === "root") return null;
+
   const res = await fetch(
     `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(folderId)}?supportsAllDrives=true&fields=id,name,mimeType,trashed`,
     { headers: { Authorization: `Bearer ${accessToken}` } }
@@ -118,7 +120,18 @@ async function getFolderIfExists(
   const data = await res.json();
   if (data.trashed) return null;
   if (data.mimeType !== DRIVE_FOLDER_MIME) return null;
-  return data.id as string;
+  return { id: data.id as string, name: String(data.name || "") };
+}
+
+/** Only JBC-COWELL is a valid parent — never My Drive root */
+async function getJbcCowellFolderIfValid(
+  accessToken: string,
+  folderId: string
+): Promise<string | null> {
+  const meta = await getFolderMeta(accessToken, folderId);
+  if (!meta) return null;
+  if (meta.name !== DRIVE_PARENT_FOLDER_NAME) return null;
+  return meta.id;
 }
 
 /**
@@ -161,10 +174,35 @@ async function createDriveFile(
   return created.id as string;
 }
 
+/** If a file ended up under My Drive root, move it into JBC-COWELL */
+async function ensureFileParent(
+  accessToken: string,
+  fileId: string,
+  expectedParentId: string
+): Promise<void> {
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?supportsAllDrives=true&fields=parents`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (!res.ok) return;
+  const data = await res.json();
+  const parents: string[] = data.parents || [];
+  if (parents.includes(expectedParentId)) return;
+
+  const previous = parents.length ? parents.join(",") : "root";
+  await fetch(
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?supportsAllDrives=true&addParents=${encodeURIComponent(expectedParentId)}&removeParents=${encodeURIComponent(previous)}`,
+    {
+      method: "PATCH",
+      headers: authHeaders(accessToken),
+      body: JSON.stringify({}),
+    }
+  );
+}
+
 /**
  * Resolve parent folder JBC-COWELL under My Drive.
- * drive.file cannot reliably search by name, so we verify cached/env ids
- * or create JBC-COWELL under root and remember the id in localStorage.
+ * Rejects My Drive root / wrong-named folders (common cause of duplicate surveys at root).
  */
 async function ensureParentFolder(
   accessToken: string,
@@ -175,14 +213,21 @@ async function ensureParentFolder(
   ) as string[];
 
   for (const id of candidates) {
-    const valid = await getFolderIfExists(accessToken, id);
+    const valid = await getJbcCowellFolderIfValid(accessToken, id);
     if (valid) {
       writeCachedParentFolderId(valid);
       return valid;
     }
   }
 
-  // Create JBC-COWELL under My Drive root — parents MUST be ["root"]
+  // Stale cache pointed at My Drive / wrong folder — clear it
+  try {
+    localStorage.removeItem(PARENT_FOLDER_CACHE_KEY);
+  } catch {
+    // ignore
+  }
+
+  // Create JBC-COWELL under My Drive root
   const createdId = await createDriveFile(
     accessToken,
     DRIVE_PARENT_FOLDER_NAME,
@@ -198,10 +243,18 @@ async function createProcessFolder(
   processName: string,
   parentFolderId: string
 ): Promise<string> {
-  if (!parentFolderId) {
+  if (!parentFolderId || parentFolderId === "root") {
     throw new Error("親フォルダ JBC-COWELL を作成できませんでした");
   }
-  return createDriveFile(accessToken, processName, DRIVE_FOLDER_MIME, parentFolderId);
+  const folderId = await createDriveFile(
+    accessToken,
+    processName,
+    DRIVE_FOLDER_MIME,
+    parentFolderId
+  );
+  // Guard against Drive placing the folder at root
+  await ensureFileParent(accessToken, folderId, parentFolderId);
+  return folderId;
 }
 
 async function createResultSpreadsheet(

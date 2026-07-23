@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { StepPanel } from "@/components/motion/step-panel";
 import { SurveyPageSkeleton } from "@/components/layout/content-skeleton";
 import { StaggerItem, StaggerReveal } from "@/components/motion/stagger-reveal";
@@ -38,6 +38,7 @@ function SurveyWorkflow() {
   const [csvExport, setCsvExport] = useState(false);
   const [exportTitle, setExportTitle] = useState("");
   const [projectName, setProjectName] = useState("");
+  const exportLock = useRef(false);
 
   const runOcr = useCallback(async () => {
     if (!files.length) return;
@@ -63,6 +64,8 @@ function SurveyWorkflow() {
   }, [files, prompt, setStep, setError, setOcrResult, setRows]);
 
   const exportToSheets = useCallback(async () => {
+    if (exportLock.current) return;
+    exportLock.current = true;
     setExporting(true);
     setError(null);
     setStep("export");
@@ -83,6 +86,7 @@ function SurveyWorkflow() {
       setStep("review");
     } finally {
       setExporting(false);
+      exportLock.current = false;
     }
   }, [rows, projectName, setStep, setError, setExportUrl]);
 

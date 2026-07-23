@@ -78,13 +78,14 @@ export async function surveyExport(
   if (isPreviewEnvironment()) {
     // Static preview: prefer FE Google connect when client ID is set
     if (isGoogleClientConfigured()) {
+      // Static preview: FE Google connect only — always nest under JBC-COWELL (ignore bad env ids)
       const accessToken = await requestGoogleSheetsAccessToken();
-      const folderId = process.env.NEXT_PUBLIC_GOOGLE_SHEETS_FOLDER_ID || null;
+      const configured = process.env.NEXT_PUBLIC_GOOGLE_SHEETS_FOLDER_ID?.trim() || null;
       const result = await exportRowsWithAccessToken({
         accessToken,
         rows,
         title,
-        folderId,
+        folderId: configured,
       });
       return {
         spreadsheetUrl: result.spreadsheetUrl,
