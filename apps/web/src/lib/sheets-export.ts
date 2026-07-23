@@ -199,25 +199,16 @@ async function createDriveFile(
   }
 
   const fileId = created.id as string;
-  // Always normalize parents — Drive may omit them or use the real root id vs "root"
-  await ensureExclusiveParent(accessToken, fileId, parentFolderId);
+  // drive.file scope cannot GET /files/root — skip parent normalize for My Drive root
+  if (parentFolderId !== "root") {
+    await ensureExclusiveParent(accessToken, fileId, parentFolderId);
+  }
   return fileId;
 }
 
-/** Resolve My Drive root folder id (Drive never returns the alias "root" in parents). */
-async function getMyDriveRootId(accessToken: string): Promise<string | null> {
-  const res = await fetch(
-    "https://www.googleapis.com/drive/v3/files/root?fields=id",
-    { headers: { Authorization: `Bearer ${accessToken}` } }
-  );
-  if (!res.ok) return null;
-  const data = await res.json();
-  return typeof data.id === "string" ? data.id : null;
-}
-
 /**
- * Confirm nesting via files.get (not files.list — `id =` is not a valid Drive query field,
- * which caused false failures and duplicate survey folders on retry).
+ * Confirm nesting via files.get (not files.list — `id =` is not a valid Drive query field).
+ * For parent "root": accept any single parent (drive.file cannot resolve root folder id).
  */
 async function confirmNestedInParent(
   accessToken: string,
@@ -232,31 +223,23 @@ async function confirmNestedInParent(
   const data = await res.json();
   if (data.trashed) return false;
   const parents: string[] = Array.isArray(data.parents) ? data.parents : [];
-  if (parents.includes(parentFolderId)) return true;
   if (parentFolderId === "root") {
-    const rootId = await getMyDriveRootId(accessToken);
-    return Boolean(rootId && parents.includes(rootId));
+    return parents.length === 1;
   }
-  return false;
+  return parents.length === 1 && parents[0] === parentFolderId;
 }
 
 /**
- * Force a file to have EXACTLY one parent.
- * Drive historically allowed multi-parent; we strip extras so the folder
- * only appears under JBC-COWELL (not also under My Drive root).
+ * Force a file to have EXACTLY one parent (non-root only).
+ * Strips extras so a survey folder only appears under JBC-COWELL.
  */
 async function ensureExclusiveParent(
   accessToken: string,
   fileId: string,
   expectedParentId: string
 ): Promise<void> {
-  let canonicalParent = expectedParentId;
-  if (expectedParentId === "root") {
-    const rootId = await getMyDriveRootId(accessToken);
-    if (!rootId) {
-      throw new Error("My Drive のルートを確認できませんでした");
-    }
-    canonicalParent = rootId;
+  if (!expectedParentId || expectedParentId === "root") {
+    return;
   }
 
   const res = await fetch(
@@ -268,16 +251,13 @@ async function ensureExclusiveParent(
   }
   const data = await res.json();
   const parents: string[] = Array.isArray(data.parents) ? data.parents : [];
-  const extra = parents.filter((p) => p !== canonicalParent);
-  const needsAdd = !parents.includes(canonicalParent);
+  const extra = parents.filter((p) => p !== expectedParentId);
+  const needsAdd = !parents.includes(expectedParentId);
 
   if (!extra.length && !needsAdd) return;
 
   const params = new URLSearchParams({ supportsAllDrives: "true" });
-  // Prefer alias "root" when moving under My Drive root (API accepts it)
-  if (needsAdd) {
-    params.set("addParents", expectedParentId === "root" ? "root" : canonicalParent);
-  }
+  if (needsAdd) params.set("addParents", expectedParentId);
   if (extra.length) params.set("removeParents", extra.join(","));
 
   const patchRes = await fetch(
@@ -303,7 +283,7 @@ async function ensureExclusiveParent(
   if (check.ok) {
     const verified = await check.json();
     const finalParents: string[] = verified.parents || [];
-    if (finalParents.length !== 1 || finalParents[0] !== canonicalParent) {
+    if (finalParents.length !== 1 || finalParents[0] !== expectedParentId) {
       throw new Error("調査フォルダが My Drive 直下にも残っています。再エクスポートしてください。");
     }
   }
