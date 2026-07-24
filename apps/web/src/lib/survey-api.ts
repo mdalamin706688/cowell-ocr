@@ -7,6 +7,7 @@ import {
   requestGoogleSheetsAccessToken,
 } from "./google-auth-client";
 import { runMockOcr } from "./mock-ocr";
+import { isOcrApiConfigured, runRemoteOcr } from "./ocr-api";
 import { exportRowsWithAccessToken } from "./sheets-export";
 
 type ApiError = { error?: string };
@@ -27,7 +28,12 @@ export async function surveyRunOcr(
   prompt: string,
   files: Array<{ base64: string; mimeType: string; name: string }>
 ): Promise<OcrResult> {
-  // GitHub Pages is static — use demo OCR (no backend)
+  // Prefer remote OCR API when configured (CloudFront + local)
+  if (isOcrApiConfigured()) {
+    return runRemoteOcr(prompt, files);
+  }
+
+  // Static preview without API URL — demo OCR only
   if (isPreviewEnvironment()) {
     await new Promise((r) => setTimeout(r, 600));
     return runMockOcr(files);
