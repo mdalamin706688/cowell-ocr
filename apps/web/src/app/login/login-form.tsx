@@ -12,6 +12,11 @@ import { StaggerItem, StaggerReveal } from "@/components/motion/stagger-reveal";
 import { copy } from "@/lib/copy";
 import { useNavigation } from "@/contexts/navigation-context";
 import {
+  cognitoCompleteNewPassword,
+  cognitoSignIn,
+} from "@/lib/cognito-auth";
+import { isCognitoConfigured } from "@/lib/cognito-config";
+import {
   consumeFlash,
   createPreviewSession,
   FLASH_LOGGED_OUT,
@@ -29,18 +34,29 @@ export function LoginForm() {
   const searchParams = useSearchParams();
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
+  const newPasswordRef = useRef<HTMLInputElement>(null);
   const [loggedOutMessage, setLoggedOutMessage] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [newPasswordChallenge, setNewPasswordChallenge] = useState<{
+    session: string;
+    username: string;
+  } | null>(null);
   const autoLoginAttempted = useRef(false);
-  const preview = isPreviewEnvironment();
-  const prefilled = preview || DEV_AUTO_LOGIN;
+  const cognito = isCognitoConfigured();
+  // Demo skip-login only when Cognito is not configured (static preview fallback)
+  const previewDemo = isPreviewEnvironment() && !cognito;
+  const prefilled = previewDemo || DEV_AUTO_LOGIN;
 
-  const completePreviewLogin = useCallback(() => {
-    setClientSession(createPreviewSession());
+  const goDashboard = useCallback(() => {
     startNavigation("/dashboard/");
     router.replace("/dashboard/");
   }, [router, startNavigation]);
+
+  const completePreviewLogin = useCallback(() => {
+    setClientSession(createPreviewSession());
+    goDashboard();
+  }, [goDashboard]);
 
   useEffect(() => {
     router.prefetch("/dashboard/");
@@ -58,7 +74,7 @@ export function LoginForm() {
 
   const login = useCallback(
     async (loginEmail: string, loginPassword: string) => {
-      if (isPreviewEnvironment()) {
+      if (previewDemo) {
         completePreviewLogin();
         return;
       }
@@ -67,6 +83,20 @@ export function LoginForm() {
       setError(null);
 
       try {
+        if (cognito) {
+          const result = await cognitoSignIn(loginEmail, loginPassword);
+          if (result.status === "new_password_required") {
+            setNewPasswordChallenge({
+              session: result.session,
+              username: result.username,
+            });
+            setLoading(false);
+            return;
+          }
+          goDashboard();
+          return;
+        }
+
         const res = await fetch("/api/auth/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -86,22 +116,49 @@ export function LoginForm() {
         setLoading(false);
       }
     },
-    [completePreviewLogin, router, startNavigation]
+    [cognito, completePreviewLogin, goDashboard, previewDemo, router, startNavigation]
   );
 
+  const submitNewPassword = useCallback(async () => {
+    if (!newPasswordChallenge) return;
+    const next = newPasswordRef.current?.value ?? "";
+    if (next.length < 8) {
+      setError(copy.login.newPasswordHint);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      await cognitoCompleteNewPassword(
+        newPasswordChallenge.username,
+        next,
+        newPasswordChallenge.session
+      );
+      setNewPasswordChallenge(null);
+      goDashboard();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : copy.errors.loginFailed);
+      setLoading(false);
+    }
+  }, [goDashboard, newPasswordChallenge]);
+
   useEffect(() => {
-    if (!DEV_AUTO_LOGIN || autoLoginAttempted.current || loggedOutMessage) return;
+    if (!DEV_AUTO_LOGIN || autoLoginAttempted.current || loggedOutMessage || cognito) return;
     autoLoginAttempted.current = true;
-    if (isPreviewEnvironment()) {
+    if (previewDemo) {
       completePreviewLogin();
       return;
     }
     void login(getDemoEmail(), getDemoPassword());
-  }, [completePreviewLogin, login, loggedOutMessage]);
+  }, [cognito, completePreviewLogin, login, loggedOutMessage, previewDemo]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (preview) {
+    if (newPasswordChallenge) {
+      void submitNewPassword();
+      return;
+    }
+    if (previewDemo) {
       completePreviewLogin();
       return;
     }
@@ -143,39 +200,61 @@ export function LoginForm() {
 
           <div className="form-surface">
             <h2 className="font-display text-xl font-semibold tracking-tight">{copy.login.title}</h2>
-            <p className="mt-1.5 text-sm text-muted-foreground">{copy.login.subtitle}</p>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              {newPasswordChallenge ? copy.login.newPasswordSubtitle : copy.login.subtitle}
+            </p>
 
-            {loggedOutMessage && (
+            {loggedOutMessage && !newPasswordChallenge && (
               <p className="mt-4 rounded-lg border border-lumen/20 bg-accent/50 px-3 py-2.5 text-sm">
                 {copy.login.loggedOut}
               </p>
             )}
 
             <form onSubmit={handleSubmit} className="mt-6 space-y-4" autoComplete="on">
-              <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-label">{copy.login.email}</Label>
-                <Input
-                  ref={emailRef}
-                  id="email"
-                  type="email"
-                  name="email"
-                  defaultValue={prefilled ? getDemoEmail() : ""}
-                  required={!preview}
-                  autoComplete="email"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="password" className="text-label">{copy.login.password}</Label>
-                <Input
-                  ref={passwordRef}
-                  id="password"
-                  type="password"
-                  name="password"
-                  defaultValue={prefilled ? getDemoPassword() : ""}
-                  required={!preview}
-                  autoComplete="current-password"
-                />
-              </div>
+              {!newPasswordChallenge && (
+                <>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="email" className="text-label">{copy.login.email}</Label>
+                    <Input
+                      ref={emailRef}
+                      id="email"
+                      type="email"
+                      name="email"
+                      defaultValue={prefilled ? getDemoEmail() : ""}
+                      required={!previewDemo}
+                      autoComplete="email"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="password" className="text-label">{copy.login.password}</Label>
+                    <Input
+                      ref={passwordRef}
+                      id="password"
+                      type="password"
+                      name="password"
+                      defaultValue={prefilled ? getDemoPassword() : ""}
+                      required={!previewDemo}
+                      autoComplete="current-password"
+                    />
+                  </div>
+                </>
+              )}
+
+              {newPasswordChallenge && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="newPassword" className="text-label">{copy.login.newPassword}</Label>
+                  <Input
+                    ref={newPasswordRef}
+                    id="newPassword"
+                    type="password"
+                    name="newPassword"
+                    required
+                    autoComplete="new-password"
+                    minLength={8}
+                  />
+                  <p className="text-xs text-muted-foreground">{copy.login.newPasswordHint}</p>
+                </div>
+              )}
 
               {error && (
                 <p className="rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
@@ -183,11 +262,14 @@ export function LoginForm() {
                 </p>
               )}
 
-              <Button type="submit" className="w-full" size="lg" disabled={loading && !preview}>
-                {loading && !preview ? (
+              <Button type="submit" className="w-full" size="lg" disabled={loading && !previewDemo}>
+                {loading && !previewDemo ? (
                   <><Loader2 className="h-4 w-4 animate-spin" />{copy.login.submitting}</>
                 ) : (
-                  <>{copy.login.submit}<ArrowRight className="h-4 w-4" /></>
+                  <>
+                    {newPasswordChallenge ? copy.login.newPasswordSubmit : copy.login.submit}
+                    <ArrowRight className="h-4 w-4" />
+                  </>
                 )}
               </Button>
             </form>

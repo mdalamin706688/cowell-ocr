@@ -5,9 +5,12 @@ import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { ShellSkeleton } from "@/components/layout/shell-skeleton";
 import { WorkspaceSessionProvider } from "@/contexts/workspace-session";
+import { getCognitoSessionUser } from "@/lib/cognito-auth";
+import { isCognitoConfigured } from "@/lib/cognito-config";
 import {
   isPreviewEnvironment,
   peekClientSession,
+  setClientSession,
   type SessionUser,
 } from "@/lib/client-auth";
 
@@ -17,7 +20,8 @@ interface AuthenticatedShellProps {
 
 export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   const router = useRouter();
-  const preview = isPreviewEnvironment();
+  const cognito = isCognitoConfigured();
+  const preview = isPreviewEnvironment() && !cognito;
   const [user, setUser] = useState<SessionUser | null>(null);
   const [ready, setReady] = useState(false);
 
@@ -30,6 +34,20 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
     let cancelled = false;
 
     async function loadSession() {
+      if (cognito) {
+        const session = await getCognitoSessionUser();
+        if (!session) {
+          router.replace("/login/");
+          return;
+        }
+        if (!cancelled) {
+          setClientSession(session);
+          setUser(session);
+          setReady(true);
+        }
+        return;
+      }
+
       if (preview) {
         const session = peekClientSession();
         if (!session) {
@@ -66,16 +84,16 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
     return () => {
       cancelled = true;
     };
-  }, [preview, ready, router]);
+  }, [cognito, preview, ready, router]);
 
   // Hydrate session synchronously on the client right after login navigation
   useEffect(() => {
-    if (!preview || ready) return;
+    if (cognito || !preview || ready) return;
     const session = peekClientSession();
     if (!session) return;
     setUser(session);
     setReady(true);
-  }, [preview, ready]);
+  }, [cognito, preview, ready]);
 
   if (!ready || !user) {
     return <ShellSkeleton />;

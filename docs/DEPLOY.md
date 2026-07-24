@@ -14,6 +14,9 @@ Live URL (after deploy): `https://d1xs8fe440jh05.cloudfront.net`
 | `S3_BUCKET_NAME` | `cowell-ocr-frontend` |
 | `CLOUDFRONT_DISTRIBUTION_ID` | `E310HKOK8I8549` |
 | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | OAuth Web client ID |
+| `NEXT_PUBLIC_COGNITO_REGION` | `ap-northeast-1` |
+| `NEXT_PUBLIC_COGNITO_USER_POOL_ID` | Cognito User Pool ID |
+| `NEXT_PUBLIC_COGNITO_CLIENT_ID` | Cognito App Client ID (public) |
 | `NEXT_PUBLIC_APP_URL` | `https://d1xs8fe440jh05.cloudfront.net` (optional) |
 
 Push to `main` runs **Deploy AWS (S3 + CloudFront)**.

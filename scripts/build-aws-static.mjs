@@ -83,6 +83,9 @@ export default function HomePage() {
       NEXT_PUBLIC_DEV_LOGIN_PASSWORD: process.env.DEMO_LOGIN_PASSWORD ?? "change-me",
       NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "",
       NEXT_PUBLIC_GOOGLE_SHEETS_FOLDER_ID: process.env.NEXT_PUBLIC_GOOGLE_SHEETS_FOLDER_ID ?? "",
+      NEXT_PUBLIC_COGNITO_REGION: process.env.NEXT_PUBLIC_COGNITO_REGION ?? "ap-northeast-1",
+      NEXT_PUBLIC_COGNITO_USER_POOL_ID: process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID ?? "",
+      NEXT_PUBLIC_COGNITO_CLIENT_ID: process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID ?? "",
       NEXT_PUBLIC_APP_URL:
         process.env.NEXT_PUBLIC_APP_URL ?? "https://d1xs8fe440jh05.cloudfront.net",
     },

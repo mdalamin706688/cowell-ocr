@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 import { copy } from "@/lib/copy";
 import { Button } from "@/components/ui/button";
 import { useNavigation } from "@/contexts/navigation-context";
+import { cognitoSignOut } from "@/lib/cognito-auth";
+import { isCognitoConfigured } from "@/lib/cognito-config";
 import {
   clearClientSession,
   FLASH_LOGGED_OUT,
@@ -27,6 +29,14 @@ export function LogoutButton({ variant = "sidebar", className }: LogoutButtonPro
   const handleLogout = async () => {
     setLoading(true);
     try {
+      if (isCognitoConfigured()) {
+        await cognitoSignOut();
+        setFlash(FLASH_LOGGED_OUT);
+        startNavigation("/login/");
+        router.replace("/login/");
+        return;
+      }
+
       if (isPreviewEnvironment()) {
         clearClientSession();
         setFlash(FLASH_LOGGED_OUT);

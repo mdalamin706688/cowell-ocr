@@ -21,6 +21,10 @@ export const copy = {
     submit: "サインイン",
     submitting: "ログイン中…",
     loggedOut: "ログアウトしました。再度サインインしてください。",
+    newPassword: "新しいパスワード",
+    newPasswordSubtitle: "初回ログインです。新しいパスワードを設定してください。",
+    newPasswordHint: "8文字以上で設定してください",
+    newPasswordSubmit: "パスワードを設定して続行",
     heroEyebrow: "LED現地調査",
     heroTitle: "現地調査を、\nデジタルに。",
     heroBody:
