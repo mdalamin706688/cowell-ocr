@@ -89,6 +89,7 @@ export default function HomePage() {
       NEXT_PUBLIC_OCR_API_BASE_URL:
         process.env.NEXT_PUBLIC_OCR_API_BASE_URL ??
         "https://ajewqlxzj5dzpkclaozimdr42m0jceix.lambda-url.ap-south-1.on.aws",
+      NEXT_PUBLIC_OCR_API_ENABLED: process.env.NEXT_PUBLIC_OCR_API_ENABLED ?? "false",
     },
   });
 

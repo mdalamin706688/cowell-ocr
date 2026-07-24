@@ -7,8 +7,13 @@ export function getOcrApiBaseUrl(): string {
   return (process.env.NEXT_PUBLIC_OCR_API_BASE_URL || "").replace(/\/$/, "").trim();
 }
 
+/**
+ * Remote OCR is opt-in. Set NEXT_PUBLIC_OCR_API_ENABLED=true when backend
+ * confirms Gemini is stable; otherwise FE uses demo OCR on static hosts.
+ */
 export function isOcrApiConfigured(): boolean {
-  return Boolean(getOcrApiBaseUrl());
+  const enabled = process.env.NEXT_PUBLIC_OCR_API_ENABLED === "true";
+  return enabled && Boolean(getOcrApiBaseUrl());
 }
 
 interface ApiSurveyRow {

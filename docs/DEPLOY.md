@@ -18,6 +18,7 @@ Live URL (after deploy): `https://d1xs8fe440jh05.cloudfront.net`
 | `NEXT_PUBLIC_COGNITO_USER_POOL_ID` | Cognito User Pool ID |
 | `NEXT_PUBLIC_COGNITO_CLIENT_ID` | Cognito App Client ID (public) |
 | `NEXT_PUBLIC_OCR_API_BASE_URL` | `https://….lambda-url.ap-south-1.on.aws` |
+| `NEXT_PUBLIC_OCR_API_ENABLED` | `true` only when live OCR should be used (else demo) |
 | `NEXT_PUBLIC_APP_URL` | `https://d1xs8fe440jh05.cloudfront.net` (optional) |
 
 Push to `main` runs **Deploy AWS (S3 + CloudFront)**.

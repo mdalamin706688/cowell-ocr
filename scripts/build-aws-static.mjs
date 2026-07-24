@@ -89,6 +89,8 @@ export default function HomePage() {
       NEXT_PUBLIC_OCR_API_BASE_URL:
         process.env.NEXT_PUBLIC_OCR_API_BASE_URL ??
         "https://ajewqlxzj5dzpkclaozimdr42m0jceix.lambda-url.ap-south-1.on.aws",
+      // Demo OCR until backend confirms Gemini capacity is fixed
+      NEXT_PUBLIC_OCR_API_ENABLED: process.env.NEXT_PUBLIC_OCR_API_ENABLED ?? "false",
       NEXT_PUBLIC_APP_URL:
         process.env.NEXT_PUBLIC_APP_URL ?? "https://d1xs8fe440jh05.cloudfront.net",
     },
