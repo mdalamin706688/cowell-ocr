@@ -1,7 +1,7 @@
 /** Public Cognito SPA settings (no client secret). */
 
 export function getCognitoRegion(): string {
-  return (process.env.NEXT_PUBLIC_COGNITO_REGION || "ap-northeast-1").trim();
+  return (process.env.NEXT_PUBLIC_COGNITO_REGION || "ap-south-1").trim();
 }
 
 export function getCognitoUserPoolId(): string {
