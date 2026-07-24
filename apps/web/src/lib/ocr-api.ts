@@ -1,4 +1,5 @@
 import { GEMINI_PRICING, type OcrResult, type OcrRow } from "@cowell/shared";
+import { copy } from "./copy";
 import { generateId } from "./utils";
 
 /** Backend OCR API (Lambda). No Cognito auth yet — add Bearer when BE enables it. */
@@ -74,6 +75,22 @@ function buildRawText(rows: OcrRow[], warnings: string[], fileErrors: ApiFileErr
   return [header, ...body, ...extras].join("\n");
 }
 
+/** Map Gemini / gateway overload messages into a clear Japanese UI error. */
+function friendlyOcrError(raw: string, status?: number): string {
+  const text = raw.toLowerCase();
+  if (
+    status === 503 ||
+    text.includes("503") ||
+    text.includes("unavailable") ||
+    text.includes("high demand") ||
+    text.includes("resource_exhausted") ||
+    text.includes("resource exhausted")
+  ) {
+    return copy.errors.ocrBusy;
+  }
+  return raw || copy.errors.ocrFailed;
+}
+
 /**
  * Call remote Cowell OCR API with multipart upload.
  * Docs: https://ajewqlxzj5dzpkclaozimdr42m0jceix.lambda-url.ap-south-1.on.aws/docs
@@ -108,13 +125,12 @@ export async function runRemoteOcr(
       method: "POST",
       body: form,
       signal: controller.signal,
-      // credentials not required until Cognito cookie/session auth; CORS allows CloudFront
     });
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") {
       throw new Error("読み取りがタイムアウトしました（180秒）。ファイル数を減らして再試行してください。");
     }
-    throw new Error("読み取りサービスに接続できませんでした。しばらくしてから再度お試しください。");
+    throw new Error(copy.errors.serviceUnavailable);
   } finally {
     window.clearTimeout(timer);
   }
@@ -124,7 +140,7 @@ export async function runRemoteOcr(
   try {
     data = text.trim() ? (JSON.parse(text) as typeof data) : {};
   } catch {
-    throw new Error("読み取りサービスから不正な応答がありました");
+    throw new Error(friendlyOcrError(text, res.status));
   }
 
   if (!res.ok) {
@@ -132,13 +148,14 @@ export async function runRemoteOcr(
       const msg = data.detail
         .map((d) => (typeof d === "object" && d && "msg" in d ? String((d as { msg: string }).msg) : String(d)))
         .join("; ");
-      throw new Error(msg || "読み取りに失敗しました");
+      throw new Error(friendlyOcrError(msg, res.status));
     }
-    throw new Error(
+    const raw =
       (typeof data.detail === "string" && data.detail) ||
-        data.message ||
-        `読み取りに失敗しました (${res.status})`
-    );
+      data.message ||
+      text ||
+      `読み取りに失敗しました (${res.status})`;
+    throw new Error(friendlyOcrError(String(raw), res.status));
   }
 
   const apiRows = Array.isArray(data.rows) ? data.rows : [];
@@ -147,9 +164,14 @@ export async function runRemoteOcr(
   const rows = apiRows.map(mapApiRow);
 
   if (!rows.length && fileErrors.length) {
-    throw new Error(
-      fileErrors.map((e) => `${e.filename}: ${e.detail}`).join("\n") || "読み取りに失敗しました"
-    );
+    const joined = fileErrors.map((e) => `${e.filename}: ${e.detail}`).join("\n");
+    throw new Error(friendlyOcrError(joined || copy.errors.ocrFailed));
+  }
+
+  // Some backends return 200 with Gemini 503 text in warnings only
+  const busyHint = [...warnings, ...fileErrors.map((e) => e.detail)].join(" ");
+  if (!rows.length && /503|unavailable|high demand/i.test(busyHint)) {
+    throw new Error(copy.errors.ocrBusy);
   }
 
   const costUsd = Number(data.estimated_cost_usd) || 0;

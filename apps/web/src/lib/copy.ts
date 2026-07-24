@@ -125,5 +125,7 @@ export const copy = {
     loginFailed: "ログインに失敗しました",
     serviceNotConfigured: "現在、読み取り機能をご利用いただけません。管理者にお問い合わせください。",
     serviceUnavailable: "サービスに接続できませんでした。しばらくしてから再度お試しください。",
+    ocrBusy:
+      "読み取りサービスが混み合っています。しばらくしてから再度お試しください。",
   },
 } as const;
