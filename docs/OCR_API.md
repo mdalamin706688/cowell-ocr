@@ -15,7 +15,7 @@ When `NEXT_PUBLIC_OCR_API_BASE_URL` is set **and** `NEXT_PUBLIC_OCR_API_ENABLED=
 
 Response snake_case rows are mapped to FE `OcrRow` (camelCase).
 
-If `NEXT_PUBLIC_OCR_API_ENABLED` is not `true` (default), static FE uses **demo OCR** until backend confirms Gemini is stable.
+If `NEXT_PUBLIC_OCR_API_ENABLED` is `false`, static FE uses **demo OCR**.
 
 Auth is **not** required yet. When the backend enables Cognito, FE will send:
 
@@ -25,7 +25,7 @@ Auth is **not** required yet. When the backend enables Cognito, FE will send:
 
 ```text
 NEXT_PUBLIC_OCR_API_BASE_URL=https://ajewqlxzj5dzpkclaozimdr42m0jceix.lambda-url.ap-south-1.on.aws
-NEXT_PUBLIC_OCR_API_ENABLED=false
+NEXT_PUBLIC_OCR_API_ENABLED=true
 ```
 
-Set `NEXT_PUBLIC_OCR_API_ENABLED=true` (GitHub secret or local env) to use the live API again.
+Set `NEXT_PUBLIC_OCR_API_ENABLED=false` to force demo data again.
