@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { OcrRow } from "@cowell/shared";
+import type { DriveSourceFile } from "@/lib/sheets-export";
 import { exportToGoogleSheets, isServiceAccountConfigured } from "@/lib/sheets";
 
 export async function GET() {
@@ -13,9 +14,11 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { rows, title, accessToken } = body as {
+    const { rows, projectName, title, sourceFiles, accessToken } = body as {
       rows: OcrRow[];
-      title: string;
+      projectName?: string;
+      title?: string;
+      sourceFiles?: DriveSourceFile[];
       accessToken?: string;
     };
 
@@ -23,8 +26,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "エクスポートするデータがありません" }, { status: 400 });
     }
 
-    const result = await exportToGoogleSheets(rows, title || "現調シート", {
+    const result = await exportToGoogleSheets(rows, projectName || title || "現調", {
       accessToken: accessToken?.trim() || undefined,
+      sourceFiles,
     });
     return NextResponse.json(result);
   } catch (err) {

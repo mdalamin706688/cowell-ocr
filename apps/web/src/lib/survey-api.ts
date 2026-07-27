@@ -77,10 +77,18 @@ export function triggerCsvDownload(rows: OcrRow[], title: string): void {
   downloadCsv(rows, title);
 }
 
+export interface SurveyExportOptions {
+  projectName: string;
+  sourceFiles?: Array<{ base64: string; mimeType: string; name: string }>;
+}
+
 export async function surveyExport(
   rows: OcrRow[],
-  title: string
+  options: SurveyExportOptions
 ): Promise<SurveyExportResult> {
+  const { projectName, sourceFiles } = options;
+  const title = projectName.trim() || "現調";
+
   if (isPreviewEnvironment()) {
     // Static preview: prefer FE Google connect when client ID is set
     if (isGoogleClientConfigured()) {
@@ -90,7 +98,8 @@ export async function surveyExport(
       const result = await exportRowsWithAccessToken({
         accessToken,
         rows,
-        title,
+        projectName: title,
+        sourceFiles,
         folderId: configured,
       });
       return {
@@ -112,7 +121,7 @@ export async function surveyExport(
   const res = await fetch(`${getBasePath()}/api/sheets/export`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ rows, title, accessToken }),
+    body: JSON.stringify({ rows, projectName: title, sourceFiles, accessToken }),
   });
 
   if (!res.ok) {

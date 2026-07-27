@@ -1,4 +1,4 @@
-import { exportRowsWithAccessToken, type SheetsExportResult } from "./sheets-export";
+import { exportRowsWithAccessToken, type DriveSourceFile, type SheetsExportResult } from "./sheets-export";
 import type { OcrRow } from "@cowell/shared";
 import { countRowsWithPhotos } from "./row-photo";
 
@@ -57,8 +57,8 @@ async function getGoogleAccessToken(email: string, key: string): Promise<string>
 
 export async function exportToGoogleSheets(
   rows: OcrRow[],
-  title: string,
-  options?: { accessToken?: string }
+  projectName: string,
+  options?: { accessToken?: string; sourceFiles?: DriveSourceFile[] }
 ): Promise<SheetsExportResult> {
   const folderId = process.env.GOOGLE_SHEETS_FOLDER_ID || null;
 
@@ -67,7 +67,8 @@ export async function exportToGoogleSheets(
     return exportRowsWithAccessToken({
       accessToken: options.accessToken,
       rows,
-      title,
+      projectName,
+      sourceFiles: options.sourceFiles,
       folderId,
     });
   }
@@ -93,7 +94,8 @@ export async function exportToGoogleSheets(
   return exportRowsWithAccessToken({
     accessToken: token,
     rows,
-    title,
+    projectName,
+    sourceFiles: options?.sourceFiles,
     folderId,
   });
 }

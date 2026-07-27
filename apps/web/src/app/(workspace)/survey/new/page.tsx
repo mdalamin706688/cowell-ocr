@@ -22,7 +22,11 @@ import { copy } from "@/lib/copy";
 import { isPreviewEnvironment } from "@/lib/client-auth";
 import { isGoogleClientConfigured } from "@/lib/google-auth-client";
 import { surveyExport, surveyRunOcr, triggerCsvDownload } from "@/lib/survey-api";
-import { buildSurveyProcessName } from "@/lib/survey-process-name";
+import {
+  buildDriveExportPreview,
+  buildSpreadsheetDriveName,
+  sanitizeProjectFolderName,
+} from "@/lib/survey-process-name";
 import { formatCurrencyJpy, formatDuration } from "@/lib/utils";
 
 function SurveyWorkflow() {
@@ -96,10 +100,17 @@ function SurveyWorkflow() {
     setExporting(true);
     setError(null);
     setStep("export");
-    const title = buildSurveyProcessName(projectName);
-    setExportTitle(title);
+    const name = sanitizeProjectFolderName(projectName);
+    setExportTitle(buildSpreadsheetDriveName(projectName));
     try {
-      const result = await surveyExport(rows, title);
+      const result = await surveyExport(rows, {
+        projectName: name,
+        sourceFiles: files.map((f) => ({
+          base64: f.base64,
+          mimeType: f.mimeType,
+          name: f.name,
+        })),
+      });
       if (result.downloadOnly) {
         setCsvExport(true);
         setExportUrl("");
@@ -115,7 +126,7 @@ function SurveyWorkflow() {
       setExporting(false);
       exportLock.current = false;
     }
-  }, [rows, projectName, setStep, setError, setExportUrl]);
+  }, [rows, projectName, files, setStep, setError, setExportUrl]);
 
   const stepContent = (
     <>
@@ -206,7 +217,7 @@ function SurveyWorkflow() {
                   className="h-10"
                 />
                 <p className="text-xs text-muted-foreground font-mono">
-                  → {buildSurveyProcessName(projectName)}
+                  → {buildDriveExportPreview(projectName)}
                 </p>
               </div>
             )}

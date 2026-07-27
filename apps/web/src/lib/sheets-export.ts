@@ -1,4 +1,8 @@
 import { SURVEY_COLUMNS, type OcrRow } from "@cowell/shared";
+import {
+  buildSpreadsheetDriveName,
+  sanitizeProjectFolderName,
+} from "./survey-process-name";
 
 export const GOOGLE_SHEETS_SCOPES = [
   "https://www.googleapis.com/auth/spreadsheets",
@@ -19,11 +23,21 @@ export interface SheetsExportResult {
   parentFolderUrl?: string;
 }
 
+export interface DriveSourceFile {
+  base64: string;
+  mimeType: string;
+  name: string;
+}
+
 export interface SheetsExportOptions {
   accessToken: string;
   rows: OcrRow[];
-  /** Process / survey name → folder under JBC-COWELL */
-  title: string;
+  /** Project name → main folder under JBC-COWELL */
+  projectName?: string;
+  /** @deprecated Use projectName */
+  title?: string;
+  /** Original files uploaded by the user (saved in the main folder) */
+  sourceFiles?: DriveSourceFile[];
   /**
    * Optional known id for JBC-COWELL. Verified by name before use.
    * If missing/invalid, app finds or creates JBC-COWELL under My Drive.
@@ -33,6 +47,7 @@ export interface SheetsExportOptions {
 
 const PHOTO_COLUMN_INDEX = SURVEY_COLUMNS.indexOf("写真");
 const SHEET_TAB_TITLE = "現調データ";
+const PHOTO_FOLDER_NAME = "画像";
 const DRIVE_FOLDER_MIME = "application/vnd.google-apps.folder";
 const DRIVE_SHEET_MIME = "application/vnd.google-apps.spreadsheet";
 const PARENT_FOLDER_CACHE_KEY = "cowell_drive_jbc_folder_id";
@@ -42,10 +57,6 @@ let exportMutex: Promise<unknown> = Promise.resolve();
 
 /** Serialize JBC-COWELL lookup/creation across tabs in the same session */
 let parentFolderMutex: Promise<unknown> = Promise.resolve();
-
-function resultSheetDriveName(): string {
-  return "0_結果シート";
-}
 
 function authHeaders(accessToken: string): HeadersInit {
   return {
@@ -79,6 +90,15 @@ function driveFolderUrl(folderId: string): string {
 
 function sanitizeDriveName(name: string): string {
   return name.replace(/[\\/:*?"<>|]/g, "_").trim() || "現調";
+}
+
+function sanitizeDriveFileName(name: string): string {
+  const base = name.replace(/[\\/:*?"<>|]/g, "_").trim() || "upload";
+  return base.slice(0, 200);
+}
+
+function resolveProjectName(options: SheetsExportOptions): string {
+  return sanitizeProjectFolderName(options.projectName ?? options.title);
 }
 
 function countPhotoRows(rows: OcrRow[]): number {
@@ -408,14 +428,29 @@ async function createProcessFolder(
   return folderId;
 }
 
-async function createResultSpreadsheet(
+async function createPhotoSubfolder(
   accessToken: string,
   processFolderId: string
+): Promise<string> {
+  const folderId = await createDriveFile(
+    accessToken,
+    PHOTO_FOLDER_NAME,
+    DRIVE_FOLDER_MIME,
+    processFolderId
+  );
+  await ensureExclusiveParent(accessToken, folderId, processFolderId);
+  return folderId;
+}
+
+async function createResultSpreadsheet(
+  accessToken: string,
+  processFolderId: string,
+  spreadsheetName: string
 ): Promise<string> {
   const headers = authHeaders(accessToken);
   const spreadsheetId = await createDriveFile(
     accessToken,
-    resultSheetDriveName(),
+    spreadsheetName,
     DRIVE_SHEET_MIME,
     processFolderId
   );
@@ -440,34 +475,37 @@ async function createResultSpreadsheet(
 
 /**
  * Two-step upload: metadata+parents first, then media.
- * Multipart often dropped parents so photos (and Drive UI) drifted to My Drive root.
+ * Multipart often dropped parents so files drifted to My Drive root.
  */
-async function uploadPhotoToDrive(
+async function uploadBinaryFileToDrive(
   accessToken: string,
   base64: string,
   mimeType: string,
   fileName: string,
-  processFolderId: string
+  parentFolderId: string,
+  options?: { makePublic?: boolean; errorLabel?: string }
 ): Promise<string> {
+  const errorLabel = options?.errorLabel ?? "ファイルのアップロードに失敗しました";
+
   const createRes = await fetch(
     "https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id,parents",
     {
       method: "POST",
       headers: authHeaders(accessToken),
       body: JSON.stringify({
-        name: fileName,
+        name: sanitizeDriveFileName(fileName),
         mimeType,
-        parents: [processFolderId],
+        parents: [parentFolderId],
       }),
     }
   );
   const created = await createRes.json();
   if (!createRes.ok) {
-    throw new Error(created.error?.message || "写真のアップロードに失敗しました");
+    throw new Error(created.error?.message || errorLabel);
   }
 
   const fileId = created.id as string;
-  await ensureExclusiveParent(accessToken, fileId, processFolderId);
+  await ensureExclusiveParent(accessToken, fileId, parentFolderId);
 
   const fileBytes = base64ToBytes(base64);
   const mediaBody = fileBytes.buffer.slice(
@@ -489,31 +527,87 @@ async function uploadPhotoToDrive(
   if (!uploadRes.ok) {
     const uploaded = await uploadRes.json().catch(() => ({}));
     throw new Error(
-      (uploaded as { error?: { message?: string } }).error?.message ||
-        "写真のアップロードに失敗しました"
+      (uploaded as { error?: { message?: string } }).error?.message || errorLabel
     );
   }
 
-  // Media PATCH can reset parents in some cases — lock nesting again
-  await ensureExclusiveParent(accessToken, fileId, processFolderId);
+  await ensureExclusiveParent(accessToken, fileId, parentFolderId);
 
-  const permRes = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${fileId}/permissions`,
-    {
-      method: "POST",
-      headers: authHeaders(accessToken),
-      body: JSON.stringify({ role: "reader", type: "anyone" }),
+  if (options?.makePublic) {
+    const permRes = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}/permissions`,
+      {
+        method: "POST",
+        headers: authHeaders(accessToken),
+        body: JSON.stringify({ role: "reader", type: "anyone" }),
+      }
+    );
+    if (!permRes.ok) {
+      const permErr = await permRes.json().catch(() => ({}));
+      throw new Error(
+        (permErr as { error?: { message?: string } }).error?.message ||
+          "写真の共有設定に失敗しました。GoogleアカウントのDrive権限を確認してください。"
+      );
     }
-  );
-  if (!permRes.ok) {
-    const permErr = await permRes.json().catch(() => ({}));
-    throw new Error(
-      (permErr as { error?: { message?: string } }).error?.message ||
-        "写真の共有設定に失敗しました。GoogleアカウントのDrive権限を確認してください。"
-    );
   }
 
+  return fileId;
+}
+
+async function uploadPhotoToDrive(
+  accessToken: string,
+  base64: string,
+  mimeType: string,
+  fileName: string,
+  photoFolderId: string
+): Promise<string> {
+  const fileId = await uploadBinaryFileToDrive(
+    accessToken,
+    base64,
+    mimeType,
+    fileName,
+    photoFolderId,
+    { makePublic: true, errorLabel: "写真のアップロードに失敗しました" }
+  );
   return driveImageUrl(fileId);
+}
+
+async function uploadSourceFilesToDrive(
+  accessToken: string,
+  files: DriveSourceFile[],
+  processFolderId: string
+): Promise<number> {
+  if (!files.length) return 0;
+
+  const usedNames = new Set<string>();
+  let count = 0;
+
+  for (const file of files) {
+    if (!file.base64?.trim()) continue;
+
+    let fileName = sanitizeDriveFileName(file.name);
+    if (usedNames.has(fileName)) {
+      const dot = fileName.lastIndexOf(".");
+      const stem = dot > 0 ? fileName.slice(0, dot) : fileName;
+      const ext = dot > 0 ? fileName.slice(dot) : "";
+      let n = 2;
+      while (usedNames.has(`${stem}_${n}${ext}`)) n++;
+      fileName = `${stem}_${n}${ext}`;
+    }
+    usedNames.add(fileName);
+
+    await uploadBinaryFileToDrive(
+      accessToken,
+      file.base64,
+      file.mimeType,
+      fileName,
+      processFolderId,
+      { errorLabel: "元ファイルのアップロードに失敗しました" }
+    );
+    count++;
+  }
+
+  return count;
 }
 
 function columnLetter(index: number): string {
@@ -524,7 +618,7 @@ async function attachRowPhotos(
   accessToken: string,
   spreadsheetId: string,
   rows: OcrRow[],
-  processFolderId: string
+  photoFolderId: string
 ): Promise<number> {
   const photoRows = rows
     .map((row, index) => ({ row, sheetRow: index + 2 }))
@@ -540,7 +634,7 @@ async function attachRowPhotos(
       row.photoBase64!,
       row.photoMimeType!,
       `1_row_${String(sheetRow - 1).padStart(3, "0")}.jpg`,
-      processFolderId
+      photoFolderId
     );
     const cell = `${columnLetter(PHOTO_COLUMN_INDEX)}${sheetRow}`;
     updates.push({
@@ -621,9 +715,10 @@ async function touchSpreadsheetFile(
 async function exportRowsWithAccessTokenUnlocked(
   options: SheetsExportOptions
 ): Promise<SheetsExportResult> {
-  const { accessToken, rows, title, folderId } = options;
+  const { accessToken, rows, folderId, sourceFiles } = options;
   const headers = authHeaders(accessToken);
-  const processName = sanitizeDriveName(title);
+  const projectFolderName = resolveProjectName(options);
+  const spreadsheetName = buildSpreadsheetDriveName(projectFolderName);
 
   let parentFolderId = await ensureParentFolder(accessToken, folderId);
   if (!(await getJbcCowellFolderIfValid(accessToken, parentFolderId))) {
@@ -634,8 +729,17 @@ async function exportRowsWithAccessTokenUnlocked(
     throw new Error("親フォルダ JBC-COWELL を作成できませんでした");
   }
 
-  const processFolderId = await createProcessFolder(accessToken, processName, parentFolderId);
-  const spreadsheetId = await createResultSpreadsheet(accessToken, processFolderId);
+  const processFolderId = await createProcessFolder(
+    accessToken,
+    projectFolderName,
+    parentFolderId
+  );
+  const photoFolderId = await createPhotoSubfolder(accessToken, processFolderId);
+  const spreadsheetId = await createResultSpreadsheet(
+    accessToken,
+    processFolderId,
+    spreadsheetName
+  );
 
   const updateRes = await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/A1?valueInputOption=USER_ENTERED`,
@@ -653,8 +757,13 @@ async function exportRowsWithAccessTokenUnlocked(
 
   let photoCount = 0;
   if (countPhotoRows(rows) > 0) {
-    photoCount = await attachRowPhotos(accessToken, spreadsheetId, rows, processFolderId);
-    // Photo media uploads can disturb nesting — pin survey folder under JBC again
+    photoCount = await attachRowPhotos(accessToken, spreadsheetId, rows, photoFolderId);
+    await ensureExclusiveParent(accessToken, photoFolderId, processFolderId);
+    await ensureExclusiveParent(accessToken, processFolderId, parentFolderId);
+  }
+
+  if (sourceFiles?.length) {
+    await uploadSourceFilesToDrive(accessToken, sourceFiles, processFolderId);
     await ensureExclusiveParent(accessToken, processFolderId, parentFolderId);
   }
 
