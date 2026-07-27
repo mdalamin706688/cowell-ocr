@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { StepPanel } from "@/components/motion/step-panel";
 import { SurveyPageSkeleton } from "@/components/layout/content-skeleton";
 import { StaggerItem, StaggerReveal } from "@/components/motion/stagger-reveal";
@@ -13,10 +13,10 @@ import { SurveyProvider, useSurvey } from "@/contexts/survey-context";
 import { StepIndicator } from "@/components/workflow/step-indicator";
 import { FileUploadZone } from "@/components/upload/file-upload-zone";
 import { ReviewTable } from "@/components/review/review-table";
+import { ProcessingPanel } from "@/components/survey/processing-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TransitionLink } from "@/components/ui/transition-link";
-import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { copy } from "@/lib/copy";
 import { isPreviewEnvironment } from "@/lib/client-auth";
@@ -39,29 +39,56 @@ function SurveyWorkflow() {
   const [exportTitle, setExportTitle] = useState("");
   const [projectName, setProjectName] = useState("");
   const exportLock = useRef(false);
+  const progressTimer = useRef<number | null>(null);
+
+  const stopProgressTicker = useCallback(() => {
+    if (progressTimer.current != null) {
+      window.clearInterval(progressTimer.current);
+      progressTimer.current = null;
+    }
+  }, []);
+
+  const startProgressTicker = useCallback(() => {
+    stopProgressTicker();
+    setProgress(4);
+    const started = Date.now();
+    // Ease toward ~92% while waiting on remote OCR (no real server %).
+    progressTimer.current = window.setInterval(() => {
+      const elapsed = Date.now() - started;
+      const eased = 92 * (1 - Math.exp(-elapsed / 28_000));
+      setProgress(Math.min(92, Math.max(4, eased)));
+    }, 200);
+  }, [stopProgressTicker]);
+
+  useEffect(() => () => stopProgressTicker(), [stopProgressTicker]);
 
   const runOcr = useCallback(async () => {
     if (!files.length) return;
     setProcessing(true);
     setError(null);
     setStep("processing");
-    setProgress(15);
+    startProgressTicker();
     try {
       const result = await surveyRunOcr(
         prompt,
         files.map((f) => ({ base64: f.base64, mimeType: f.mimeType, name: f.name }))
       );
+      stopProgressTicker();
       setProgress(100);
       setOcrResult(result);
       setRows(result.rows);
+      // Brief beat so users see 100% before review
+      await new Promise((r) => window.setTimeout(r, 350));
       setStep("review");
     } catch (e) {
+      stopProgressTicker();
+      setProgress(0);
       setError(e instanceof Error ? e.message : copy.errors.ocrFailed);
       setStep("upload");
     } finally {
       setProcessing(false);
     }
-  }, [files, prompt, setStep, setError, setOcrResult, setRows]);
+  }, [files, prompt, setStep, setError, setOcrResult, setRows, startProgressTicker, stopProgressTicker]);
 
   const exportToSheets = useCallback(async () => {
     if (exportLock.current) return;
@@ -134,18 +161,12 @@ function SurveyWorkflow() {
       )}
 
       {step === "processing" && (
-        <StepPanel className="ui-card">
-          <div className="ui-card-body flex flex-col items-center gap-4 py-16 text-center">
-            <div className="relative">
-              <div className="absolute inset-0 rounded-full bg-lumen/20 blur-xl" />
-              <Loader2 className="relative h-8 w-8 animate-spin text-lumen" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold">{copy.survey.processing}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{copy.survey.processingFiles(files.length)}</p>
-            </div>
-            <Progress value={progress} className="w-full max-w-xs h-1.5" />
-          </div>
+        <StepPanel>
+          <ProcessingPanel
+            fileCount={files.length}
+            fileNames={files.map((f) => f.name)}
+            progress={progress}
+          />
         </StepPanel>
       )}
 
