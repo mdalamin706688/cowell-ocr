@@ -5,20 +5,26 @@ import { Check } from "lucide-react";
 import type { WorkflowStep } from "@cowell/shared";
 
 const steps: { key: WorkflowStep; label: string }[] = [
-  { key: "upload", label: "アップロード" },
+  { key: "upload", label: "資料アップロード" },
   { key: "processing", label: "読み取り" },
-  { key: "review", label: "確認" },
-  { key: "export", label: "登録" },
+  { key: "review", label: "結果確認" },
+  { key: "export", label: "自動転記" },
   { key: "complete", label: "完了" },
 ];
 
 const order: WorkflowStep[] = ["upload", "processing", "review", "export", "complete"];
 
-export function StepIndicator({ current }: { current: WorkflowStep }) {
+export function StepIndicator({
+  current,
+  compact = false,
+}: {
+  current: WorkflowStep;
+  compact?: boolean;
+}) {
   const idx = order.indexOf(current);
 
   return (
-    <div className="mb-8">
+    <div className={compact ? "mb-3" : "mb-8"}>
       <div className="timeline-track">
         {steps.map((s, i) => {
           const done = i < idx;

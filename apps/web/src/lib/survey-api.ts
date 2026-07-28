@@ -10,7 +10,9 @@ import { rowsToTsv } from "./ocr";
 import { isOcrApiConfigured, runRemoteOcr } from "./ocr-api";
 import {
   exportRowsWithAccessToken,
+  stageSurveySourceFiles,
   type ExportProgressCallback,
+  type SurveyDriveStaging,
 } from "./sheets-export";
 
 type ApiError = { error?: string };
@@ -56,6 +58,7 @@ export async function surveyRunOcr(
 
 export interface SurveyExportResult {
   spreadsheetUrl: string;
+  processFolderUrl?: string;
   rowCount: number;
   photoCount?: number;
   downloadOnly?: boolean;
@@ -84,7 +87,48 @@ export interface SurveyExportOptions {
   rootFolderId?: string | null;
   googleAccountEmail?: string | null;
   sourceFiles?: Array<{ base64: string; mimeType: string; name: string }>;
+  existingProcessFolderId?: string;
+  skipSourceUpload?: boolean;
   onProgress?: ExportProgressCallback;
+}
+
+export type { SurveyDriveStaging };
+
+export interface SurveyStageSourceOptions {
+  projectName: string;
+  rootFolderName: string;
+  rootFolderId?: string | null;
+  googleAccountEmail?: string | null;
+  sourceFiles: Array<{ base64: string; mimeType: string; name: string }>;
+  onProgress?: (done: number, total: number) => void;
+}
+
+/** Upload originals to 元ファイル/ before OCR when Drive destination is ready. */
+export async function surveyStageSourceFiles(
+  options: SurveyStageSourceOptions
+): Promise<SurveyDriveStaging> {
+  const account = requireConnectedGoogleDrive();
+
+  const sameAccount =
+    Boolean(options.googleAccountEmail) &&
+    options.googleAccountEmail!.trim().toLowerCase() === account.email.toLowerCase();
+  const safeFolderId = sameAccount ? options.rootFolderId ?? null : null;
+
+  if (options.rootFolderName) {
+    writeLastRootFolder(
+      { name: options.rootFolderName, id: safeFolderId || undefined },
+      account.email
+    );
+  }
+
+  return stageSurveySourceFiles({
+    accessToken: account.accessToken,
+    projectName: options.projectName,
+    rootFolderName: options.rootFolderName,
+    folderId: safeFolderId,
+    sourceFiles: options.sourceFiles,
+    onProgress: options.onProgress,
+  });
 }
 
 /**
@@ -129,10 +173,13 @@ export async function surveyExport(
       rootFolderName,
       sourceFiles,
       folderId: safeFolderId,
+      existingProcessFolderId: options.existingProcessFolderId,
+      skipSourceUpload: options.skipSourceUpload,
       onProgress,
     });
     return {
       spreadsheetUrl: result.spreadsheetUrl,
+      processFolderUrl: result.processFolderUrl,
       rowCount: result.rowCount,
       photoCount: result.photoCount,
     };
@@ -165,12 +212,14 @@ export async function surveyExport(
 
   const data = await parseJsonResponse<{
     spreadsheetUrl: string;
+    processFolderUrl?: string;
     rowCount: number;
     photoCount?: number;
   }>(res);
   onProgress?.({ percent: 100, phase: "finishing" });
   return {
     spreadsheetUrl: data.spreadsheetUrl,
+    processFolderUrl: data.processFolderUrl,
     rowCount: data.rowCount,
     photoCount: data.photoCount,
   };

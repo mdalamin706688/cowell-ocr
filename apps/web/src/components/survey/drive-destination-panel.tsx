@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { AlertCircle, Check, ChevronDown, FolderOpen, Loader2 } from "lucide-react";
 import { ComboboxField } from "@/components/ui/combobox-field";
+import { CollapsiblePanel } from "@/components/ui/collapsible-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { copy } from "@/lib/copy";
@@ -36,7 +37,7 @@ export interface DriveDestinationValue {
 
 interface DriveDestinationPanelProps {
   value: DriveDestinationValue;
-  onChange: (value: DriveDestinationValue) => void;
+  onChange: Dispatch<SetStateAction<DriveDestinationValue>>;
 }
 
 export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanelProps) {
@@ -53,17 +54,34 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
   const [childFolderNames, setChildFolderNames] = useState<string[]>([]);
   const [checkingUnique, setCheckingUnique] = useState(false);
   const uniquenessSeq = useRef(0);
+  const projectCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const rootName = value.rootFolderName;
   const projectName = value.projectName;
   const rootNormalized = normalizeFolderNameInput(rootName);
   const projectNormalized = normalizeProjectNameInput(projectName);
 
+  const effectiveRootFolderId = useMemo(() => {
+    if (value.rootFolderId) return value.rootFolderId;
+    if (!rootNormalized) return undefined;
+    const match = options.find((o) => o.name.toLowerCase() === rootNormalized.toLowerCase());
+    return match?.id;
+  }, [value.rootFolderId, options, rootNormalized]);
+
+  const isProjectDuplicate = useCallback(
+    (name: string) => {
+      const normalized = normalizeProjectNameInput(name);
+      if (!normalized || !effectiveRootFolderId) return false;
+      return childFolderNames.some(
+        (folderName) => folderName.toLowerCase() === normalized.toLowerCase()
+      );
+    },
+    [childFolderNames, effectiveRootFolderId]
+  );
+
   const rootError = accountEmail && !rootNormalized ? copy.survey.rootFolderRequired : null;
 
-  const projectDuplicate =
-    Boolean(projectNormalized) &&
-    childFolderNames.some((n) => n.toLowerCase() === projectNormalized.toLowerCase());
+  const projectDuplicate = isProjectDuplicate(projectName);
 
   const projectError = !projectNormalized
     ? null
@@ -89,7 +107,11 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
     (next: DriveDestinationValue, checking = checkingUnique) => {
       const root = normalizeFolderNameInput(next.rootFolderName);
       const project = normalizeProjectNameInput(next.projectName);
+      const rootId =
+        next.rootFolderId ||
+        options.find((o) => o.name.toLowerCase() === root.toLowerCase())?.id;
       const duplicate =
+        Boolean(rootId) &&
         Boolean(project) &&
         childFolderNames.some((n) => n.toLowerCase() === project.toLowerCase());
       return (
@@ -100,24 +122,59 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
         !checking
       );
     },
-    [accountEmail, childFolderNames, checkingUnique]
+    [accountEmail, childFolderNames, checkingUnique, options]
   );
 
   const pushValue = useCallback(
     (patch: Partial<DriveDestinationValue>) => {
-      const next = { ...value, ...patch };
-      onChange({ ...next, isValid: computeIsValid(next) });
+      onChange((prev) => {
+        const next = { ...prev, ...patch };
+        return { ...next, isValid: computeIsValid(next) };
+      });
     },
-    [computeIsValid, onChange, value]
+    [computeIsValid, onChange]
+  );
+
+  const refreshFolderOptions = useCallback(async (email: string, accessToken: string) => {
+    const live = await listDriveRootFolders(accessToken);
+    const merged = mergeRootFolderOptions(live, readRootFolderHistory(email));
+    setOptions(merged);
+    return merged;
+  }, []);
+
+  const resetRootSelection = useCallback(() => {
+    setChildFolderNames([]);
+    setCheckingUnique(false);
+    uniquenessSeq.current += 1;
+  }, []);
+
+  const commitRootFolder = useCallback(
+    (raw: string) => {
+      const name = normalizeFolderNameInput(raw);
+      resetRootSelection();
+      if (!name) {
+        pushValue({
+          rootFolderName: "",
+          rootFolderId: undefined,
+          googleAccountEmail: accountEmail,
+        });
+        return;
+      }
+      const match = options.find((o) => o.name.toLowerCase() === name.toLowerCase());
+      if (accountEmail) writeLastRootFolder({ name, id: match?.id }, accountEmail);
+      pushValue({
+        rootFolderName: name,
+        rootFolderId: match?.id,
+        googleAccountEmail: accountEmail,
+      });
+    },
+    [accountEmail, options, pushValue, resetRootSelection]
   );
 
   // Keep isValid in sync when async checks finish (folder list / uniqueness)
   useEffect(() => {
-    if (value.isValid !== isValid) {
-      onChange({ ...value, isValid });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- sync when derived validity changes
-  }, [isValid, value.projectName, value.rootFolderName, value.rootFolderId]);
+    onChange((prev) => (prev.isValid === isValid ? prev : { ...prev, isValid }));
+  }, [isValid, onChange]);
 
   const loadChildFolders = useCallback(async (parentId: string, accessToken: string) => {
     const seq = ++uniquenessSeq.current;
@@ -125,7 +182,11 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
     try {
       const children = await listDriveChildFolders(accessToken, parentId);
       if (seq !== uniquenessSeq.current) return;
-      setChildFolderNames(children.map((c) => c.name));
+      setChildFolderNames(
+        children
+          .map((c) => normalizeProjectNameInput(c.name))
+          .filter(Boolean)
+      );
     } catch {
       if (seq !== uniquenessSeq.current) return;
       setChildFolderNames([]);
@@ -134,13 +195,20 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
     }
   }, []);
 
-  const loadFoldersForAccount = useCallback(
-    async (email: string, accessToken: string, project: string) => {
-      const live = await listDriveRootFolders(accessToken);
-      const merged = mergeRootFolderOptions(live, readRootFolderHistory(email));
-      setOptions(merged);
-      setChildFolderNames([]);
-      // Industry standard: no root pre-selected — user must choose
+  const scheduleChildFolderCheck = useCallback(
+    (parentId: string, accessToken: string, delayMs = 200) => {
+      if (projectCheckTimer.current) clearTimeout(projectCheckTimer.current);
+      projectCheckTimer.current = setTimeout(() => {
+        projectCheckTimer.current = null;
+        void loadChildFolders(parentId, accessToken);
+      }, delayMs);
+    },
+    [loadChildFolders]
+  );
+
+  const resetDestinationForAccount = useCallback(
+    (email: string, project: string) => {
+      resetRootSelection();
       onChange({
         projectName: project,
         rootFolderName: "",
@@ -149,31 +217,43 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
         isValid: false,
       });
     },
-    [onChange]
+    [onChange, resetRootSelection]
   );
+
+  useEffect(() => {
+    return () => {
+      if (projectCheckTimer.current) clearTimeout(projectCheckTimer.current);
+    };
+  }, []);
 
   useEffect(() => {
     const session = getConnectedGoogleDrive();
     if (!session) return;
     setAccountEmail(session.email);
-    void loadFoldersForAccount(session.email, session.accessToken, value.projectName).catch(
-      () => setOptions(readRootFolderHistory(session.email))
+    void refreshFolderOptions(session.email, session.accessToken).catch(() =>
+      setOptions(readRootFolderHistory(session.email))
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once on mount
   }, []);
 
-  // When root folder id is known, load its children for uniqueness checks
+  // Load / refresh child folders when root or project name changes
   useEffect(() => {
     const session = getConnectedGoogleDrive();
-    if (!session || !value.rootFolderId) {
+    if (!session || !effectiveRootFolderId) {
       setChildFolderNames([]);
+      setCheckingUnique(false);
       return;
     }
-    const timer = window.setTimeout(() => {
-      void loadChildFolders(value.rootFolderId!, session.accessToken);
-    }, 200);
-    return () => window.clearTimeout(timer);
-  }, [value.rootFolderId, loadChildFolders]);
+    if (!projectNormalized) {
+      setChildFolderNames([]);
+      setCheckingUnique(false);
+      return;
+    }
+    scheduleChildFolderCheck(effectiveRootFolderId, session.accessToken, 350);
+    return () => {
+      if (projectCheckTimer.current) clearTimeout(projectCheckTimer.current);
+    };
+  }, [effectiveRootFolderId, projectNormalized, scheduleChildFolderCheck]);
 
   const handleConnect = useCallback(async () => {
     if (!googleReady || busy) return;
@@ -182,14 +262,15 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
     try {
       const account = await connectGoogleDrive({ switchAccount: true });
       setAccountEmail(account.email);
-      await loadFoldersForAccount(account.email, account.accessToken, value.projectName);
+      await refreshFolderOptions(account.email, account.accessToken);
+      resetDestinationForAccount(account.email, value.projectName);
       setOpen(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Google接続に失敗しました");
     } finally {
       setBusy(false);
     }
-  }, [busy, googleReady, loadFoldersForAccount, value.projectName]);
+  }, [busy, googleReady, refreshFolderOptions, resetDestinationForAccount, value.projectName]);
 
   const selectRoot = (pref: DriveRootFolderPref) => {
     const name = normalizeFolderNameInput(pref.name);
@@ -222,13 +303,13 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
         </div>
         <ChevronDown
           className={cn(
-            "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+            "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
             open && "rotate-180"
           )}
         />
       </button>
 
-      {open && (
+      <CollapsiblePanel open={open}>
         <div className="ui-card-body border-t border-border/60 space-y-4 pt-4">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
@@ -265,27 +346,16 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
                     options={comboboxOptions}
                     placeholder={copy.survey.rootFolderPlaceholder}
                     disabled={busy}
-                    onChange={(next) =>
+                    onChange={(next) => {
+                      resetRootSelection();
                       pushValue({
                         rootFolderName: next,
                         rootFolderId: undefined,
                         googleAccountEmail: accountEmail,
-                      })
-                    }
-                    onSelect={(opt) => selectRoot({ name: opt.label, id: opt.id })}
-                    onCommit={(raw) => {
-                      const name = normalizeFolderNameInput(raw);
-                      const match = options.find(
-                        (o) => o.name.toLowerCase() === name.toLowerCase()
-                      );
-                      if (name) selectRoot({ name, id: match?.id });
-                      else
-                        pushValue({
-                          rootFolderName: "",
-                          rootFolderId: undefined,
-                          googleAccountEmail: accountEmail,
-                        });
+                      });
                     }}
+                    onSelect={(opt) => selectRoot({ name: opt.label, id: opt.id })}
+                    onCommit={commitRootFolder}
                     emptyMessage={copy.survey.rootFolderEmpty}
                   />
                   {rootError && (
@@ -317,7 +387,7 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
                     )}
                     aria-invalid={Boolean(projectError)}
                   />
-                  {checkingUnique && projectNormalized && value.rootFolderId ? (
+                  {checkingUnique && projectNormalized && effectiveRootFolderId ? (
                     <p className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Loader2 className="h-3 w-3 animate-spin shrink-0" />
                       {copy.survey.projectNameChecking}
@@ -327,7 +397,10 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
                       <AlertCircle className="h-3 w-3 shrink-0" />
                       {projectError}
                     </p>
-                  ) : projectNormalized && value.rootFolderId ? (
+                  ) : projectNormalized &&
+                    rootNormalized &&
+                    effectiveRootFolderId &&
+                    !projectDuplicate ? (
                     <p className="flex items-center gap-1 text-xs text-lumen">
                       <Check className="h-3 w-3 shrink-0" />
                       {copy.survey.projectNameAvailable}
@@ -351,7 +424,7 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
 
           {error && <p className="text-xs text-destructive">{error}</p>}
         </div>
-      )}
+      </CollapsiblePanel>
     </div>
   );
 }

@@ -8,7 +8,6 @@ import {
   ChevronRight,
   ImagePlus,
   Loader2,
-  Search,
   Trash2,
   Table2,
 } from "lucide-react";
@@ -21,6 +20,7 @@ import { prepareRowPhoto } from "@/lib/row-photo";
 interface ReviewTableProps {
   rows: OcrRow[];
   onRowsChange: (rows: OcrRow[]) => void;
+  query: string;
 }
 
 const TEXT_FIELDS = [
@@ -34,11 +34,11 @@ const TEXT_FIELDS = [
 
 const PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
 
-export function ReviewTable({ rows, onRowsChange }: ReviewTableProps) {
+export function ReviewTable({ rows, onRowsChange, query }: ReviewTableProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
   const [uploadingRowId, setUploadingRowId] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
+  const [previewPhoto, setPreviewPhoto] = useState<{ src: string; label: string } | null>(null);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(20);
 
@@ -66,6 +66,15 @@ export function ReviewTable({ rows, onRowsChange }: ReviewTableProps) {
   useEffect(() => {
     if (page > pageCount - 1) setPage(Math.max(0, pageCount - 1));
   }, [page, pageCount]);
+
+  useEffect(() => {
+    if (!previewPhoto) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setPreviewPhoto(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [previewPhoto]);
 
   const updateRow = (id: string, field: keyof OcrRow, value: string) => {
     onRowsChange(rows.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
@@ -136,32 +145,6 @@ export function ReviewTable({ rows, onRowsChange }: ReviewTableProps) {
       />
 
       <div className="space-y-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative flex-1 max-w-md">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={copy.table.searchPlaceholder}
-              className="h-10 pl-9"
-            />
-          </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>{copy.table.pageSize}</span>
-            <select
-              value={pageSize}
-              onChange={(e) => setPageSize(Number(e.target.value) as (typeof PAGE_SIZE_OPTIONS)[number])}
-              className="h-9 rounded-lg border border-border bg-background px-2 text-sm text-foreground"
-            >
-              {PAGE_SIZE_OPTIONS.map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
         <div className="rounded-lg border border-border/80 overflow-hidden bg-card">
           <div className="max-h-[min(28rem,60vh)] overflow-auto">
             <table className="w-full text-sm">
@@ -175,7 +158,8 @@ export function ReviewTable({ rows, onRowsChange }: ReviewTableProps) {
                       key={col}
                       className={cn(
                         "px-2 py-2.5 text-left text-xs font-medium text-muted-foreground whitespace-nowrap",
-                        col === "写真" && "w-28"
+                        col === "写真" && "w-36",
+                        col === "数量" && "w-16"
                       )}
                     >
                       {col}
@@ -213,14 +197,26 @@ export function ReviewTable({ rows, onRowsChange }: ReviewTableProps) {
                           </td>
                         ))}
 
-                        <td className="px-1 py-1">
-                          <div className="flex items-center gap-1.5 min-w-[7rem]">
+                        <td className="px-1 py-1 align-middle">
+                          <div className="flex items-center gap-1 min-w-[8.5rem]">
                             {row.photoUrl ? (
-                              <img
-                                src={row.photoUrl}
-                                alt=""
-                                className="h-9 w-9 shrink-0 rounded-md border border-border/60 object-cover"
-                              />
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setPreviewPhoto({
+                                    src: row.photoUrl!,
+                                    label: row.sourceFile || `row-${absoluteIndex + 1}`,
+                                  })
+                                }
+                                className="shrink-0 rounded-md border border-border/60 hover:border-lumen/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumen/30"
+                                aria-label={`${copy.table.photoAttached}: ${row.sourceFile || absoluteIndex + 1}`}
+                              >
+                                <img
+                                  src={row.photoUrl}
+                                  alt={row.sourceFile || `row-${absoluteIndex + 1}`}
+                                  className="h-9 w-9 rounded-md object-cover"
+                                />
+                              </button>
                             ) : null}
                             <Button
                               type="button"
@@ -285,43 +281,93 @@ export function ReviewTable({ rows, onRowsChange }: ReviewTableProps) {
             </table>
           </div>
 
-          <div className="flex flex-col gap-2 border-t border-border px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between">
-            <span className="text-xs text-muted-foreground">
-              {copy.table.range(from, to, filtered.length)}
-              {query.trim() && filtered.length !== rows.length
-                ? ` · ${copy.table.filteredOf(rows.length)}`
-                : ""}
-            </span>
-            <div className="flex items-center gap-1.5">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 px-2"
-                disabled={safePage <= 0}
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-              >
-                <ChevronLeft className="h-3.5 w-3.5" />
-                {copy.table.prev}
-              </Button>
-              <span className="min-w-[4.5rem] text-center text-xs tabular-nums text-muted-foreground">
-                {safePage + 1} / {pageCount}
-              </span>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 px-2"
-                disabled={safePage >= pageCount - 1}
-                onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
-              >
-                {copy.table.next}
-                <ChevronRight className="h-3.5 w-3.5" />
-              </Button>
+          <div className="border-t border-border px-4 py-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex min-h-8 flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <span className="text-xs leading-none text-muted-foreground">
+                  {copy.table.range(from, to, filtered.length)}
+                  {query.trim() && filtered.length !== rows.length
+                    ? ` · ${copy.table.filteredOf(rows.length)}`
+                    : ""}
+                </span>
+                <span className="leading-none">{copy.table.pageSize}</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => setPageSize(Number(e.target.value) as (typeof PAGE_SIZE_OPTIONS)[number])}
+                  className="h-8 rounded-lg border border-border bg-background px-2 text-sm text-foreground"
+                >
+                  {PAGE_SIZE_OPTIONS.map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-2"
+                  disabled={safePage <= 0}
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                  {copy.table.prev}
+                </Button>
+                <span className="min-w-[4.5rem] text-center text-xs tabular-nums text-muted-foreground">
+                  {safePage + 1} / {pageCount}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-2"
+                  disabled={safePage >= pageCount - 1}
+                  onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+                >
+                  {copy.table.next}
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             </div>
           </div>
         </div>
       </div>
+      {previewPhoto && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={previewPhoto.label}
+          onClick={() => setPreviewPhoto(null)}
+        >
+          <div
+            className="max-h-[90vh] max-w-[90vw] overflow-hidden rounded-xl border border-border/70 bg-card shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-border/70 px-3 py-2">
+              <p className="max-w-[70vw] truncate text-xs text-muted-foreground">{previewPhoto.label}</p>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => setPreviewPhoto(null)}
+              >
+                Close
+              </Button>
+            </div>
+            <div className="max-h-[calc(90vh-2.5rem)] overflow-auto bg-black/20">
+              <img
+                src={previewPhoto.src}
+                alt={previewPhoto.label}
+                className="h-auto max-h-[calc(90vh-3rem)] w-auto max-w-[90vw] object-contain"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

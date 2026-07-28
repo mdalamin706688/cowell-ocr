@@ -5,6 +5,7 @@ import {
   writeLastRootFolder,
 } from "./drive-root-folder";
 import {
+  buildRowPhotoFileName,
   buildSpreadsheetDriveName,
   sanitizeProjectFolderName,
 } from "./survey-process-name";
@@ -27,6 +28,24 @@ export interface SheetsExportResult {
   parentFolderId?: string;
   parentFolderUrl?: string;
   parentFolderName?: string;
+}
+
+export interface SurveyDriveStaging {
+  processFolderId: string;
+  processFolderUrl: string;
+  sourceFolderId: string;
+  sourceCount: number;
+}
+
+export interface StageSurveySourceOptions {
+  accessToken: string;
+  projectName?: string;
+  /** @deprecated Use projectName */
+  title?: string;
+  rootFolderName?: string;
+  folderId?: string | null;
+  sourceFiles?: DriveSourceFile[];
+  onProgress?: (done: number, total: number) => void;
 }
 
 export interface DriveSourceFile {
@@ -68,8 +87,12 @@ export interface SheetsExportOptions {
   title?: string;
   /** Root folder name under My Drive (default JBC-COWELL) */
   rootFolderName?: string;
-  /** Original files uploaded by the user (saved in the main folder) */
+  /** Original files uploaded by the user (saved under 元ファイル/) */
   sourceFiles?: DriveSourceFile[];
+  /** Reuse a survey folder created before OCR (元ファイル already uploaded). */
+  existingProcessFolderId?: string;
+  /** Skip uploading source files when they were staged before OCR. */
+  skipSourceUpload?: boolean;
   /**
    * Optional known id for the root folder. Verified before use.
    * If missing/invalid, app finds or creates the named root under My Drive.
@@ -82,6 +105,7 @@ export interface SheetsExportOptions {
 const PHOTO_COLUMN_INDEX = SURVEY_COLUMNS.indexOf("写真");
 const SHEET_TAB_TITLE = "現調データ";
 const PHOTO_FOLDER_NAME = "画像";
+const SOURCE_FOLDER_NAME = "元ファイル";
 const DRIVE_FOLDER_MIME = "application/vnd.google-apps.folder";
 const DRIVE_SHEET_MIME = "application/vnd.google-apps.spreadsheet";
 const PARENT_FOLDER_CACHE_KEY = "cowell_drive_jbc_folder_id";
@@ -131,11 +155,14 @@ function sanitizeDriveFileName(name: string): string {
   return base.slice(0, 200);
 }
 
-function resolveProjectName(options: SheetsExportOptions): string {
+function resolveProjectName(options: {
+  projectName?: string;
+  title?: string;
+}): string {
   return sanitizeProjectFolderName(options.projectName ?? options.title);
 }
 
-function resolveRootFolderName(options: SheetsExportOptions): string {
+function resolveRootFolderName(options: { rootFolderName?: string }): string {
   return sanitizeRootFolderName(options.rootFolderName || DRIVE_PARENT_FOLDER_NAME);
 }
 
@@ -597,18 +624,51 @@ async function createProcessFolder(
   return folderId;
 }
 
+async function findOrCreateChildFolder(
+  accessToken: string,
+  parentFolderId: string,
+  folderName: string
+): Promise<string> {
+  const q = [
+    `name = '${escapeDriveQueryValue(folderName)}'`,
+    `'${parentFolderId}' in parents`,
+    `mimeType = '${DRIVE_FOLDER_MIME}'`,
+    "trashed = false",
+  ].join(" and ");
+
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&pageSize=5&fields=files(id,name)&q=${encodeURIComponent(q)}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (res.ok) {
+    const data = await res.json();
+    const files = (data.files || []) as Array<{ id: string; name: string }>;
+    const match = files.find((f) => f.name === folderName);
+    if (match?.id) return match.id;
+  }
+
+  const folderId = await createDriveFile(
+    accessToken,
+    folderName,
+    DRIVE_FOLDER_MIME,
+    parentFolderId
+  );
+  await ensureExclusiveParent(accessToken, folderId, parentFolderId);
+  return folderId;
+}
+
 async function createPhotoSubfolder(
   accessToken: string,
   processFolderId: string
 ): Promise<string> {
-  const folderId = await createDriveFile(
-    accessToken,
-    PHOTO_FOLDER_NAME,
-    DRIVE_FOLDER_MIME,
-    processFolderId
-  );
-  await ensureExclusiveParent(accessToken, folderId, processFolderId);
-  return folderId;
+  return findOrCreateChildFolder(accessToken, processFolderId, PHOTO_FOLDER_NAME);
+}
+
+async function createSourceSubfolder(
+  accessToken: string,
+  processFolderId: string
+): Promise<string> {
+  return findOrCreateChildFolder(accessToken, processFolderId, SOURCE_FOLDER_NAME);
 }
 
 async function createResultSpreadsheet(
@@ -744,7 +804,7 @@ async function uploadPhotoToDrive(
 async function uploadSourceFilesToDrive(
   accessToken: string,
   files: DriveSourceFile[],
-  processFolderId: string,
+  sourceFolderId: string,
   onItem?: (done: number, total: number) => void
 ): Promise<number> {
   if (!files.length) return 0;
@@ -773,7 +833,7 @@ async function uploadSourceFilesToDrive(
       file.base64,
       file.mimeType,
       fileName,
-      processFolderId,
+      sourceFolderId,
       { errorLabel: "元ファイルのアップロードに失敗しました" }
     );
     count++;
@@ -809,7 +869,7 @@ async function attachRowPhotos(
       accessToken,
       row.photoBase64!,
       row.photoMimeType!,
-      `1_row_${String(sheetRow - 1).padStart(3, "0")}.jpg`,
+      buildRowPhotoFileName(sheetRow - 1),
       photoFolderId
     );
     const cell = `${columnLetter(PHOTO_COLUMN_INDEX)}${sheetRow}`;
@@ -873,6 +933,52 @@ async function attachRowPhotos(
   return photoRows.length;
 }
 
+/** Create the survey folder and upload originals to 元ファイル/ before OCR. */
+export async function stageSurveySourceFiles(
+  options: StageSurveySourceOptions
+): Promise<SurveyDriveStaging> {
+  const { accessToken, sourceFiles, folderId, onProgress } = options;
+  const projectFolderName = resolveProjectName(options);
+  const rootFolderName = resolveRootFolderName(options);
+  const valid = sourceFiles?.filter((f) => f.base64?.trim()) ?? [];
+  if (!valid.length) {
+    throw new Error("アップロードする元ファイルがありません");
+  }
+
+  let parent = await ensureParentFolder(accessToken, rootFolderName, folderId);
+  if (!(await getParentFolderIfValid(accessToken, parent.id, rootFolderName))) {
+    clearCachedParentFolderId();
+    parent = await ensureParentFolder(accessToken, rootFolderName, folderId);
+  }
+  if (!parent?.id) {
+    throw new Error("ルートフォルダを作成できませんでした");
+  }
+
+  const processFolderId = await createProcessFolder(
+    accessToken,
+    projectFolderName,
+    parent.id,
+    parent.name
+  );
+  const sourceFolderId = await createSourceSubfolder(accessToken, processFolderId);
+  const sourceCount = await uploadSourceFilesToDrive(
+    accessToken,
+    valid,
+    sourceFolderId,
+    onProgress
+  );
+
+  await ensureExclusiveParent(accessToken, sourceFolderId, processFolderId);
+  await ensureExclusiveParent(accessToken, processFolderId, parent.id);
+
+  return {
+    processFolderId,
+    processFolderUrl: driveFolderUrl(processFolderId),
+    sourceFolderId,
+    sourceCount,
+  };
+}
+
 async function touchSpreadsheetFile(
   accessToken: string,
   spreadsheetId: string
@@ -892,13 +998,22 @@ async function touchSpreadsheetFile(
 async function exportRowsWithAccessTokenUnlocked(
   options: SheetsExportOptions
 ): Promise<SheetsExportResult> {
-  const { accessToken, rows, folderId, sourceFiles, onProgress } = options;
+  const {
+    accessToken,
+    rows,
+    folderId,
+    sourceFiles,
+    existingProcessFolderId,
+    skipSourceUpload,
+    onProgress,
+  } = options;
   const headers = authHeaders(accessToken);
   const projectFolderName = resolveProjectName(options);
   const rootFolderName = resolveRootFolderName(options);
   const spreadsheetName = buildSpreadsheetDriveName(projectFolderName);
   const photoTotal = countPhotoRows(rows);
   const sourceTotal = sourceFiles?.filter((f) => f.base64?.trim()).length ?? 0;
+  const shouldUploadSources = sourceTotal > 0 && !skipSourceUpload && Boolean(sourceFiles?.length);
 
   emitProgress(onProgress, 0, "folders");
 
@@ -912,16 +1027,45 @@ async function exportRowsWithAccessTokenUnlocked(
   }
   emitProgress(onProgress, 10, "folders");
 
-  const processFolderId = await createProcessFolder(
-    accessToken,
-    projectFolderName,
-    parent.id,
-    parent.name
-  );
+  let processFolderId = existingProcessFolderId?.trim();
+  if (processFolderId) {
+    const nested = await fileAppearsInFolder(accessToken, processFolderId, parent.id);
+    if (!nested) processFolderId = undefined;
+  }
+
+  if (!processFolderId) {
+    processFolderId = await createProcessFolder(
+      accessToken,
+      projectFolderName,
+      parent.id,
+      parent.name
+    );
+  }
   emitProgress(onProgress, 15, "folders");
 
+  if (shouldUploadSources) {
+    emitProgress(onProgress, 16, "sources", `0 / ${sourceTotal}`);
+    const sourceFolderId = await createSourceSubfolder(accessToken, processFolderId);
+    await uploadSourceFilesToDrive(
+      accessToken,
+      sourceFiles!,
+      sourceFolderId,
+      (done, total) => {
+        emitProgress(
+          onProgress,
+          rangePercent(16, 28, done / total),
+          "sources",
+          `${done} / ${total}`
+        );
+      }
+    );
+    await ensureExclusiveParent(accessToken, sourceFolderId, processFolderId);
+    await ensureExclusiveParent(accessToken, processFolderId, parent.id);
+  }
+  emitProgress(onProgress, shouldUploadSources ? 28 : 20, "spreadsheet");
+
   const photoFolderId = await createPhotoSubfolder(accessToken, processFolderId);
-  emitProgress(onProgress, 20, "spreadsheet");
+  emitProgress(onProgress, shouldUploadSources ? 30 : 22, "spreadsheet");
 
   const spreadsheetId = await createResultSpreadsheet(
     accessToken,
@@ -965,26 +1109,7 @@ async function exportRowsWithAccessTokenUnlocked(
     await ensureExclusiveParent(accessToken, photoFolderId, processFolderId);
     await ensureExclusiveParent(accessToken, processFolderId, parent.id);
   }
-  emitProgress(onProgress, 75, photoTotal > 0 ? "photos" : "sources");
-
-  if (sourceTotal > 0 && sourceFiles?.length) {
-    emitProgress(onProgress, 76, "sources", `0 / ${sourceTotal}`);
-    await uploadSourceFilesToDrive(
-      accessToken,
-      sourceFiles,
-      processFolderId,
-      (done, total) => {
-        emitProgress(
-          onProgress,
-          rangePercent(76, 92, done / total),
-          "sources",
-          `${done} / ${total}`
-        );
-      }
-    );
-    await ensureExclusiveParent(accessToken, processFolderId, parent.id);
-  }
-  emitProgress(onProgress, 92, "finishing");
+  emitProgress(onProgress, 75, photoTotal > 0 ? "photos" : "finishing");
 
   await touchSpreadsheetFile(accessToken, spreadsheetId);
 

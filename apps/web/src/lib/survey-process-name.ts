@@ -27,6 +27,11 @@ export function buildSpreadsheetDriveName(projectName?: string, date = new Date(
   return `${folder}_${stamp}`;
 }
 
+/** Drive photo file name for a spreadsheet data row (1-based). */
+export function buildRowPhotoFileName(rowNumber: number): string {
+  return `写真_${rowNumber}行目.jpg`;
+}
+
 /** UI preview of the Drive layout for one export. */
 export function buildDriveExportPreview(
   projectName?: string,
@@ -37,7 +42,7 @@ export function buildDriveExportPreview(
   const sheet = normalizeProjectNameInput(projectName)
     ? buildSpreadsheetDriveName(projectName)
     : "（シート）";
-  return `${root}/${folder}/（画像/, ${sheet}, 元ファイル）`;
+  return `${root}/${folder}/（元ファイル/, 画像/, ${sheet}）`;
 }
 
 /** @deprecated Use sanitizeProjectFolderName */

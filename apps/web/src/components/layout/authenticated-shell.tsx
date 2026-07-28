@@ -34,34 +34,34 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
     let cancelled = false;
 
     async function loadSession() {
-      if (cognito) {
-        const session = await getCognitoSessionUser();
-        if (!session) {
-          router.replace("/login/");
-          return;
-        }
-        if (!cancelled) {
-          setClientSession(session);
-          setUser(session);
-          setReady(true);
-        }
-        return;
-      }
-
-      if (preview) {
-        const session = peekClientSession();
-        if (!session) {
-          router.replace("/login/");
-          return;
-        }
-        if (!cancelled) {
-          setUser(session);
-          setReady(true);
-        }
-        return;
-      }
-
       try {
+        if (cognito) {
+          const session = await getCognitoSessionUser();
+          if (!session) {
+            router.replace("/login/");
+            return;
+          }
+          if (!cancelled) {
+            setClientSession(session);
+            setUser(session);
+            setReady(true);
+          }
+          return;
+        }
+
+        if (preview) {
+          const session = peekClientSession();
+          if (!session) {
+            router.replace("/login/");
+            return;
+          }
+          if (!cancelled) {
+            setUser(session);
+            setReady(true);
+          }
+          return;
+        }
+
         const res = await fetch("/api/auth/session", {
           headers: { Accept: "application/json" },
           cache: "no-store",

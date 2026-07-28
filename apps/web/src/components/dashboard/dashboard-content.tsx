@@ -15,15 +15,18 @@ import { TransitionLink } from "@/components/ui/transition-link";
 import { ContentSkeleton } from "@/components/layout/content-skeleton";
 import { StaggerItem, StaggerReveal } from "@/components/motion/stagger-reveal";
 import { copy } from "@/lib/copy";
+import { formatUserDisplayName } from "@/lib/client-auth";
 
 interface DashboardContentProps {
   userName?: string;
+  userEmail?: string;
 }
 
 const workflowIcons = [Upload, ScanLine, Table2, FileSpreadsheet];
 const capabilityIcons = [FileImage, ScanLine, Sheet];
 
-export function DashboardContent({ userName = "管理者" }: DashboardContentProps) {
+export function DashboardContent({ userName = "管理者", userEmail }: DashboardContentProps) {
+  const displayName = formatUserDisplayName({ email: userEmail ?? "", name: userName });
   const today = new Date().toLocaleDateString("ja-JP", {
     year: "numeric",
     month: "long",
@@ -38,8 +41,9 @@ export function DashboardContent({ userName = "管理者" }: DashboardContentPro
         <div>
           <p className="text-label">{today}</p>
           <h1 className="text-title mt-1 text-2xl sm:text-[1.65rem]">
-            {copy.dashboard.greeting(userName)}
+            {copy.dashboard.greetingTitle}
           </h1>
+          <p className="mt-1 text-sm text-muted-foreground">{copy.dashboard.greetingUser(displayName)}</p>
         </div>
         <Button asChild size="lg" className="shadow-none">
           <TransitionLink href="/survey/new/">
@@ -56,7 +60,9 @@ export function DashboardContent({ userName = "管理者" }: DashboardContentPro
           <div className="max-w-lg">
             <p className="text-eyebrow text-lumen-glow/90">{copy.dashboard.eyebrow}</p>
             <h2 className="text-display mt-3 text-[1.65rem] sm:text-[1.85rem] text-white leading-snug">
-              {copy.dashboard.title}
+              {copy.dashboard.titleBefore}
+              <span className="font-bold text-lumen-glow">{copy.dashboard.titleHighlight}</span>
+              {copy.dashboard.titleAfter}
             </h2>
             <p className="mt-4 text-sm leading-relaxed text-white/55">
               {copy.dashboard.body}

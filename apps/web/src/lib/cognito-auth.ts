@@ -1,5 +1,5 @@
 import type { SessionUser } from "./client-auth";
-import { clearClientSession, setClientSession } from "./client-auth";
+import { clearClientSession, formatUserDisplayName, setClientSession } from "./client-auth";
 import {
   cognitoIdpEndpoint,
   getCognitoClientId,
@@ -89,8 +89,11 @@ function decodeJwtPayload(token: string): Record<string, unknown> {
 function userFromIdToken(idToken: string): SessionUser {
   const payload = decodeJwtPayload(idToken);
   const email = String(payload.email || payload["cognito:username"] || "");
-  const name = String(payload.name || payload.email || "ユーザー");
-  return { email, name };
+  const rawName = String(payload.name || "").trim();
+  return {
+    email,
+    name: formatUserDisplayName({ email, name: rawName || email }),
+  };
 }
 
 function persistTokens(result: CognitoAuthResult, previousRefresh?: string): CognitoTokens {

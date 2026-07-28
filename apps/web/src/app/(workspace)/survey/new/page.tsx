@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StepPanel } from "@/components/motion/step-panel";
 import { SurveyPageSkeleton } from "@/components/layout/content-skeleton";
 import { StaggerItem, StaggerReveal } from "@/components/motion/stagger-reveal";
@@ -16,7 +16,9 @@ import { ReviewTable } from "@/components/review/review-table";
 import { DriveDestinationPanel } from "@/components/survey/drive-destination-panel";
 import { ExportProgressPanel } from "@/components/survey/export-progress-panel";
 import { ProcessingPanel } from "@/components/survey/processing-panel";
+import { CollapsiblePanel } from "@/components/ui/collapsible-panel";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { TransitionLink } from "@/components/ui/transition-link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { copy } from "@/lib/copy";
@@ -27,13 +29,17 @@ import {
 } from "@/lib/drive-root-folder";
 import { isGoogleClientConfigured } from "@/lib/google-auth-client";
 import type { ExportProgressPhase } from "@/lib/sheets-export";
-import { surveyExport, surveyRunOcr, triggerCsvDownload } from "@/lib/survey-api";
+import {
+  surveyExport,
+  surveyRunOcr,
+  triggerCsvDownload,
+} from "@/lib/survey-api";
 import {
   buildSpreadsheetDriveName,
   normalizeProjectNameInput,
   sanitizeProjectFolderName,
 } from "@/lib/survey-process-name";
-import { formatCurrencyJpy, formatDuration } from "@/lib/utils";
+import { cn, formatCurrencyJpy, formatDuration } from "@/lib/utils";
 
 function SurveyWorkflow() {
   const {
@@ -46,6 +52,8 @@ function SurveyWorkflow() {
   const [exportProgress, setExportProgress] = useState(0);
   const [exportPhase, setExportPhase] = useState<ExportProgressPhase>("connecting");
   const [exportDetail, setExportDetail] = useState<string | undefined>();
+  const [reviewTab, setReviewTab] = useState<"table" | "raw">("table");
+  const [tableQuery, setTableQuery] = useState("");
   const [promptOpen, setPromptOpen] = useState(false);
   const [csvExport, setCsvExport] = useState(false);
   const [exportTitle, setExportTitle] = useState("");
@@ -62,6 +70,37 @@ function SurveyWorkflow() {
   });
   const exportLock = useRef(false);
   const progressTimer = useRef<number | null>(null);
+  const reviewSectionRef = useRef<HTMLDivElement | null>(null);
+  const compactTop = step === "review" || step === "export" || step === "complete";
+  const uploadedImageByName = useMemo(() => {
+    const map = new Map<string, { base64: string; mimeType: string; previewUrl?: string }>();
+    for (const file of files) {
+      if (!file.mimeType.startsWith("image/")) continue;
+      map.set(file.name.trim().toLowerCase(), {
+        base64: file.base64,
+        mimeType: file.mimeType,
+        previewUrl: file.previewUrl,
+      });
+    }
+    return map;
+  }, [files]);
+  const rawPreview = useMemo(() => {
+    if (!ocrResult?.rawText) return null;
+    const tsvLines = ocrResult.rawText
+      .split(/\r?\n/)
+      .filter((line) => line.includes("\t"));
+    if (!tsvLines.length) return null;
+
+    const matrix = tsvLines.map((line) => line.split("\t"));
+    const [header, ...body] = matrix;
+    const colCount = header.length;
+    return {
+      header,
+      body: body.map((row) =>
+        Array.from({ length: colCount }, (_, idx) => row[idx] ?? "")
+      ),
+    };
+  }, [ocrResult?.rawText]);
 
   const stopProgressTicker = useCallback(() => {
     if (progressTimer.current != null) {
@@ -69,6 +108,19 @@ function SurveyWorkflow() {
       progressTimer.current = null;
     }
   }, []);
+
+  const handleReviewTabChange = useCallback((next: "table" | "raw") => {
+    if (next === reviewTab) return;
+    setReviewTab(next);
+  }, [reviewTab]);
+
+  useEffect(() => {
+    if (reviewTab !== "table") return;
+    const el = reviewSectionRef.current;
+    if (!el) return;
+    // Ensure table header/card stays in view when switching back from RAW.
+    el.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "auto" });
+  }, [reviewTab]);
 
   const startProgressTicker = useCallback(() => {
     stopProgressTicker();
@@ -98,7 +150,22 @@ function SurveyWorkflow() {
       stopProgressTicker();
       setProgress(100);
       setOcrResult(result);
-      setRows(result.rows);
+      setRows(
+        result.rows.map((row) => {
+          const key = row.sourceFile?.trim().toLowerCase();
+          const matched = key ? uploadedImageByName.get(key) : undefined;
+          if (!matched) return row;
+          return {
+            ...row,
+            photoBase64: row.photoBase64 || matched.base64,
+            photoMimeType: row.photoMimeType || matched.mimeType,
+            photoUrl:
+              row.photoUrl ||
+              matched.previewUrl ||
+              `data:${matched.mimeType};base64,${matched.base64}`,
+          };
+        })
+      );
       // Brief beat so users see 100% before review
       await new Promise((r) => window.setTimeout(r, 350));
       setStep("review");
@@ -110,7 +177,17 @@ function SurveyWorkflow() {
     } finally {
       setProcessing(false);
     }
-  }, [files, prompt, setStep, setError, setOcrResult, setRows, startProgressTicker, stopProgressTicker]);
+  }, [
+    files,
+    prompt,
+    setStep,
+    setError,
+    setOcrResult,
+    setRows,
+    startProgressTicker,
+    stopProgressTicker,
+    uploadedImageByName,
+  ]);
 
   const exportToSheets = useCallback(async () => {
     if (exportLock.current) return;
@@ -159,7 +236,7 @@ function SurveyWorkflow() {
         setExportUrl("");
       } else {
         setCsvExport(false);
-        setExportUrl(result.spreadsheetUrl);
+        setExportUrl(result.processFolderUrl || result.spreadsheetUrl);
       }
       await new Promise((r) => window.setTimeout(r, 280));
       setStep("complete");
@@ -176,7 +253,7 @@ function SurveyWorkflow() {
     <>
       {step === "upload" && (
         <StepPanel className="space-y-4">
-          <div className="ui-card">
+          <div ref={reviewSectionRef} className="ui-card">
             <div className="ui-card-header"><p className="text-base font-medium">{copy.survey.files}</p></div>
             <div className="ui-card-body">
               <FileUploadZone files={files} onFilesChange={setFiles} quality={quality} onQualityChange={setQuality} />
@@ -193,9 +270,14 @@ function SurveyWorkflow() {
                 <p className="text-base font-medium">{copy.survey.prompt}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">{copy.survey.promptHint}</p>
               </div>
-              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${promptOpen ? "rotate-180" : ""}`} />
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 text-muted-foreground transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
+                  promptOpen && "rotate-180"
+                )}
+              />
             </button>
-            {promptOpen && (
+            <CollapsiblePanel open={promptOpen}>
               <div className="ui-card-body border-t border-border/60 pt-4">
                 <textarea
                   value={prompt}
@@ -204,7 +286,7 @@ function SurveyWorkflow() {
                   placeholder={DEFAULT_OCR_PROMPT}
                 />
               </div>
-            )}
+            </CollapsiblePanel>
           </div>
 
           <div className="flex justify-end pt-1">
@@ -226,17 +308,35 @@ function SurveyWorkflow() {
       )}
 
       {step === "review" && ocrResult && (
-        <StepPanel className="space-y-4">
-          <div className="flex flex-wrap gap-3">
+        <StepPanel className="space-y-3">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             {[
-              { label: copy.survey.usage.duration, value: formatDuration(ocrResult.usage.elapsedMs) },
-              { label: copy.survey.usage.tokens, value: ocrResult.usage.totalTokens.toLocaleString("ja-JP") },
-              { label: copy.survey.usage.cost, value: formatCurrencyJpy(ocrResult.usage.costJpy), highlight: true },
+              {
+                label: copy.survey.usage.duration,
+                value: formatDuration(ocrResult.usage.elapsedMs),
+                tone: "border-sky-300/70 bg-sky-50/60 text-sky-800",
+              },
+              {
+                label: copy.survey.usage.tokens,
+                value: ocrResult.usage.totalTokens.toLocaleString("ja-JP"),
+                tone: "border-violet-300/70 bg-violet-50/60 text-violet-800",
+              },
+              {
+                label: copy.survey.usage.cost,
+                value: formatCurrencyJpy(ocrResult.usage.costJpy),
+                tone: "border-amber-300/70 bg-amber-50/60 text-amber-800",
+              },
             ].map((stat) => (
-              <div key={stat.label} className="rounded-lg border border-border/70 bg-card px-4 py-2.5">
-                <p className="text-xs text-muted-foreground">{stat.label}</p>
-                <p className={`text-base font-semibold mt-0.5 ${stat.highlight ? "text-lumen" : ""}`}>{stat.value}</p>
-              </div>
+              <span
+                key={stat.label}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs leading-tight",
+                  stat.tone
+                )}
+              >
+                <span className="font-medium opacity-80">{stat.label}:</span>
+                <span className="font-semibold tabular-nums">{stat.value}</span>
+              </span>
             ))}
           </div>
           <DriveDestinationPanel value={destination} onChange={setDestination} />
@@ -247,14 +347,64 @@ function SurveyWorkflow() {
               <span className="text-label">{copy.survey.reviewRows(rows.length)}</span>
             </div>
             <div className="ui-card-body pt-3">
-              <Tabs defaultValue="table">
-                <TabsList className="mb-3">
-                  <TabsTrigger value="table">{copy.survey.tabTable}</TabsTrigger>
-                  <TabsTrigger value="raw">{copy.survey.tabRaw}</TabsTrigger>
-                </TabsList>
-                <TabsContent value="table"><ReviewTable rows={rows} onRowsChange={setRows} /></TabsContent>
-                <TabsContent value="raw">
-                  <pre className="rounded-lg border border-border bg-muted/20 p-3.5 text-xs font-mono text-muted-foreground overflow-x-auto whitespace-pre-wrap max-h-72">{ocrResult.rawText}</pre>
+              <Tabs value={reviewTab} onValueChange={(v) => handleReviewTabChange(v as "table" | "raw")}>
+                <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <TabsList>
+                    <TabsTrigger value="table">{copy.survey.tabTable}</TabsTrigger>
+                    <TabsTrigger value="raw">{copy.survey.tabRaw}</TabsTrigger>
+                  </TabsList>
+                  {reviewTab === "table" && (
+                    <Input
+                      value={tableQuery}
+                      onChange={(e) => setTableQuery(e.target.value)}
+                      placeholder={copy.table.searchPlaceholder}
+                      className="h-9 w-full sm:w-80"
+                    />
+                  )}
+                </div>
+                <TabsContent value="table" className="mt-0">
+                  <ReviewTable
+                    rows={rows}
+                    onRowsChange={setRows}
+                    query={tableQuery}
+                  />
+                </TabsContent>
+                <TabsContent value="raw" className="mt-0">
+                  <p className="mb-2 text-xs text-muted-foreground">{copy.survey.rawHint}</p>
+                  {rawPreview ? (
+                    <div className="max-h-72 overflow-auto rounded-lg border border-border bg-muted/20">
+                      <table className="min-w-full border-collapse text-xs">
+                        <thead>
+                          <tr className="border-b border-border bg-muted/40">
+                            {rawPreview.header.map((cell, idx) => (
+                              <th
+                                key={`raw-header-${idx}`}
+                                className="px-3 py-2 text-left font-semibold text-foreground whitespace-nowrap"
+                              >
+                                {cell}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rawPreview.body.map((row, rowIdx) => (
+                            <tr key={`raw-row-${rowIdx}`} className="border-b border-border/60 last:border-b-0">
+                              {row.map((cell, cellIdx) => (
+                                <td
+                                  key={`raw-cell-${rowIdx}-${cellIdx}`}
+                                  className="px-3 py-2 text-muted-foreground whitespace-nowrap"
+                                >
+                                  {cell}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <pre className="rounded-lg border border-border bg-muted/20 p-3.5 text-xs font-mono text-muted-foreground overflow-x-auto whitespace-pre-wrap max-h-72">{ocrResult.rawText}</pre>
+                  )}
                 </TabsContent>
               </Tabs>
             </div>
@@ -354,23 +504,39 @@ function SurveyWorkflow() {
       </StaggerItem>
 
       <StaggerItem>
-        <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent/80 text-lumen shadow-sm">
+        <div className={cn("flex items-start gap-4", compactTop && "gap-3")}>
+          <div
+            className={cn(
+              "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent/80 text-lumen shadow-sm",
+              compactTop && "h-9 w-9 rounded-lg"
+            )}
+          >
             <Sparkles className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-title text-xl sm:text-2xl">{copy.survey.title}</h1>
-            <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">{copy.survey.subtitle}</p>
+            <h1 className={cn("text-title text-xl sm:text-2xl", compactTop && "text-lg sm:text-xl")}>
+              {copy.survey.title}
+            </h1>
+            <p
+              className={cn(
+                "text-muted-foreground leading-snug",
+                compactTop ? "mt-0.5 text-xs" : "mt-1.5 text-sm leading-relaxed"
+              )}
+            >
+              {copy.survey.subtitle}
+            </p>
           </div>
         </div>
       </StaggerItem>
 
-      <StaggerItem>
-        <div className="copper-rule" />
-      </StaggerItem>
+      {!compactTop && (
+        <StaggerItem>
+          <div className="copper-rule" />
+        </StaggerItem>
+      )}
 
       <StaggerItem>
-        <StepIndicator current={step} />
+        <StepIndicator current={step} compact={compactTop} />
       </StaggerItem>
 
       {error && (
@@ -381,7 +547,7 @@ function SurveyWorkflow() {
         </StaggerItem>
       )}
 
-      <StaggerItem>{stepContent}</StaggerItem>
+      <StaggerItem className={cn(compactTop && "-mt-2")}>{stepContent}</StaggerItem>
     </StaggerReveal>
   );
 }

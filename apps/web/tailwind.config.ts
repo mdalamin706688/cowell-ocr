@@ -60,8 +60,8 @@ const config: Config = {
         "3xl": "1.25rem",
       },
       fontFamily: {
-        sans: ["var(--font-noto)", "Hiragino Sans", "sans-serif"],
-        display: ["var(--font-syne)", "var(--font-noto)", "sans-serif"],
+        sans: ["var(--font-inter)", "var(--font-noto)", "Hiragino Sans", "sans-serif"],
+        display: ["var(--font-inter)", "var(--font-noto)", "sans-serif"],
       },
       animation: {
         "fade-in": "fadeIn 0.5s cubic-bezier(0.22, 1, 0.36, 1)",

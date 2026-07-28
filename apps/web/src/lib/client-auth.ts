@@ -86,6 +86,22 @@ export function readClientSession(): SessionUser | null {
   return peekClientSession();
 }
 
+export function formatUserDisplayName(user: { email: string; name?: string }): string {
+  const rawName = user.name?.trim();
+  if (rawName && !rawName.includes("@")) return rawName;
+
+  const email = user.email?.trim();
+  if (!email) return "ユーザー";
+
+  const local = email.split("@")[0]?.trim();
+  if (!local) return "ユーザー";
+
+  const primary = local.split(/[._-]/)[0] ?? local;
+  if (!primary) return local;
+
+  return primary.charAt(0).toUpperCase() + primary.slice(1);
+}
+
 export function demoLogin(email: string, password: string): SessionUser | null {
   if (email === getDemoEmail() && password === getDemoPassword()) {
     return { email, name: "管理者" };

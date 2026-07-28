@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import { Syne, Noto_Sans_JP } from "next/font/google";
+import { Inter, Noto_Sans_JP } from "next/font/google";
 import { AppProviders } from "@/components/providers/app-providers";
 import "./globals.css";
 
-const syne = Syne({
+const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-syne",
-  weight: ["600", "700", "800"],
+  variable: "--font-inter",
+  weight: ["400", "500", "600", "700"],
 });
 
 const noto = Noto_Sans_JP({
@@ -50,7 +50,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href={appleHref} />
       </head>
       <body
-        className={`${syne.variable} ${noto.variable} font-sans antialiased`}
+        className={`${inter.variable} ${noto.variable} font-sans antialiased`}
         suppressHydrationWarning
       >
         <div className="grain" aria-hidden="true" />

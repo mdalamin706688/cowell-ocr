@@ -5,5 +5,5 @@ import { useWorkspaceSession } from "@/contexts/workspace-session";
 
 export default function DashboardPage() {
   const session = useWorkspaceSession();
-  return <DashboardContent userName={session.name} />;
+  return <DashboardContent userName={session.name} userEmail={session.email} />;
 }
