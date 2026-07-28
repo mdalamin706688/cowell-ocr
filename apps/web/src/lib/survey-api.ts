@@ -1,14 +1,17 @@
 import type { OcrResult, OcrRow } from "@cowell/shared";
 import { getBasePath, isPreviewEnvironment } from "./client-auth";
-import { rowsToTsv } from "./ocr";
-import { copy } from "./copy";
+import { writeLastRootFolder } from "./drive-root-folder";
 import {
   isGoogleClientConfigured,
-  requestGoogleSheetsAccessToken,
+  requireConnectedGoogleDrive,
 } from "./google-auth-client";
 import { runMockOcr } from "./mock-ocr";
+import { rowsToTsv } from "./ocr";
 import { isOcrApiConfigured, runRemoteOcr } from "./ocr-api";
-import { exportRowsWithAccessToken } from "./sheets-export";
+import {
+  exportRowsWithAccessToken,
+  type ExportProgressCallback,
+} from "./sheets-export";
 
 type ApiError = { error?: string };
 
@@ -28,12 +31,10 @@ export async function surveyRunOcr(
   prompt: string,
   files: Array<{ base64: string; mimeType: string; name: string }>
 ): Promise<OcrResult> {
-  // Prefer remote OCR API when configured (CloudFront + local)
   if (isOcrApiConfigured()) {
     return runRemoteOcr(prompt, files);
   }
 
-  // Static preview without API URL — demo OCR only
   if (isPreviewEnvironment()) {
     await new Promise((r) => setTimeout(r, 600));
     return runMockOcr(files);
@@ -79,49 +80,82 @@ export function triggerCsvDownload(rows: OcrRow[], title: string): void {
 
 export interface SurveyExportOptions {
   projectName: string;
+  rootFolderName?: string;
+  rootFolderId?: string | null;
+  googleAccountEmail?: string | null;
   sourceFiles?: Array<{ base64: string; mimeType: string; name: string }>;
+  onProgress?: ExportProgressCallback;
 }
 
+/**
+ * Export uses the already-connected Google session only.
+ * Account picker runs once in Drive保存先 — never again on export.
+ */
 export async function surveyExport(
   rows: OcrRow[],
   options: SurveyExportOptions
 ): Promise<SurveyExportResult> {
-  const { projectName, sourceFiles } = options;
+  const {
+    projectName,
+    sourceFiles,
+    rootFolderName,
+    rootFolderId,
+    googleAccountEmail,
+    onProgress,
+  } = options;
   const title = projectName.trim() || "現調";
 
-  if (isPreviewEnvironment()) {
-    // Static preview: prefer FE Google connect when client ID is set
-    if (isGoogleClientConfigured()) {
-      // Static preview: FE Google connect only — always nest under JBC-COWELL (ignore bad env ids)
-      const accessToken = await requestGoogleSheetsAccessToken();
-      const configured = process.env.NEXT_PUBLIC_GOOGLE_SHEETS_FOLDER_ID?.trim() || null;
-      const result = await exportRowsWithAccessToken({
-        accessToken,
-        rows,
-        projectName: title,
-        sourceFiles,
-        folderId: configured,
-      });
-      return {
-        spreadsheetUrl: result.spreadsheetUrl,
-        rowCount: result.rowCount,
-        photoCount: result.photoCount,
-      };
+  if (isGoogleClientConfigured()) {
+    // No account picker here — session must already exist
+    const account = requireConnectedGoogleDrive();
+
+    const sameAccount =
+      Boolean(googleAccountEmail) &&
+      googleAccountEmail!.trim().toLowerCase() === account.email.toLowerCase();
+    const safeFolderId = sameAccount ? rootFolderId ?? null : null;
+
+    if (rootFolderName) {
+      writeLastRootFolder(
+        { name: rootFolderName, id: safeFolderId || undefined },
+        account.email
+      );
     }
+
+    onProgress?.({ percent: 0, phase: "folders" });
+    const result = await exportRowsWithAccessToken({
+      accessToken: account.accessToken,
+      rows,
+      projectName: title,
+      rootFolderName,
+      sourceFiles,
+      folderId: safeFolderId,
+      onProgress,
+    });
+    return {
+      spreadsheetUrl: result.spreadsheetUrl,
+      rowCount: result.rowCount,
+      photoCount: result.photoCount,
+    };
+  }
+
+  if (isPreviewEnvironment()) {
+    onProgress?.({ percent: 40, phase: "spreadsheet" });
     downloadCsv(rows, title);
+    onProgress?.({ percent: 100, phase: "finishing" });
     return { spreadsheetUrl: "", rowCount: rows.length, downloadOnly: true };
   }
 
-  // Full app: FE Google OAuth first, then server (service account) fallback
-  let accessToken: string | undefined;
-  if (isGoogleClientConfigured()) {
-    accessToken = await requestGoogleSheetsAccessToken();
-  }
-
+  onProgress?.({ percent: 20, phase: "spreadsheet" });
   const res = await fetch(`${getBasePath()}/api/sheets/export`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ rows, projectName: title, sourceFiles, accessToken }),
+    body: JSON.stringify({
+      rows,
+      projectName: title,
+      rootFolderName,
+      folderId: rootFolderId,
+      sourceFiles,
+    }),
   });
 
   if (!res.ok) {
@@ -134,6 +168,7 @@ export async function surveyExport(
     rowCount: number;
     photoCount?: number;
   }>(res);
+  onProgress?.({ percent: 100, phase: "finishing" });
   return {
     spreadsheetUrl: data.spreadsheetUrl,
     rowCount: data.rowCount,

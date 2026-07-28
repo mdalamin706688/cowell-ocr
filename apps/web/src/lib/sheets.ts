@@ -58,9 +58,17 @@ async function getGoogleAccessToken(email: string, key: string): Promise<string>
 export async function exportToGoogleSheets(
   rows: OcrRow[],
   projectName: string,
-  options?: { accessToken?: string; sourceFiles?: DriveSourceFile[] }
+  options?: {
+    accessToken?: string;
+    sourceFiles?: DriveSourceFile[];
+    rootFolderName?: string;
+    folderId?: string | null;
+  }
 ): Promise<SheetsExportResult> {
-  const folderId = process.env.GOOGLE_SHEETS_FOLDER_ID || null;
+  const folderId =
+    options?.folderId !== undefined
+      ? options.folderId
+      : process.env.GOOGLE_SHEETS_FOLDER_ID || null;
 
   // Prefer user token from FE Google connect
   if (options?.accessToken) {
@@ -68,6 +76,7 @@ export async function exportToGoogleSheets(
       accessToken: options.accessToken,
       rows,
       projectName,
+      rootFolderName: options.rootFolderName,
       sourceFiles: options.sourceFiles,
       folderId,
     });
@@ -95,6 +104,7 @@ export async function exportToGoogleSheets(
     accessToken: token,
     rows,
     projectName,
+    rootFolderName: options?.rootFolderName,
     sourceFiles: options?.sourceFiles,
     folderId,
   });

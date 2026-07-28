@@ -14,13 +14,16 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { rows, projectName, title, sourceFiles, accessToken } = body as {
-      rows: OcrRow[];
-      projectName?: string;
-      title?: string;
-      sourceFiles?: DriveSourceFile[];
-      accessToken?: string;
-    };
+    const { rows, projectName, title, sourceFiles, accessToken, rootFolderName, folderId } =
+      body as {
+        rows: OcrRow[];
+        projectName?: string;
+        title?: string;
+        sourceFiles?: DriveSourceFile[];
+        accessToken?: string;
+        rootFolderName?: string;
+        folderId?: string | null;
+      };
 
     if (!rows?.length) {
       return NextResponse.json({ error: "エクスポートするデータがありません" }, { status: 400 });
@@ -29,6 +32,8 @@ export async function POST(request: NextRequest) {
     const result = await exportToGoogleSheets(rows, projectName || title || "現調", {
       accessToken: accessToken?.trim() || undefined,
       sourceFiles,
+      rootFolderName,
+      folderId: folderId ?? null,
     });
     return NextResponse.json(result);
   } catch (err) {

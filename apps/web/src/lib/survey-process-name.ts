@@ -1,13 +1,19 @@
+import { normalizeFolderNameInput, sanitizeRootFolderName } from "./drive-root-folder";
+
 const pad = (n: number) => String(n).padStart(2, "0");
 
-/** Main Drive folder name = project name (invalid chars stripped). */
-export function sanitizeProjectFolderName(projectName?: string): string {
-  const name = (projectName ?? "")
+/** Strip invalid chars; empty stays empty (for form validation). */
+export function normalizeProjectNameInput(projectName?: string): string {
+  return (projectName ?? "")
     .trim()
     .replace(/[\\/:*?"<>|]/g, "")
     .trim()
     .slice(0, 120);
-  return name || "現調";
+}
+
+/** Drive folder name = project name (fallback only when exporting without a name). */
+export function sanitizeProjectFolderName(projectName?: string): string {
+  return normalizeProjectNameInput(projectName) || "現調";
 }
 
 /** Spreadsheet file name: {project name}_yyyymmdd */
@@ -22,13 +28,21 @@ export function buildSpreadsheetDriveName(projectName?: string, date = new Date(
 }
 
 /** UI preview of the Drive layout for one export. */
-export function buildDriveExportPreview(projectName?: string): string {
-  const folder = sanitizeProjectFolderName(projectName);
-  const sheet = buildSpreadsheetDriveName(projectName);
-  return `${folder}/（画像/, ${sheet}, 元ファイル）`;
+export function buildDriveExportPreview(
+  projectName?: string,
+  rootFolderName?: string
+): string {
+  const root = normalizeFolderNameInput(rootFolderName) || "（ルート未選択）";
+  const folder = normalizeProjectNameInput(projectName) || "（案件名）";
+  const sheet = normalizeProjectNameInput(projectName)
+    ? buildSpreadsheetDriveName(projectName)
+    : "（シート）";
+  return `${root}/${folder}/（画像/, ${sheet}, 元ファイル）`;
 }
 
-/** @deprecated Use sanitizeProjectFolderName — kept for CSV download titles */
+/** @deprecated Use sanitizeProjectFolderName */
 export function buildSurveyProcessName(projectName?: string): string {
   return sanitizeProjectFolderName(projectName);
 }
+
+export { sanitizeRootFolderName };

@@ -13,18 +13,24 @@ import { SurveyProvider, useSurvey } from "@/contexts/survey-context";
 import { StepIndicator } from "@/components/workflow/step-indicator";
 import { FileUploadZone } from "@/components/upload/file-upload-zone";
 import { ReviewTable } from "@/components/review/review-table";
+import { DriveDestinationPanel } from "@/components/survey/drive-destination-panel";
+import { ExportProgressPanel } from "@/components/survey/export-progress-panel";
 import { ProcessingPanel } from "@/components/survey/processing-panel";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { TransitionLink } from "@/components/ui/transition-link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { copy } from "@/lib/copy";
 import { isPreviewEnvironment } from "@/lib/client-auth";
+import {
+  normalizeFolderNameInput,
+  writeLastRootFolder,
+} from "@/lib/drive-root-folder";
 import { isGoogleClientConfigured } from "@/lib/google-auth-client";
+import type { ExportProgressPhase } from "@/lib/sheets-export";
 import { surveyExport, surveyRunOcr, triggerCsvDownload } from "@/lib/survey-api";
 import {
-  buildDriveExportPreview,
   buildSpreadsheetDriveName,
+  normalizeProjectNameInput,
   sanitizeProjectFolderName,
 } from "@/lib/survey-process-name";
 import { formatCurrencyJpy, formatDuration } from "@/lib/utils";
@@ -37,11 +43,23 @@ function SurveyWorkflow() {
   const [processing, setProcessing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [exportProgress, setExportProgress] = useState(0);
+  const [exportPhase, setExportPhase] = useState<ExportProgressPhase>("connecting");
+  const [exportDetail, setExportDetail] = useState<string | undefined>();
   const [promptOpen, setPromptOpen] = useState(false);
-  const [projectNameOpen, setProjectNameOpen] = useState(false);
   const [csvExport, setCsvExport] = useState(false);
   const [exportTitle, setExportTitle] = useState("");
-  const [projectName, setProjectName] = useState("");
+  const [destination, setDestination] = useState<{
+    rootFolderName: string;
+    rootFolderId?: string;
+    projectName: string;
+    googleAccountEmail?: string;
+    isValid: boolean;
+  }>({
+    rootFolderName: "",
+    projectName: "",
+    isValid: false,
+  });
   const exportLock = useRef(false);
   const progressTimer = useRef<number | null>(null);
 
@@ -100,17 +118,42 @@ function SurveyWorkflow() {
     setExporting(true);
     setError(null);
     setStep("export");
-    const name = sanitizeProjectFolderName(projectName);
-    setExportTitle(buildSpreadsheetDriveName(projectName));
+    setExportProgress(0);
+    setExportPhase("folders");
+    setExportDetail(undefined);
+    const name = sanitizeProjectFolderName(destination.projectName);
+    const rootName = normalizeFolderNameInput(destination.rootFolderName);
+    if (!rootName || !normalizeProjectNameInput(destination.projectName) || !destination.isValid) {
+      setError(copy.survey.destinationInvalid);
+      setExporting(false);
+      exportLock.current = false;
+      setStep("review");
+      return;
+    }
+    writeLastRootFolder(
+      { name: rootName, id: destination.rootFolderId },
+      destination.googleAccountEmail
+    );
+    setExportTitle(buildSpreadsheetDriveName(destination.projectName));
     try {
       const result = await surveyExport(rows, {
         projectName: name,
+        rootFolderName: rootName,
+        rootFolderId: destination.rootFolderId,
+        googleAccountEmail: destination.googleAccountEmail,
         sourceFiles: files.map((f) => ({
           base64: f.base64,
           mimeType: f.mimeType,
           name: f.name,
         })),
+        onProgress: (event) => {
+          setExportProgress(event.percent);
+          setExportPhase(event.phase);
+          setExportDetail(event.detail);
+        },
       });
+      setExportProgress(100);
+      setExportPhase("finishing");
       if (result.downloadOnly) {
         setCsvExport(true);
         setExportUrl("");
@@ -118,6 +161,7 @@ function SurveyWorkflow() {
         setCsvExport(false);
         setExportUrl(result.spreadsheetUrl);
       }
+      await new Promise((r) => window.setTimeout(r, 280));
       setStep("complete");
     } catch (e) {
       setError(e instanceof Error ? e.message : copy.errors.exportFailed);
@@ -126,7 +170,7 @@ function SurveyWorkflow() {
       setExporting(false);
       exportLock.current = false;
     }
-  }, [rows, projectName, files, setStep, setError, setExportUrl]);
+  }, [rows, destination, files, setStep, setError, setExportUrl]);
 
   const stepContent = (
     <>
@@ -195,33 +239,7 @@ function SurveyWorkflow() {
               </div>
             ))}
           </div>
-          <div className="ui-card overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setProjectNameOpen((v) => !v)}
-              className="ui-card-header w-full text-left hover:bg-muted/20 transition-colors"
-            >
-              <div>
-                <p className="text-base font-medium">{copy.survey.projectName}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{copy.survey.projectNameHint}</p>
-              </div>
-              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${projectNameOpen ? "rotate-180" : ""}`} />
-            </button>
-            {projectNameOpen && (
-              <div className="ui-card-body border-t border-border/60 pt-4 space-y-1.5">
-                <Input
-                  id="project-name"
-                  value={projectName}
-                  onChange={(e) => setProjectName(e.target.value)}
-                  placeholder={copy.survey.projectNamePlaceholder}
-                  className="h-10"
-                />
-                <p className="text-xs text-muted-foreground font-mono">
-                  → {buildDriveExportPreview(projectName)}
-                </p>
-              </div>
-            )}
-          </div>
+          <DriveDestinationPanel value={destination} onChange={setDestination} />
 
           <div className="ui-card">
             <div className="ui-card-header">
@@ -245,16 +263,22 @@ function SurveyWorkflow() {
             <Button variant="outline" size="sm" onClick={() => setStep("upload")}>
               <ArrowLeft className="h-3.5 w-3.5" />戻る
             </Button>
-            <Button onClick={exportToSheets} disabled={!rows.length || exporting} size="lg">
+            <Button
+              onClick={exportToSheets}
+              disabled={
+                !rows.length ||
+                exporting ||
+                (isGoogleClientConfigured() && !destination.isValid)
+              }
+              size="lg"
+            >
               {exporting ? (
                 <><Loader2 className="h-4 w-4 animate-spin" />{copy.survey.exporting}</>
               ) : (
                 <>
                   {isPreviewEnvironment() && !isGoogleClientConfigured()
                     ? copy.survey.exportCsv
-                    : isGoogleClientConfigured()
-                      ? copy.survey.connectGoogle
-                      : copy.survey.export}
+                    : copy.survey.export}
                   <ArrowRight className="h-4 w-4" />
                 </>
               )}
@@ -264,15 +288,13 @@ function SurveyWorkflow() {
       )}
 
       {step === "export" && (
-        <StepPanel className="ui-card">
-          <div className="ui-card-body flex flex-col items-center gap-3 py-16">
-            <Loader2 className="h-7 w-7 animate-spin text-lumen" />
-            <p className="text-sm font-medium">
-              {isGoogleClientConfigured()
-                ? copy.survey.connectingGoogle
-                : copy.survey.exportProgress}
-            </p>
-          </div>
+        <StepPanel>
+          <ExportProgressPanel
+            progress={exportProgress}
+            phase={exportPhase}
+            detail={exportDetail}
+            destinationPath={`${normalizeFolderNameInput(destination.rootFolderName) || "—"}/${normalizeProjectNameInput(destination.projectName) || "—"}`}
+          />
         </StepPanel>
       )}
 
@@ -300,7 +322,17 @@ function SurveyWorkflow() {
                   </a>
                 </Button>
               ) : null}
-              <Button variant="outline" onClick={() => { reset(); setCsvExport(false); setProjectName(""); setStep("upload"); }}>
+              <Button variant="outline" onClick={() => {
+                reset();
+                setCsvExport(false);
+                setDestination({
+                  rootFolderName: "",
+                  projectName: "",
+                  googleAccountEmail: destination.googleAccountEmail,
+                  isValid: false,
+                });
+                setStep("upload");
+              }}>
                 {copy.survey.newSurvey}
               </Button>
             </div>
