@@ -4,15 +4,15 @@
 
 | Env | Example |
 |-----|---------|
-| `NEXT_PUBLIC_COGNITO_REGION` | `ap-south-1` (Mumbai — matches BE/dev server) |
-| `NEXT_PUBLIC_COGNITO_USER_POOL_ID` | `ap-south-1_xxxxx` |
+| `NEXT_PUBLIC_COGNITO_REGION` | `ap-northeast-1` (Tokyo) |
+| `NEXT_PUBLIC_COGNITO_USER_POOL_ID` | `ap-northeast-1_xxxxx` |
 | `NEXT_PUBLIC_COGNITO_CLIENT_ID` | app client id (public, no secret) |
 
-Current Mumbai pool (FE):
+Current Tokyo pool (FE):
 
-- Region: `ap-south-1`
-- User Pool ID: `ap-south-1_eahdXMkcm`
-- App Client ID: `6v1fhhjdpv74n9skijfs41lfqm`
+- Region: `ap-northeast-1`
+- User Pool ID: `ap-northeast-1_PSwT62Lds`
+- App Client ID: `2frh9fsa5srig3jed2v4seh45a`
 
 ## App client setting (required)
 
