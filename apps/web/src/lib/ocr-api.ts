@@ -98,7 +98,7 @@ function friendlyOcrError(raw: string, status?: number): string {
 
 /**
  * Call remote Cowell OCR API with multipart upload.
- * Docs: https://ajewqlxzj5dzpkclaozimdr42m0jceix.lambda-url.ap-south-1.on.aws/docs
+ * Docs: https://4gzkbzzubqjzwcx7mf3xcjpb7i0rdssf.lambda-url.ap-northeast-1.on.aws/docs
  */
 export async function runRemoteOcr(
   prompt: string,
