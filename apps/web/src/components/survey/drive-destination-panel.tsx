@@ -85,24 +85,39 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
     [options]
   );
 
-  const pushValue = useCallback(
-    (patch: Partial<DriveDestinationValue>) => {
-      onChange({
-        ...value,
-        ...patch,
-        isValid: false, // recalculated by effect
-      });
+  const computeIsValid = useCallback(
+    (next: DriveDestinationValue, checking = checkingUnique) => {
+      const root = normalizeFolderNameInput(next.rootFolderName);
+      const project = normalizeProjectNameInput(next.projectName);
+      const duplicate =
+        Boolean(project) &&
+        childFolderNames.some((n) => n.toLowerCase() === project.toLowerCase());
+      return (
+        Boolean(accountEmail) &&
+        Boolean(root) &&
+        Boolean(project) &&
+        !duplicate &&
+        !checking
+      );
     },
-    [onChange, value]
+    [accountEmail, childFolderNames, checkingUnique]
   );
 
-  // Keep isValid in sync with local validation state
+  const pushValue = useCallback(
+    (patch: Partial<DriveDestinationValue>) => {
+      const next = { ...value, ...patch };
+      onChange({ ...next, isValid: computeIsValid(next) });
+    },
+    [computeIsValid, onChange, value]
+  );
+
+  // Keep isValid in sync when async checks finish (folder list / uniqueness)
   useEffect(() => {
     if (value.isValid !== isValid) {
       onChange({ ...value, isValid });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- sync validity only
-  }, [isValid]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sync when derived validity changes
+  }, [isValid, value.projectName, value.rootFolderName, value.rootFolderId]);
 
   const loadChildFolders = useCallback(async (parentId: string, accessToken: string) => {
     const seq = ++uniquenessSeq.current;
