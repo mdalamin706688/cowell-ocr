@@ -39,7 +39,7 @@ import {
   normalizeProjectNameInput,
   sanitizeProjectFolderName,
 } from "@/lib/survey-process-name";
-import { cn, formatCurrencyJpy, formatDuration } from "@/lib/utils";
+import { cn, formatCurrencyUsd, formatDuration } from "@/lib/utils";
 
 function SurveyWorkflow() {
   const {

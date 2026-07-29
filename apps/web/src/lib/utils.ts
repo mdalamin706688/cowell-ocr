@@ -23,6 +23,16 @@ export function formatCurrencyJpy(amount: number): string {
   }).format(amount);
 }
 
+/** OCR API cost is billed in USD — show that directly (no FX conversion). */
+export function formatCurrencyUsd(amount: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 4,
+  }).format(amount);
+}
+
 export function generateId(): string {
   return crypto.randomUUID();
 }
