@@ -177,7 +177,9 @@ export const copy = {
     close: "閉じる",
     deleteRow: "行を削除",
     deleteRowTitle: "この行を削除しますか？",
-    deleteRowBody: "削除した内容は元に戻せません。",
+    deleteRowBody:
+      "この調査データ行を一覧から削除します。削除後は元に戻せません。",
+    deleteRowTarget: "削除対象",
     deleteRowConfirm: "削除する",
     deleteRowCancel: "キャンセル",
     rowFallback: (n: number) => `${n}行目`,

@@ -97,7 +97,7 @@ export function OverlayDialog({
               "relative z-10 w-full overflow-hidden rounded-2xl border bg-card shadow-[0_24px_64px_-12px_rgba(0,0,0,0.35)]",
               tone === "media"
                 ? "border-white/10 max-w-[min(92vw,56rem)]"
-                : "border-border/70 max-w-sm",
+                : "border-border/80 max-w-md",
               panelClassName
             )}
             initial={safeMotion ? { opacity: 0, y: 14, scale: 0.96 } : false}

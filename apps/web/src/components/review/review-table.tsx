@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { OcrRow } from "@cowell/shared";
 import { SURVEY_COLUMNS } from "@cowell/shared";
 import {
-  AlertTriangle,
   ChevronLeft,
   ChevronRight,
   ImagePlus,
@@ -382,48 +381,61 @@ export function ReviewTable({ rows, onRowsChange, query }: ReviewTableProps) {
         open={Boolean(deleteTarget)}
         onClose={() => setDeleteTarget(null)}
         labelledBy="delete-row-title"
-        panelClassName="border-destructive/20"
+        panelClassName="border-border/80 shadow-[0_28px_80px_-16px_rgba(0,0,0,0.4)]"
       >
-        <div className="border-b border-destructive/10 bg-gradient-to-b from-destructive/[0.08] to-transparent px-5 py-5">
-          <div className="flex items-start gap-3.5">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-destructive/12 text-destructive ring-1 ring-destructive/20">
-              <AlertTriangle className="h-5 w-5" />
+        <div className="relative overflow-hidden">
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-destructive/80 via-destructive to-destructive/70"
+            aria-hidden
+          />
+          <div className="px-6 pb-2 pt-7 text-center sm:px-8">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/[0.09] text-destructive ring-1 ring-inset ring-destructive/20">
+              <Trash2 className="h-6 w-6" strokeWidth={1.75} />
             </div>
-            <div className="min-w-0 pt-0.5">
-              <p id="delete-row-title" className="text-base font-semibold tracking-tight text-foreground">
-                {copy.table.deleteRowTitle}
-              </p>
-              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                {copy.table.deleteRowBody}
-              </p>
-              {deleteTarget?.label ? (
-                <p className="mt-2.5 truncate rounded-lg border border-destructive/15 bg-destructive/[0.06] px-2.5 py-1.5 text-sm font-medium text-destructive">
+            <h2
+              id="delete-row-title"
+              className="mt-4 text-lg font-semibold tracking-tight text-foreground"
+            >
+              {copy.table.deleteRowTitle}
+            </h2>
+            <p className="mx-auto mt-2 max-w-[20rem] text-sm leading-relaxed text-muted-foreground">
+              {copy.table.deleteRowBody}
+            </p>
+          </div>
+
+          {deleteTarget?.label ? (
+            <div className="px-6 pb-1 sm:px-8">
+              <div className="rounded-xl border border-border/80 bg-muted/40 px-4 py-3 text-left">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {copy.table.deleteRowTarget}
+                </p>
+                <p className="mt-1 truncate text-sm font-semibold text-foreground">
                   {deleteTarget.label}
                 </p>
-              ) : null}
+              </div>
             </div>
+          ) : null}
+
+          <div className="flex flex-col-reverse gap-2.5 px-6 py-6 sm:flex-row sm:justify-end sm:px-8">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 flex-1 sm:flex-none sm:min-w-[7.5rem]"
+              onClick={() => setDeleteTarget(null)}
+            >
+              {copy.table.deleteRowCancel}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              className="h-10 flex-1 sm:flex-none sm:min-w-[7.5rem]"
+              onClick={confirmDeleteRow}
+              autoFocus
+            >
+              <Trash2 className="h-4 w-4" />
+              {copy.table.deleteRowConfirm}
+            </Button>
           </div>
-        </div>
-        <div className="flex items-center justify-end gap-2.5 px-5 py-4">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="min-w-[5.5rem]"
-            onClick={() => setDeleteTarget(null)}
-          >
-            {copy.table.deleteRowCancel}
-          </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            size="sm"
-            className="min-w-[5.5rem]"
-            onClick={confirmDeleteRow}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            {copy.table.deleteRowConfirm}
-          </Button>
         </div>
       </OverlayDialog>
     </>
