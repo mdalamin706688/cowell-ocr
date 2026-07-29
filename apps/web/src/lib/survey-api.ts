@@ -7,7 +7,7 @@ import {
 } from "./google-auth-client";
 import { runMockOcr } from "./mock-ocr";
 import { rowsToTsv } from "./ocr";
-import { isOcrApiConfigured, runRemoteOcr } from "./ocr-api";
+import { isOcrApiConfigured, runRemoteOcr, type OcrProgressCallback } from "./ocr-api";
 import {
   exportRowsWithAccessToken,
   stageSurveySourceFiles,
@@ -29,19 +29,55 @@ async function parseJsonResponse<T>(res: Response): Promise<T> {
   }
 }
 
+async function simulateOcrProgress(
+  onProgress: OcrProgressCallback | undefined,
+  durationMs: number
+): Promise<void> {
+  if (!onProgress) {
+    await new Promise((r) => setTimeout(r, durationMs));
+    return;
+  }
+  const started = Date.now();
+  onProgress({ percent: 5, phase: "uploading" });
+  await new Promise<void>((resolve) => {
+    const id = window.setInterval(() => {
+      const t = (Date.now() - started) / durationMs;
+      if (t >= 1) {
+        window.clearInterval(id);
+        onProgress({ percent: 96, phase: "finishing" });
+        resolve();
+        return;
+      }
+      if (t < 0.25) {
+        onProgress({ percent: 5 + 35 * (t / 0.25), phase: "uploading" });
+      } else {
+        const readingT = (t - 0.25) / 0.75;
+        onProgress({
+          percent: 40 + 52 * (1 - Math.exp(-2.2 * readingT)),
+          phase: "reading",
+        });
+      }
+    }, 100);
+  });
+}
+
 export async function surveyRunOcr(
   prompt: string,
-  files: Array<{ base64: string; mimeType: string; name: string }>
+  files: Array<{ base64: string; mimeType: string; name: string }>,
+  options?: { onProgress?: OcrProgressCallback }
 ): Promise<OcrResult> {
   if (isOcrApiConfigured()) {
-    return runRemoteOcr(prompt, files);
+    return runRemoteOcr(prompt, files, options);
   }
 
   if (isPreviewEnvironment()) {
-    await new Promise((r) => setTimeout(r, 600));
-    return runMockOcr(files);
+    await simulateOcrProgress(options?.onProgress, 900);
+    const result = runMockOcr(files);
+    options?.onProgress?.({ percent: 100, phase: "finishing" });
+    return result;
   }
 
+  options?.onProgress?.({ percent: 8, phase: "uploading" });
   const res = await fetch(`${getBasePath()}/api/ocr`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -53,7 +89,10 @@ export async function surveyRunOcr(
     throw new Error(data.error || "読み取りに失敗しました");
   }
 
-  return parseJsonResponse<OcrResult>(res);
+  options?.onProgress?.({ percent: 90, phase: "reading" });
+  const result = await parseJsonResponse<OcrResult>(res);
+  options?.onProgress?.({ percent: 100, phase: "finishing" });
+  return result;
 }
 
 export interface SurveyExportResult {

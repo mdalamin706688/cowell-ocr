@@ -16,6 +16,20 @@ export function isOcrApiConfigured(): boolean {
   return enabled && Boolean(getOcrApiBaseUrl());
 }
 
+/** Phases aligned with ProcessingPanel copy thresholds */
+export type OcrProgressPhase = "preparing" | "uploading" | "reading" | "finishing";
+
+export interface OcrProgressEvent {
+  percent: number;
+  phase: OcrProgressPhase;
+}
+
+export type OcrProgressCallback = (event: OcrProgressEvent) => void;
+
+export interface OcrRunOptions {
+  onProgress?: OcrProgressCallback;
+}
+
 interface ApiSurveyRow {
   id?: number;
   floor?: string;
@@ -40,6 +54,75 @@ interface ApiOcrResponse {
   processing_time_sec?: number;
   file_errors?: ApiFileError[];
   warnings?: string[];
+}
+
+const UPLOAD_START = 5;
+const UPLOAD_END = 40;
+const READING_END = 92;
+
+function emitProgress(
+  onProgress: OcrProgressCallback | undefined,
+  percent: number,
+  phase: OcrProgressPhase
+): void {
+  onProgress?.({
+    percent: Math.round(Math.min(100, Math.max(0, percent))),
+    phase,
+  });
+}
+
+/** Expected server wait after upload — scales with payload size / file count. */
+function estimateReadingMs(fileCount: number, totalBytes: number): number {
+  const byCount = 10_000 + fileCount * 8_000;
+  const bySize = Math.min(90_000, totalBytes / 4_000);
+  return Math.min(120_000, Math.max(12_000, byCount + bySize));
+}
+
+function postOcrForm(
+  url: string,
+  form: FormData,
+  options: {
+    timeoutMs: number;
+    onUploadProgress?: (loaded: number, total: number) => void;
+  }
+): Promise<{ status: number; text: string }> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+    xhr.timeout = options.timeoutMs;
+    xhr.responseType = "text";
+
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable || event.total <= 0) return;
+      options.onUploadProgress?.(event.loaded, event.total);
+    };
+    xhr.upload.onload = () => {
+      options.onUploadProgress?.(1, 1);
+    };
+
+    xhr.onload = () => {
+      resolve({ status: xhr.status, text: String(xhr.responseText ?? "") });
+    };
+    xhr.onerror = () => {
+      reject(new Error(copy.errors.serviceUnavailable));
+    };
+    xhr.ontimeout = () => {
+      reject(
+        new Error(
+          "読み取りがタイムアウトしました（180秒）。ファイル数を減らして再試行してください。"
+        )
+      );
+    };
+    xhr.onabort = () => {
+      reject(
+        new Error(
+          "読み取りがタイムアウトしました（180秒）。ファイル数を減らして再試行してください。"
+        )
+      );
+    };
+
+    xhr.send(form);
+  });
 }
 
 function base64ToBlob(base64: string, mimeType: string): Blob {
@@ -98,12 +181,15 @@ function friendlyOcrError(raw: string, status?: number): string {
 
 /**
  * Call remote Cowell OCR API with multipart upload.
+ * Reports real upload % then eases through reading until the response arrives.
  * Docs: https://4gzkbzzubqjzwcx7mf3xcjpb7i0rdssf.lambda-url.ap-northeast-1.on.aws/docs
  */
 export async function runRemoteOcr(
   prompt: string,
-  files: Array<{ base64: string; mimeType: string; name: string }>
+  files: Array<{ base64: string; mimeType: string; name: string }>,
+  options: OcrRunOptions = {}
 ): Promise<OcrResult> {
+  const { onProgress } = options;
   const baseUrl = getOcrApiBaseUrl();
   if (!baseUrl) {
     throw new Error("OCR API が設定されていません");
@@ -112,55 +198,87 @@ export async function runRemoteOcr(
     throw new Error("アップロードするファイルがありません");
   }
 
+  emitProgress(onProgress, 2, "preparing");
+
   const form = new FormData();
+  let totalBytes = 0;
   for (const file of files) {
-    form.append("survey_files", base64ToBlob(file.base64, file.mimeType), file.name);
+    const blob = base64ToBlob(file.base64, file.mimeType);
+    totalBytes += blob.size;
+    form.append("survey_files", blob, file.name);
   }
   if (prompt.trim()) {
     form.append("instructions", prompt.trim());
   }
 
-  const controller = new AbortController();
-  const timeoutMs = 180_000;
-  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  emitProgress(onProgress, UPLOAD_START, "uploading");
 
-  let res: Response;
-  try {
-    res = await fetch(`${baseUrl}/api/ocr`, {
-      method: "POST",
-      body: form,
-      signal: controller.signal,
-    });
-  } catch (err) {
-    if (err instanceof DOMException && err.name === "AbortError") {
-      throw new Error("読み取りがタイムアウトしました（180秒）。ファイル数を減らして再試行してください。");
+  let readingTimer: number | null = null;
+  const clearReadingTicker = () => {
+    if (readingTimer != null) {
+      window.clearInterval(readingTimer);
+      readingTimer = null;
     }
-    throw new Error(copy.errors.serviceUnavailable);
+  };
+
+  const startReadingTicker = () => {
+    clearReadingTicker();
+    const started = Date.now();
+    const expectedMs = estimateReadingMs(files.length, totalBytes);
+    emitProgress(onProgress, UPLOAD_END, "reading");
+    readingTimer = window.setInterval(() => {
+      const t = (Date.now() - started) / expectedMs;
+      // Approaches READING_END; faster early movement than the old 28s fake ticker
+      const eased =
+        UPLOAD_END +
+        (READING_END - UPLOAD_END) * (1 - Math.exp(-2.4 * Math.min(t, 2.5)));
+      emitProgress(onProgress, Math.min(READING_END, eased), "reading");
+    }, 120);
+  };
+
+  let status = 0;
+  let text = "";
+  try {
+    const result = await postOcrForm(`${baseUrl}/api/ocr`, form, {
+      timeoutMs: 180_000,
+      onUploadProgress: (loaded, total) => {
+        const ratio = total > 0 ? Math.min(1, loaded / total) : 1;
+        const percent = UPLOAD_START + (UPLOAD_END - UPLOAD_START) * ratio;
+        emitProgress(onProgress, percent, "uploading");
+        if (ratio >= 1) startReadingTicker();
+      },
+    });
+    status = result.status;
+    text = result.text;
+  } catch (err) {
+    clearReadingTicker();
+    throw err;
   } finally {
-    window.clearTimeout(timer);
+    clearReadingTicker();
   }
 
-  const text = await res.text();
+  emitProgress(onProgress, 96, "finishing");
+
   let data: ApiOcrResponse & { detail?: unknown; message?: string } = {};
   try {
     data = text.trim() ? (JSON.parse(text) as typeof data) : {};
   } catch {
-    throw new Error(friendlyOcrError(text, res.status));
+    throw new Error(friendlyOcrError(text, status));
   }
 
-  if (!res.ok) {
+  if (status < 200 || status >= 300) {
     if (Array.isArray(data.detail)) {
       const msg = data.detail
         .map((d) => (typeof d === "object" && d && "msg" in d ? String((d as { msg: string }).msg) : String(d)))
         .join("; ");
-      throw new Error(friendlyOcrError(msg, res.status));
+      throw new Error(friendlyOcrError(msg, status));
     }
     const raw =
       (typeof data.detail === "string" && data.detail) ||
       data.message ||
       text ||
-      `読み取りに失敗しました (${res.status})`;
-    throw new Error(friendlyOcrError(String(raw), res.status));
+      `読み取りに失敗しました (${status})`;
+    throw new Error(friendlyOcrError(String(raw), status));
   }
 
   const apiRows = Array.isArray(data.rows) ? data.rows : [];
@@ -181,6 +299,8 @@ export async function runRemoteOcr(
 
   const costUsd = Number(data.estimated_cost_usd) || 0;
   const elapsedMs = Math.round((Number(data.processing_time_sec) || 0) * 1000);
+
+  emitProgress(onProgress, 100, "finishing");
 
   return {
     rawText: buildRawText(rows, warnings, fileErrors),

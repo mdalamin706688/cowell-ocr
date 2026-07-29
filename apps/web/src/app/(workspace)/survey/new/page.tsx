@@ -69,7 +69,6 @@ function SurveyWorkflow() {
     isValid: false,
   });
   const exportLock = useRef(false);
-  const progressTimer = useRef<number | null>(null);
   const reviewSectionRef = useRef<HTMLDivElement | null>(null);
   const compactTop = step === "review" || step === "export" || step === "complete";
   const uploadedImageByName = useMemo(() => {
@@ -102,13 +101,6 @@ function SurveyWorkflow() {
     };
   }, [ocrResult?.rawText]);
 
-  const stopProgressTicker = useCallback(() => {
-    if (progressTimer.current != null) {
-      window.clearInterval(progressTimer.current);
-      progressTimer.current = null;
-    }
-  }, []);
-
   const handleReviewTabChange = useCallback((next: "table" | "raw") => {
     if (next === reviewTab) return;
     setReviewTab(next);
@@ -122,32 +114,22 @@ function SurveyWorkflow() {
     el.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "auto" });
   }, [reviewTab]);
 
-  const startProgressTicker = useCallback(() => {
-    stopProgressTicker();
-    setProgress(4);
-    const started = Date.now();
-    // Ease toward ~92% while waiting on remote OCR (no real server %).
-    progressTimer.current = window.setInterval(() => {
-      const elapsed = Date.now() - started;
-      const eased = 92 * (1 - Math.exp(-elapsed / 28_000));
-      setProgress(Math.min(92, Math.max(4, eased)));
-    }, 200);
-  }, [stopProgressTicker]);
-
-  useEffect(() => () => stopProgressTicker(), [stopProgressTicker]);
-
   const runOcr = useCallback(async () => {
     if (!files.length) return;
     setProcessing(true);
     setError(null);
     setStep("processing");
-    startProgressTicker();
+    setProgress(2);
     try {
       const result = await surveyRunOcr(
         prompt,
-        files.map((f) => ({ base64: f.base64, mimeType: f.mimeType, name: f.name }))
+        files.map((f) => ({ base64: f.base64, mimeType: f.mimeType, name: f.name })),
+        {
+          onProgress: (event) => {
+            setProgress((prev) => Math.max(prev, event.percent));
+          },
+        }
       );
-      stopProgressTicker();
       setProgress(100);
       setOcrResult(result);
       setRows(
@@ -170,7 +152,6 @@ function SurveyWorkflow() {
       await new Promise((r) => window.setTimeout(r, 350));
       setStep("review");
     } catch (e) {
-      stopProgressTicker();
       setProgress(0);
       setError(e instanceof Error ? e.message : copy.errors.ocrFailed);
       setStep("upload");
@@ -184,8 +165,6 @@ function SurveyWorkflow() {
     setError,
     setOcrResult,
     setRows,
-    startProgressTicker,
-    stopProgressTicker,
     uploadedImageByName,
   ]);
 
