@@ -312,7 +312,7 @@ function SurveyWorkflow() {
               },
               {
                 label: copy.survey.usage.cost,
-                value: formatCurrencyJpy(ocrResult.usage.costJpy),
+                value: formatCurrencyUsd(ocrResult.usage.costUsd),
                 tone: "border-amber-300/70 bg-amber-50/60 text-amber-800",
               },
             ].map((stat) => (
