@@ -250,31 +250,52 @@
   .timeline-track::before {
     content: "";
     position: absolute;
-    top: 13px;
-    left: 12px;
-    right: 12px;
+    top: 14px;
+    left: 10%;
+    right: 10%;
     height: 2px;
+    z-index: 0;
     background: linear-gradient(
       90deg,
-      hsl(var(--lumen) / 0.25),
-      hsl(var(--lumen-glow) / 0.85),
-      hsl(var(--lumen) / 0.25)
+      hsl(var(--lumen) / 0.2),
+      hsl(var(--lumen-glow) / 0.9),
+      hsl(var(--lumen) / 0.2)
     );
   }
 
+  /* Opaque fill + matching halo so the connector never shows through the circle */
   .timeline-dot {
     @apply relative z-10 flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold;
-    @apply border border-lumen/35 bg-lumen/10 text-lumen;
-    box-shadow: 0 0 0 3px hsl(var(--paper));
+    @apply border border-border text-muted-foreground;
+    background-color: hsl(var(--card));
+    box-shadow: 0 0 0 4px hsl(var(--background));
   }
 
   .timeline-dot-done {
-    @apply border-lumen/40 bg-lumen text-white;
-    box-shadow: 0 0 0 3px hsl(var(--paper)), 0 2px 8px hsl(var(--lumen) / 0.25);
+    @apply border-lumen text-white;
+    background-color: hsl(var(--lumen));
+    box-shadow:
+      0 0 0 4px hsl(var(--background)),
+      0 2px 8px hsl(var(--lumen) / 0.28);
   }
 
   .timeline-dot-active {
-    @apply border-lumen bg-card text-lumen ring-2 ring-lumen/25;
+    @apply border-lumen text-lumen ring-2 ring-lumen/30;
+    background-color: hsl(var(--card));
+    box-shadow: 0 0 0 4px hsl(var(--background));
+  }
+
+  /* Dashboard / card surfaces — halo matches card, not page paper */
+  .ui-card .timeline-dot,
+  .ui-card .timeline-dot-done,
+  .ui-card .timeline-dot-active {
+    box-shadow: 0 0 0 4px hsl(var(--card));
+  }
+
+  .ui-card .timeline-dot-done {
+    box-shadow:
+      0 0 0 4px hsl(var(--card)),
+      0 2px 8px hsl(var(--lumen) / 0.28);
   }
 
   /* ── Upload ── */

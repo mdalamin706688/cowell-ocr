@@ -42,7 +42,7 @@ interface DriveDestinationPanelProps {
 
 export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanelProps) {
   const googleReady = isGoogleClientConfigured();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [accountEmail, setAccountEmail] = useState<string | undefined>(

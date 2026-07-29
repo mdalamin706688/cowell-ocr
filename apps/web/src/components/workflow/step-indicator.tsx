@@ -39,7 +39,7 @@ export function StepIndicator({
                 className={cn(
                   "timeline-dot",
                   done && "timeline-dot-done",
-                  active && "timeline-dot-active"
+                  active && !done && "timeline-dot-active"
                 )}
               >
                 {done ? <Check className="h-3 w-3" /> : i + 1}
@@ -47,7 +47,9 @@ export function StepIndicator({
               <span
                 className={cn(
                   "mt-2 text-xs font-medium hidden sm:block",
-                  active ? "text-foreground" : "text-muted-foreground"
+                  active && "text-lumen font-semibold",
+                  done && !active && "text-foreground",
+                  !active && !done && "text-muted-foreground"
                 )}
               >
                 {s.label}
