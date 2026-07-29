@@ -15,6 +15,14 @@ When `NEXT_PUBLIC_OCR_API_BASE_URL` is set **and** `NEXT_PUBLIC_OCR_API_ENABLED=
 
 Response snake_case rows are mapped to FE `OcrRow` (camelCase).
 
+Usage fields mapped into `OcrResult.usage`:
+
+| API | FE |
+|-----|----|
+| `processing_time_sec` | `usage.elapsedMs` |
+| `estimated_cost_usd` | `usage.costUsd` / `usage.costJpy` |
+| `token_usage` | `usage.totalTokens` |
+
 If `NEXT_PUBLIC_OCR_API_ENABLED` is `false`, static FE uses **demo OCR**.
 
 Auth is **not** required yet. When the backend enables Cognito, FE will send:

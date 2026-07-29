@@ -54,6 +54,8 @@ interface ApiOcrResponse {
   total_pages?: number;
   estimated_cost_usd?: number;
   processing_time_sec?: number;
+  /** Total tokens consumed (input + output) — available on current OCR API */
+  token_usage?: number;
   file_errors?: ApiFileError[];
   warnings?: string[];
 }
@@ -346,6 +348,7 @@ export async function runRemoteOcr(
 
   const costUsd = Number(data.estimated_cost_usd) || 0;
   const elapsedMs = Math.round((Number(data.processing_time_sec) || 0) * 1000);
+  const totalTokens = Math.max(0, Math.round(Number(data.token_usage) || 0));
 
   emitProgress(onProgress, 100, "finishing");
 
@@ -355,7 +358,7 @@ export async function runRemoteOcr(
     usage: {
       promptTokens: 0,
       outputTokens: 0,
-      totalTokens: 0,
+      totalTokens,
       elapsedMs,
       costUsd,
       costJpy: costUsd * GEMINI_PRICING.usdToJpy,
