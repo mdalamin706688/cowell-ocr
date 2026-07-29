@@ -4,12 +4,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { OcrRow } from "@cowell/shared";
 import { SURVEY_COLUMNS } from "@cowell/shared";
 import {
+  AlertTriangle,
   ChevronLeft,
   ChevronRight,
   ImagePlus,
   Loader2,
   Trash2,
   Table2,
+  X,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -34,11 +36,22 @@ const TEXT_FIELDS = [
 
 const PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
 
+function rowDisplayName(row: OcrRow, rowNumber: number): string {
+  const product = row.existingProduct?.trim();
+  if (product) return product;
+  const model = row.fixtureModel?.trim();
+  if (model) return model;
+  const location = row.location?.trim();
+  if (location) return location;
+  return copy.table.rowFallback(rowNumber);
+}
+
 export function ReviewTable({ rows, onRowsChange, query }: ReviewTableProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
   const [uploadingRowId, setUploadingRowId] = useState<string | null>(null);
   const [previewPhoto, setPreviewPhoto] = useState<{ src: string; label: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(20);
 
@@ -68,20 +81,24 @@ export function ReviewTable({ rows, onRowsChange, query }: ReviewTableProps) {
   }, [page, pageCount]);
 
   useEffect(() => {
-    if (!previewPhoto) return;
+    if (!previewPhoto && !deleteTarget) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setPreviewPhoto(null);
+      if (event.key !== "Escape") return;
+      setPreviewPhoto(null);
+      setDeleteTarget(null);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [previewPhoto]);
+  }, [previewPhoto, deleteTarget]);
 
   const updateRow = (id: string, field: keyof OcrRow, value: string) => {
     onRowsChange(rows.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
   };
 
-  const deleteRow = (id: string) => {
-    onRowsChange(rows.filter((r) => r.id !== id));
+  const confirmDeleteRow = () => {
+    if (!deleteTarget) return;
+    onRowsChange(rows.filter((r) => r.id !== deleteTarget.id));
+    setDeleteTarget(null);
   };
 
   const clearRowPhoto = (id: string) => {
@@ -178,6 +195,7 @@ export function ReviewTable({ rows, onRowsChange, query }: ReviewTableProps) {
                 ) : (
                   pageRows.map((row, idx) => {
                     const absoluteIndex = safePage * pageSize + idx;
+                    const displayName = rowDisplayName(row, absoluteIndex + 1);
                     return (
                       <tr
                         key={row.id}
@@ -205,15 +223,15 @@ export function ReviewTable({ rows, onRowsChange, query }: ReviewTableProps) {
                                 onClick={() =>
                                   setPreviewPhoto({
                                     src: row.photoUrl!,
-                                    label: row.sourceFile || `row-${absoluteIndex + 1}`,
+                                    label: displayName,
                                   })
                                 }
                                 className="shrink-0 rounded-md border border-border/60 hover:border-lumen/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumen/30"
-                                aria-label={`${copy.table.photoAttached}: ${row.sourceFile || absoluteIndex + 1}`}
+                                aria-label={`${copy.table.photoAttached}: ${displayName}`}
                               >
                                 <img
                                   src={row.photoUrl}
-                                  alt={row.sourceFile || `row-${absoluteIndex + 1}`}
+                                  alt={displayName}
                                   className="h-9 w-9 rounded-md object-cover"
                                 />
                               </button>
@@ -268,7 +286,10 @@ export function ReviewTable({ rows, onRowsChange, query }: ReviewTableProps) {
                             variant="ghost"
                             size="icon"
                             className="h-9 w-9 text-muted-foreground/40 hover:text-destructive"
-                            onClick={() => deleteRow(row.id)}
+                            aria-label={copy.table.deleteRow}
+                            onClick={() =>
+                              setDeleteTarget({ id: row.id, label: displayName })
+                            }
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
@@ -334,9 +355,10 @@ export function ReviewTable({ rows, onRowsChange, query }: ReviewTableProps) {
           </div>
         </div>
       </div>
+
       {previewPhoto && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-[2px]"
           role="dialog"
           aria-modal="true"
           aria-label={previewPhoto.label}
@@ -346,24 +368,78 @@ export function ReviewTable({ rows, onRowsChange, query }: ReviewTableProps) {
             className="max-h-[90vh] max-w-[90vw] overflow-hidden rounded-xl border border-border/70 bg-card shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-border/70 px-3 py-2">
-              <p className="max-w-[70vw] truncate text-xs text-muted-foreground">{previewPhoto.label}</p>
+            <div className="flex items-center justify-between gap-3 border-b border-border/70 px-3 py-2.5">
+              <p className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+                {previewPhoto.label}
+              </p>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-7 px-2 text-xs"
+                className="h-8 shrink-0 gap-1 px-2.5 text-sm font-semibold text-destructive hover:bg-destructive/10 hover:text-destructive"
                 onClick={() => setPreviewPhoto(null)}
               >
-                Close
+                <X className="h-3.5 w-3.5" />
+                {copy.table.close}
               </Button>
             </div>
-            <div className="max-h-[calc(90vh-2.5rem)] overflow-auto bg-black/20">
+            <div className="max-h-[calc(90vh-2.75rem)] overflow-auto bg-black/20">
               <img
                 src={previewPhoto.src}
                 alt={previewPhoto.label}
                 className="h-auto max-h-[calc(90vh-3rem)] w-auto max-w-[90vw] object-contain"
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-[2px]"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-row-title"
+          onClick={() => setDeleteTarget(null)}
+        >
+          <div
+            className="w-full max-w-sm overflow-hidden rounded-xl border border-destructive/25 bg-card shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="border-b border-destructive/15 bg-destructive/[0.06] px-5 py-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/15 text-destructive">
+                  <AlertTriangle className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 pt-0.5">
+                  <p id="delete-row-title" className="text-base font-semibold text-foreground">
+                    {copy.table.deleteRowTitle}
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">{copy.table.deleteRowBody}</p>
+                  <p className="mt-2 truncate text-sm font-medium text-destructive/90">
+                    {deleteTarget.label}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 px-5 py-4">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setDeleteTarget(null)}
+              >
+                {copy.table.deleteRowCancel}
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={confirmDeleteRow}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                {copy.table.deleteRowConfirm}
+              </Button>
             </div>
           </div>
         </div>

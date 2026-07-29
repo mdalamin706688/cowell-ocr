@@ -174,6 +174,13 @@ export const copy = {
     changePhoto: "変更",
     removePhoto: "削除",
     photoAttached: "添付済み",
+    close: "閉じる",
+    deleteRow: "行を削除",
+    deleteRowTitle: "この行を削除しますか？",
+    deleteRowBody: "削除した内容は元に戻せません。",
+    deleteRowConfirm: "削除する",
+    deleteRowCancel: "キャンセル",
+    rowFallback: (n: number) => `${n}行目`,
   },
   auth: {
     logout: "ログアウト",
