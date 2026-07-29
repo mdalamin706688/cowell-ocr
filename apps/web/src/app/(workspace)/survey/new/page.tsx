@@ -19,7 +19,6 @@ import { ProcessingPanel } from "@/components/survey/processing-panel";
 import { CollapsiblePanel } from "@/components/ui/collapsible-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { TransitionLink } from "@/components/ui/transition-link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { copy } from "@/lib/copy";
 import { isPreviewEnvironment } from "@/lib/client-auth";
