@@ -77,6 +77,7 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
    * Missing key = not loaded yet for that root (must not treat as "available").
    */
   const [childrenByRootId, setChildrenByRootId] = useState<Record<string, string[]>>({});
+  /** True only while waiting for the *first* child list for a root (never blocks on cache hits). */
   const [loadingChildrenRootId, setLoadingChildrenRootId] = useState<string | null>(null);
   const childrenFetchSeq = useRef(0);
   const rootsSeq = useRef(0);
@@ -86,6 +87,13 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
   valueRef.current = value;
   const optionsRef = useRef(options);
   optionsRef.current = options;
+  const childrenByRootIdRef = useRef(childrenByRootId);
+  childrenByRootIdRef.current = childrenByRootId;
+
+  const hasChildrenCache = useCallback((rootId?: string | null) => {
+    if (!rootId) return false;
+    return Object.prototype.hasOwnProperty.call(childrenByRootIdRef.current, rootId);
+  }, []);
 
   const rootName = value.rootFolderName;
   const projectName = value.projectName;
@@ -112,7 +120,7 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
           : "create";
 
   const childrenForCurrentRoot =
-    effectiveRootFolderId && Object.prototype.hasOwnProperty.call(childrenByRootId, effectiveRootFolderId)
+    effectiveRootFolderId && hasChildrenCache(effectiveRootFolderId)
       ? childrenByRootId[effectiveRootFolderId]
       : undefined;
 
@@ -120,10 +128,11 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
     rootStatus !== "existing" ||
     (Boolean(effectiveRootFolderId) && childrenForCurrentRoot !== undefined);
 
+  // Loading UI only when this root has no cache yet — cache hits validate instantly
   const checkingUnique =
     rootStatus === "existing" &&
     Boolean(effectiveRootFolderId) &&
-    (loadingChildrenRootId === effectiveRootFolderId || childrenForCurrentRoot === undefined);
+    childrenForCurrentRoot === undefined;
 
   const projectDuplicate = Boolean(
     projectNormalized &&
@@ -175,14 +184,12 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
       ctx: {
         options: DriveRootFolderPref[];
         childrenByRootId: Record<string, string[]>;
-        loadingChildrenRootId: string | null;
         rootsLoaded: boolean;
         rootsLoading: boolean;
         accountEmail?: string;
       } = {
         options,
         childrenByRootId,
-        loadingChildrenRootId,
         rootsLoaded,
         rootsLoading,
         accountEmail,
@@ -202,12 +209,11 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
       const rootId = match.id;
       if (!rootId) return false;
       if (!Object.prototype.hasOwnProperty.call(ctx.childrenByRootId, rootId)) return false;
-      if (ctx.loadingChildrenRootId === rootId) return false;
       const children = ctx.childrenByRootId[rootId] || [];
       const duplicate = children.some((n) => n.toLowerCase() === project.toLowerCase());
       return !duplicate;
     },
-    [accountEmail, childrenByRootId, loadingChildrenRootId, options, rootsLoaded, rootsLoading]
+    [accountEmail, childrenByRootId, options, rootsLoaded, rootsLoading]
   );
 
   const pushValue = useCallback(
@@ -258,7 +264,6 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
             isValid: computeIsValid(next, {
               options: live,
               childrenByRootId,
-              loadingChildrenRootId: match.id || null,
               rootsLoaded: true,
               rootsLoading: false,
               accountEmail: email,
@@ -279,7 +284,6 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
           isValid: computeIsValid(next, {
             options: live,
             childrenByRootId: {},
-            loadingChildrenRootId: null,
             rootsLoaded: true,
             rootsLoading: false,
             accountEmail: email,
@@ -288,6 +292,31 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
       });
     },
     [childrenByRootId, computeIsValid, onChange]
+  );
+
+  /** Warm cache for every live root so switching roots validates instantly. */
+  const prefetchAllRootChildren = useCallback(
+    async (roots: DriveRootFolderPref[], accessToken: string) => {
+      const ids = roots.map((r) => r.id).filter((id): id is string => Boolean(id));
+      await Promise.all(
+        ids.map(async (id) => {
+          if (hasChildrenCache(id)) return;
+          try {
+            const children = await listDriveChildFolders(accessToken, id);
+            setChildrenByRootId((prev) => {
+              if (Object.prototype.hasOwnProperty.call(prev, id)) return prev;
+              return {
+                ...prev,
+                [id]: normalizeChildNames(children.map((c) => c.name)),
+              };
+            });
+          } catch {
+            // leave uncached — foreground path will retry
+          }
+        })
+      );
+    },
+    [hasChildrenCache]
   );
 
   const refreshFolderOptions = useCallback(
@@ -323,6 +352,8 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
         setOptions(finalOptions);
         setRootsLoaded(true);
         reconcileSelectionWithLive(finalOptions, email);
+        // Prefetch child folders for every root so root switches validate instantly
+        void prefetchAllRootChildren(finalOptions, accessToken);
         return finalOptions;
       } catch {
         if (seq !== rootsSeq.current) return [];
@@ -333,55 +364,81 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
         if (seq === rootsSeq.current) setRootsLoading(false);
       }
     },
-    [invalidateChildrenForRoot, reconcileSelectionWithLive]
+    [invalidateChildrenForRoot, prefetchAllRootChildren, reconcileSelectionWithLive]
   );
 
   const refreshFolderOptionsRef = useRef(refreshFolderOptions);
   refreshFolderOptionsRef.current = refreshFolderOptions;
 
-  const loadChildFolders = useCallback(async (parentId: string, accessToken: string) => {
-    const seq = ++childrenFetchSeq.current;
-    setLoadingChildrenRootId(parentId);
-    try {
-      const meta = await verifyDriveFolder(accessToken, parentId);
-      if (seq !== childrenFetchSeq.current) return;
-      if (!meta) {
-        setChildrenByRootId((prev) => {
-          const next = { ...prev };
-          delete next[parentId];
-          return next;
-        });
-        const session = getConnectedGoogleDrive();
-        if (session) void refreshFolderOptionsRef.current(session.email, session.accessToken);
-        return;
+  const loadChildFolders = useCallback(
+    async (
+      parentId: string,
+      accessToken: string,
+      opts?: { background?: boolean }
+    ) => {
+      const cached = hasChildrenCache(parentId);
+      const background = Boolean(opts?.background && cached);
+      // Background refresh must not cancel / be cancelled by foreground switches
+      const seq = background ? childrenFetchSeq.current : ++childrenFetchSeq.current;
+
+      if (!background) {
+        setLoadingChildrenRootId(parentId);
       }
-      const children = await listDriveChildFolders(accessToken, parentId);
-      if (seq !== childrenFetchSeq.current) return;
-      setChildrenByRootId((prev) => ({
-        ...prev,
-        [parentId]: normalizeChildNames(children.map((c) => c.name)),
-      }));
-    } catch {
-      if (seq !== childrenFetchSeq.current) return;
-      // Fail closed: empty list means "unknown" was avoided by deleting cache key
-      setChildrenByRootId((prev) => {
-        const next = { ...prev };
-        delete next[parentId];
-        return next;
-      });
-    } finally {
-      if (seq === childrenFetchSeq.current) {
-        setLoadingChildrenRootId((current) => (current === parentId ? null : current));
+
+      try {
+        const meta = await verifyDriveFolder(accessToken, parentId);
+        if (!background && seq !== childrenFetchSeq.current) return;
+        if (!meta) {
+          setChildrenByRootId((prev) => {
+            const next = { ...prev };
+            delete next[parentId];
+            return next;
+          });
+          if (!background) {
+            const session = getConnectedGoogleDrive();
+            if (session) void refreshFolderOptionsRef.current(session.email, session.accessToken);
+          }
+          return;
+        }
+        const children = await listDriveChildFolders(accessToken, parentId);
+        if (!background && seq !== childrenFetchSeq.current) return;
+        setChildrenByRootId((prev) => ({
+          ...prev,
+          [parentId]: normalizeChildNames(children.map((c) => c.name)),
+        }));
+      } catch {
+        if (!background && seq !== childrenFetchSeq.current) return;
+        if (!cached) {
+          setChildrenByRootId((prev) => {
+            const next = { ...prev };
+            delete next[parentId];
+            return next;
+          });
+        }
+      } finally {
+        if (!background && seq === childrenFetchSeq.current) {
+          setLoadingChildrenRootId((current) => (current === parentId ? null : current));
+        }
       }
-    }
-  }, []);
+    },
+    [hasChildrenCache]
+  );
 
   const scheduleChildFolderLoad = useCallback(
-    (parentId: string, accessToken: string, delayMs = 150) => {
+    (
+      parentId: string,
+      accessToken: string,
+      delayMs = 0,
+      opts?: { background?: boolean }
+    ) => {
       if (childrenTimer.current) clearTimeout(childrenTimer.current);
+      if (delayMs <= 0) {
+        void loadChildFolders(parentId, accessToken, opts);
+        return;
+      }
       childrenTimer.current = setTimeout(() => {
         childrenTimer.current = null;
-        void loadChildFolders(parentId, accessToken);
+        void loadChildFolders(parentId, accessToken, opts);
       }, delayMs);
     },
     [loadChildFolders]
@@ -389,20 +446,42 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
 
   const applyRootSelection = useCallback(
     (name: string, id: string | undefined) => {
-      // Switching roots must never reuse another root's child list for "available"
-      childrenFetchSeq.current += 1;
       if (childrenTimer.current) {
         clearTimeout(childrenTimer.current);
         childrenTimer.current = null;
       }
-      setLoadingChildrenRootId(id || null);
+
+      // Cache hit → validate immediately (JBC-COWELL 2 → JBC-COWELL with Testing)
+      if (id && hasChildrenCache(id)) {
+        setLoadingChildrenRootId(null);
+        pushValue({
+          rootFolderName: name,
+          rootFolderId: id,
+          googleAccountEmail: accountEmail,
+        });
+        const session = getConnectedGoogleDrive();
+        if (session) {
+          // Soft refresh in background; UI stays on cached result
+          scheduleChildFolderLoad(id, session.accessToken, 500, { background: true });
+        }
+        return;
+      }
+
+      if (id) {
+        // No cache yet — show checking until first fetch completes
+        setLoadingChildrenRootId(id);
+      } else {
+        setLoadingChildrenRootId(null);
+        childrenFetchSeq.current += 1;
+      }
+
       pushValue({
         rootFolderName: name,
         rootFolderId: id,
         googleAccountEmail: accountEmail,
       });
     },
-    [accountEmail, pushValue]
+    [accountEmail, hasChildrenCache, pushValue, scheduleChildFolderLoad]
   );
 
   const commitRootFolder = useCallback(
@@ -462,22 +541,16 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
   }, [open]);
 
   /**
-   * Always load children for the current existing root (even before project name),
-   * and always re-bind uniqueness to that root's id — never another folder's cache.
+   * Load children for the current root only when not cached.
+   * Cached roots (after visiting or prefetch) validate immediately.
    */
   useEffect(() => {
     const session = getConnectedGoogleDrive();
     if (!session || rootStatus !== "existing" || !effectiveRootFolderId) {
-      setLoadingChildrenRootId(null);
       return;
     }
 
-    const alreadyLoaded = Object.prototype.hasOwnProperty.call(
-      childrenByRootId,
-      effectiveRootFolderId
-    );
-    if (alreadyLoaded) {
-      // Use cached children for this root immediately (e.g. switch back to JBC-COWELL)
+    if (hasChildrenCache(effectiveRootFolderId)) {
       setLoadingChildrenRootId((current) =>
         current === effectiveRootFolderId ? null : current
       );
@@ -485,13 +558,11 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
     }
 
     setLoadingChildrenRootId(effectiveRootFolderId);
-    scheduleChildFolderLoad(effectiveRootFolderId, session.accessToken, 120);
+    scheduleChildFolderLoad(effectiveRootFolderId, session.accessToken, 0);
     return () => {
       if (childrenTimer.current) clearTimeout(childrenTimer.current);
     };
-    // Reload when root changes — childrenByRootId read for cache hit only
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
-  }, [effectiveRootFolderId, rootStatus, scheduleChildFolderLoad]);
+  }, [effectiveRootFolderId, hasChildrenCache, rootStatus, scheduleChildFolderLoad]);
 
   const handleConnect = useCallback(async () => {
     if (!googleReady || busy) return;
@@ -514,8 +585,6 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
     const name = normalizeFolderNameInput(pref.name);
     if (!name || !pref.id) return;
     if (accountEmail) writeLastRootFolder({ name, id: pref.id }, accountEmail);
-    // Force a fresh child fetch for this root (don't trust stale cache after Drive edits)
-    invalidateChildrenForRoot(pref.id);
     applyRootSelection(name, pref.id);
   };
 
