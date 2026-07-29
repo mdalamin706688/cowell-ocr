@@ -8,6 +8,7 @@ import {
   ChevronRight,
   ImagePlus,
   Loader2,
+  Package,
   Trash2,
   Table2,
   X,
@@ -351,27 +352,38 @@ export function ReviewTable({ rows, onRowsChange, query }: ReviewTableProps) {
         label={previewPhoto?.label}
         tone="media"
       >
-        <div className="flex items-center justify-between gap-3 border-b border-border/60 bg-card/95 px-4 py-3">
-          <p className="min-w-0 flex-1 truncate text-sm font-semibold tracking-tight text-foreground">
-            {previewPhoto?.label}
-          </p>
+        <div className="flex items-center justify-between gap-4 border-b border-white/10 px-4 py-3.5 sm:px-5">
+          <div className="min-w-0">
+            <p className="text-[11px] font-medium tracking-wide text-white/45">
+              {copy.table.photoPreview}
+            </p>
+            <p className="mt-0.5 truncate text-sm font-semibold text-white/95">
+              {previewPhoto?.label}
+            </p>
+          </div>
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="h-8 shrink-0 gap-1.5 px-2.5 text-sm font-semibold text-destructive hover:bg-destructive/10 hover:text-destructive"
+            className="h-9 shrink-0 gap-1.5 rounded-full border border-white/15 bg-white/5 px-3.5 text-sm font-semibold text-white/90 hover:bg-white/10 hover:text-white"
             onClick={() => setPreviewPhoto(null)}
           >
             <X className="h-3.5 w-3.5" />
             {copy.table.close}
           </Button>
         </div>
-        <div className="flex max-h-[min(78vh,44rem)] items-center justify-center overflow-auto bg-zinc-950/[0.04]">
+        <div
+          className="relative flex min-h-[min(52vh,28rem)] max-h-[min(72vh,42rem)] items-center justify-center overflow-hidden"
+          style={{
+            background:
+              "radial-gradient(ellipse 70% 60% at 50% 45%, rgba(255,255,255,0.06) 0%, transparent 70%), #0a0a0b",
+          }}
+        >
           {previewPhoto ? (
             <img
               src={previewPhoto.src}
               alt={previewPhoto.label}
-              className="h-auto max-h-[min(78vh,44rem)] w-auto max-w-full object-contain"
+              className="relative z-[1] h-auto max-h-[min(68vh,40rem)] w-auto max-w-[min(92vw,60rem)] object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.55)]"
             />
           ) : null}
         </div>
@@ -388,7 +400,7 @@ export function ReviewTable({ rows, onRowsChange, query }: ReviewTableProps) {
             className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-destructive/80 via-destructive to-destructive/70"
             aria-hidden
           />
-          <div className="px-6 pb-2 pt-7 text-center sm:px-8">
+          <div className="px-6 pb-3 pt-7 text-center sm:px-8">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/[0.09] text-destructive ring-1 ring-inset ring-destructive/20">
               <Trash2 className="h-6 w-6" strokeWidth={1.75} />
             </div>
@@ -405,13 +417,23 @@ export function ReviewTable({ rows, onRowsChange, query }: ReviewTableProps) {
 
           {deleteTarget?.label ? (
             <div className="px-6 pb-1 sm:px-8">
-              <div className="rounded-xl border border-border/80 bg-muted/40 px-4 py-3 text-left">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {copy.table.deleteRowTarget}
-                </p>
-                <p className="mt-1 truncate text-sm font-semibold text-foreground">
-                  {deleteTarget.label}
-                </p>
+              <div className="overflow-hidden rounded-xl border border-destructive/20 bg-gradient-to-br from-destructive/[0.06] to-muted/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]">
+                <div className="flex items-stretch gap-0">
+                  <div className="w-1 shrink-0 bg-destructive/80" aria-hidden />
+                  <div className="flex min-w-0 flex-1 items-start gap-3 px-3.5 py-3.5">
+                    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-card text-destructive ring-1 ring-destructive/15">
+                      <Package className="h-4 w-4" strokeWidth={1.75} />
+                    </div>
+                    <div className="min-w-0 flex-1 text-left">
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {copy.table.deleteRowTarget}
+                      </p>
+                      <p className="mt-1 break-words text-[15px] font-semibold leading-snug tracking-tight text-foreground">
+                        {deleteTarget.label}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           ) : null}

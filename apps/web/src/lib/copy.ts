@@ -175,6 +175,7 @@ export const copy = {
     removePhoto: "削除",
     photoAttached: "添付済み",
     close: "閉じる",
+    photoPreview: "写真プレビュー",
     deleteRow: "行を削除",
     deleteRowTitle: "この行を削除しますか？",
     deleteRowBody:

@@ -94,10 +94,10 @@ export function OverlayDialog({
             aria-label={label}
             aria-labelledby={labelledBy}
             className={cn(
-              "relative z-10 w-full overflow-hidden rounded-2xl border bg-card shadow-[0_24px_64px_-12px_rgba(0,0,0,0.35)]",
+              "relative z-10 w-full overflow-hidden shadow-[0_28px_80px_-16px_rgba(0,0,0,0.45)]",
               tone === "media"
-                ? "border-white/10 max-w-[min(92vw,56rem)]"
-                : "border-border/80 max-w-md",
+                ? "max-w-[min(94vw,64rem)] rounded-2xl border border-white/10 bg-zinc-950 text-white"
+                : "max-w-md rounded-2xl border border-border/80 bg-card",
               panelClassName
             )}
             initial={safeMotion ? { opacity: 0, y: 14, scale: 0.96 } : false}
