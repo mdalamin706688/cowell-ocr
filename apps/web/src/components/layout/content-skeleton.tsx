@@ -26,14 +26,11 @@ export function ContentSkeleton() {
 export function SurveyPageSkeleton() {
   return (
     <SkeletonPage label="Loading survey">
-      <div className="flex flex-col gap-2">
-        <SkeletonBlock className="h-4 w-28 rounded-md" />
-        <div className="flex items-start gap-4">
-          <SkeletonBlock className="h-12 w-12 shrink-0 rounded-xl" />
-          <div className="flex-1 space-y-2.5">
-            <SkeletonBlock className="h-7 w-56 max-w-full" />
-            <SkeletonBlock className="h-4 w-full max-w-lg" />
-          </div>
+      <div className="flex items-start gap-4">
+        <SkeletonBlock className="h-12 w-12 shrink-0 rounded-xl" />
+        <div className="flex-1 space-y-2.5">
+          <SkeletonBlock className="h-7 w-56 max-w-full" />
+          <SkeletonBlock className="h-4 w-full max-w-lg" />
         </div>
       </div>
 
