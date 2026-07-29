@@ -322,15 +322,29 @@ export function findLiveRootFolder(
 ): DriveRootFolderPref | undefined {
   const normalized = normalizeFolderNameInput(name);
   const wantedId = id?.trim();
-  if (wantedId) {
-    const byId = live.find((o) => o.id === wantedId && normalizeFolderNameInput(o.name));
-    if (byId) return { name: normalizeFolderNameInput(byId.name), id: byId.id };
+
+  // Typed/selected name is source of truth — never keep a stale id from another folder
+  // (e.g. "JBC-COWELL 2" → "JBC-COWELL" must not resolve to the "2" folder's id).
+  if (normalized) {
+    const byName = live.find(
+      (o) => normalizeFolderNameInput(o.name).toLowerCase() === normalized.toLowerCase()
+    );
+    if (byName?.id) {
+      return { name: normalizeFolderNameInput(byName.name), id: byName.id.trim() };
+    }
+    return undefined;
   }
-  if (!normalized) return undefined;
-  const byName = live.find(
-    (o) => normalizeFolderNameInput(o.name).toLowerCase() === normalized.toLowerCase()
-  );
-  return byName
-    ? { name: normalizeFolderNameInput(byName.name), id: byName.id }
-    : undefined;
+
+  if (wantedId) {
+    const byId = live.find((o) => o.id === wantedId);
+    const id = byId?.id?.trim();
+    if (byId && id) {
+      return {
+        name: normalizeFolderNameInput(byId.name),
+        id,
+      };
+    }
+  }
+
+  return undefined;
 }
