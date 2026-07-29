@@ -87,6 +87,7 @@ export const copy = {
       reading: "AIが表データを読み取っています…",
       finishing: "結果を整理しています…",
       preparingShort: "準備",
+      uploadingShort: "送信",
       readingShort: "読み取り",
       finishingShort: "完了",
     },

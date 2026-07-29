@@ -38,7 +38,7 @@ async function simulateOcrProgress(
     return;
   }
   const started = Date.now();
-  onProgress({ percent: 5, phase: "uploading" });
+  onProgress({ percent: 2, phase: "preparing" });
   await new Promise<void>((resolve) => {
     const id = window.setInterval(() => {
       const t = (Date.now() - started) / durationMs;
@@ -48,17 +48,44 @@ async function simulateOcrProgress(
         resolve();
         return;
       }
-      if (t < 0.25) {
-        onProgress({ percent: 5 + 35 * (t / 0.25), phase: "uploading" });
+      if (t < 0.08) {
+        onProgress({ percent: 2 + 6 * (t / 0.08), phase: "preparing" });
+      } else if (t < 0.28) {
+        const u = (t - 0.08) / 0.2;
+        onProgress({ percent: 8 + 28 * u, phase: "uploading" });
       } else {
-        const readingT = (t - 0.25) / 0.75;
+        const readingT = (t - 0.28) / 0.72;
+        const eased = 1 - Math.pow(1 - Math.min(1, readingT), 2.2);
         onProgress({
-          percent: 40 + 52 * (1 - Math.exp(-2.2 * readingT)),
+          percent: 36 + 58 * eased,
           phase: "reading",
         });
       }
-    }, 100);
+    }, 50);
   });
+}
+
+/** Keep the bar moving while waiting on a non-streaming OCR response. */
+function startLocalReadingTicker(
+  onProgress: OcrProgressCallback | undefined,
+  startPercent: number,
+  capPercent: number,
+  expectedMs: number
+): () => void {
+  if (!onProgress) return () => undefined;
+  const started = Date.now();
+  let expected = expectedMs;
+  const id = window.setInterval(() => {
+    const elapsed = Date.now() - started;
+    if (elapsed > expected * 0.85 && expected < 120_000) expected *= 1.18;
+    const t = Math.min(0.992, elapsed / expected);
+    const eased = 1 - Math.pow(1 - t, 2.35);
+    onProgress({
+      percent: Math.round((startPercent + (capPercent - startPercent) * eased) * 10) / 10,
+      phase: "reading",
+    });
+  }, 50);
+  return () => window.clearInterval(id);
 }
 
 export async function surveyRunOcr(
@@ -71,28 +98,46 @@ export async function surveyRunOcr(
   }
 
   if (isPreviewEnvironment()) {
-    await simulateOcrProgress(options?.onProgress, 900);
+    await simulateOcrProgress(options?.onProgress, 1_400);
     const result = runMockOcr(files);
     options?.onProgress?.({ percent: 100, phase: "finishing" });
     return result;
   }
 
-  options?.onProgress?.({ percent: 8, phase: "uploading" });
-  const res = await fetch(`${getBasePath()}/api/ocr`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt, files }),
-  });
+  const onProgress = options?.onProgress;
+  onProgress?.({ percent: 3, phase: "preparing" });
+  onProgress?.({ percent: 12, phase: "uploading" });
 
-  if (!res.ok) {
-    const data = await parseJsonResponse<ApiError>(res);
-    throw new Error(data.error || "読み取りに失敗しました");
+  const stopTicker = startLocalReadingTicker(
+    onProgress,
+    18,
+    94,
+    Math.min(90_000, 10_000 + files.length * 8_000)
+  );
+  onProgress?.({ percent: 18, phase: "reading" });
+
+  try {
+    const res = await fetch(`${getBasePath()}/api/ocr`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt, files }),
+    });
+
+    stopTicker();
+
+    if (!res.ok) {
+      const data = await parseJsonResponse<ApiError>(res);
+      throw new Error(data.error || "読み取りに失敗しました");
+    }
+
+    onProgress?.({ percent: 97, phase: "finishing" });
+    const result = await parseJsonResponse<OcrResult>(res);
+    onProgress?.({ percent: 100, phase: "finishing" });
+    return result;
+  } catch (err) {
+    stopTicker();
+    throw err;
   }
-
-  options?.onProgress?.({ percent: 90, phase: "reading" });
-  const result = await parseJsonResponse<OcrResult>(res);
-  options?.onProgress?.({ percent: 100, phase: "finishing" });
-  return result;
 }
 
 export interface SurveyExportResult {

@@ -22,6 +22,8 @@ export type OcrProgressPhase = "preparing" | "uploading" | "reading" | "finishin
 export interface OcrProgressEvent {
   percent: number;
   phase: OcrProgressPhase;
+  /** e.g. upload "1.2 MB / 3.4 MB" */
+  detail?: string;
 }
 
 export type OcrProgressCallback = (event: OcrProgressEvent) => void;
@@ -56,26 +58,47 @@ interface ApiOcrResponse {
   warnings?: string[];
 }
 
-const UPLOAD_START = 5;
-const UPLOAD_END = 40;
-const READING_END = 92;
+const PREPARE_END = 4;
+const READING_CAP = 94;
+
+function formatProgressBytes(bytes: number): string {
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${bytes} B`;
+}
+
+/** Small payloads finish upload instantly — keep upload band short so reading owns the bar. */
+function uploadBandEnd(totalBytes: number): number {
+  if (totalBytes < 400_000) return 16;
+  if (totalBytes < 1_500_000) return 28;
+  return 38;
+}
 
 function emitProgress(
   onProgress: OcrProgressCallback | undefined,
   percent: number,
-  phase: OcrProgressPhase
+  phase: OcrProgressPhase,
+  detail?: string
 ): void {
   onProgress?.({
-    percent: Math.round(Math.min(100, Math.max(0, percent))),
+    percent: Math.round(Math.min(100, Math.max(0, percent)) * 10) / 10,
     phase,
+    detail,
   });
 }
 
 /** Expected server wait after upload — scales with payload size / file count. */
 function estimateReadingMs(fileCount: number, totalBytes: number): number {
-  const byCount = 10_000 + fileCount * 8_000;
-  const bySize = Math.min(90_000, totalBytes / 4_000);
-  return Math.min(120_000, Math.max(12_000, byCount + bySize));
+  const byCount = 8_000 + fileCount * 7_000;
+  const bySize = Math.min(75_000, totalBytes / 5_000);
+  return Math.min(110_000, Math.max(10_000, byCount + bySize));
+}
+
+/** Ease-out progress from start→cap (t in 0..1). */
+function easeReading(t: number, start: number, cap: number): number {
+  const clamped = Math.min(1, Math.max(0, t));
+  const eased = 1 - Math.pow(1 - clamped, 2.35);
+  return start + (cap - start) * eased;
 }
 
 function postOcrForm(
@@ -84,6 +107,7 @@ function postOcrForm(
   options: {
     timeoutMs: number;
     onUploadProgress?: (loaded: number, total: number) => void;
+    onUploadComplete?: () => void;
   }
 ): Promise<{ status: number; text: string }> {
   return new Promise((resolve, reject) => {
@@ -92,15 +116,25 @@ function postOcrForm(
     xhr.timeout = options.timeoutMs;
     xhr.responseType = "text";
 
+    let uploadCompleted = false;
+    const markUploadComplete = () => {
+      if (uploadCompleted) return;
+      uploadCompleted = true;
+      options.onUploadComplete?.();
+    };
+
     xhr.upload.onprogress = (event) => {
       if (!event.lengthComputable || event.total <= 0) return;
       options.onUploadProgress?.(event.loaded, event.total);
+      if (event.loaded >= event.total) markUploadComplete();
     };
     xhr.upload.onload = () => {
       options.onUploadProgress?.(1, 1);
+      markUploadComplete();
     };
 
     xhr.onload = () => {
+      markUploadComplete();
       resolve({ status: xhr.status, text: String(xhr.responseText ?? "") });
     };
     xhr.onerror = () => {
@@ -198,7 +232,7 @@ export async function runRemoteOcr(
     throw new Error("アップロードするファイルがありません");
   }
 
-  emitProgress(onProgress, 2, "preparing");
+  emitProgress(onProgress, 1, "preparing");
 
   const form = new FormData();
   let totalBytes = 0;
@@ -211,9 +245,12 @@ export async function runRemoteOcr(
     form.append("instructions", prompt.trim());
   }
 
-  emitProgress(onProgress, UPLOAD_START, "uploading");
+  const uploadStart = PREPARE_END;
+  const uploadEnd = uploadBandEnd(totalBytes);
+  emitProgress(onProgress, uploadStart, "uploading", `0 / ${formatProgressBytes(totalBytes)}`);
 
   let readingTimer: number | null = null;
+  let readingStarted = false;
   const clearReadingTicker = () => {
     if (readingTimer != null) {
       window.clearInterval(readingTimer);
@@ -222,18 +259,20 @@ export async function runRemoteOcr(
   };
 
   const startReadingTicker = () => {
+    if (readingStarted) return;
+    readingStarted = true;
     clearReadingTicker();
     const started = Date.now();
-    const expectedMs = estimateReadingMs(files.length, totalBytes);
-    emitProgress(onProgress, UPLOAD_END, "reading");
+    let expectedMs = estimateReadingMs(files.length, totalBytes);
+    emitProgress(onProgress, uploadEnd, "reading");
     readingTimer = window.setInterval(() => {
-      const t = (Date.now() - started) / expectedMs;
-      // Approaches READING_END; faster early movement than the old 28s fake ticker
-      const eased =
-        UPLOAD_END +
-        (READING_END - UPLOAD_END) * (1 - Math.exp(-2.4 * Math.min(t, 2.5)));
-      emitProgress(onProgress, Math.min(READING_END, eased), "reading");
-    }, 120);
+      const elapsed = Date.now() - started;
+      if (elapsed > expectedMs * 0.85 && expectedMs < 160_000) {
+        expectedMs *= 1.18;
+      }
+      const t = Math.min(0.992, elapsed / expectedMs);
+      emitProgress(onProgress, easeReading(t, uploadEnd, READING_CAP), "reading");
+    }, 50);
   };
 
   let status = 0;
@@ -242,11 +281,19 @@ export async function runRemoteOcr(
     const result = await postOcrForm(`${baseUrl}/api/ocr`, form, {
       timeoutMs: 180_000,
       onUploadProgress: (loaded, total) => {
-        const ratio = total > 0 ? Math.min(1, loaded / total) : 1;
-        const percent = UPLOAD_START + (UPLOAD_END - UPLOAD_START) * ratio;
-        emitProgress(onProgress, percent, "uploading");
-        if (ratio >= 1) startReadingTicker();
+        const absoluteTotal = total > 0 ? total : totalBytes || 1;
+        const absoluteLoaded =
+          total > 0 ? loaded : loaded <= 1 ? absoluteTotal * loaded : loaded;
+        const ratio = Math.min(1, absoluteLoaded / absoluteTotal);
+        const percent = uploadStart + (uploadEnd - uploadStart) * ratio;
+        emitProgress(
+          onProgress,
+          percent,
+          "uploading",
+          `${formatProgressBytes(absoluteLoaded)} / ${formatProgressBytes(absoluteTotal)}`
+        );
       },
+      onUploadComplete: startReadingTicker,
     });
     status = result.status;
     text = result.text;
@@ -257,7 +304,7 @@ export async function runRemoteOcr(
     clearReadingTicker();
   }
 
-  emitProgress(onProgress, 96, "finishing");
+  emitProgress(onProgress, 97, "finishing");
 
   let data: ApiOcrResponse & { detail?: unknown; message?: string } = {};
   try {

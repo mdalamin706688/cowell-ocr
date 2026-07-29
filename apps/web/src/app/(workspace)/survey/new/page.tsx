@@ -49,6 +49,8 @@ function SurveyWorkflow() {
   const [processing, setProcessing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [ocrPhase, setOcrPhase] = useState<"preparing" | "uploading" | "reading" | "finishing">("preparing");
+  const [ocrDetail, setOcrDetail] = useState<string | undefined>();
   const [exportProgress, setExportProgress] = useState(0);
   const [exportPhase, setExportPhase] = useState<ExportProgressPhase>("connecting");
   const [exportDetail, setExportDetail] = useState<string | undefined>();
@@ -119,7 +121,9 @@ function SurveyWorkflow() {
     setProcessing(true);
     setError(null);
     setStep("processing");
-    setProgress(2);
+    setProgress(1);
+    setOcrPhase("preparing");
+    setOcrDetail(undefined);
     try {
       const result = await surveyRunOcr(
         prompt,
@@ -127,9 +131,13 @@ function SurveyWorkflow() {
         {
           onProgress: (event) => {
             setProgress((prev) => Math.max(prev, event.percent));
+            setOcrPhase(event.phase);
+            setOcrDetail(event.phase === "uploading" ? event.detail : undefined);
           },
         }
       );
+      setOcrPhase("finishing");
+      setOcrDetail(undefined);
       setProgress(100);
       setOcrResult(result);
       setRows(
@@ -282,6 +290,8 @@ function SurveyWorkflow() {
             fileCount={files.length}
             fileNames={files.map((f) => f.name)}
             progress={progress}
+            phase={ocrPhase}
+            detail={ocrDetail}
           />
         </StepPanel>
       )}
