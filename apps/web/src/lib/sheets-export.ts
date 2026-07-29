@@ -256,6 +256,15 @@ async function getParentFolderIfValid(
   return meta;
 }
 
+/** Public check for UI — returns null when deleted, trashed, or not a folder. */
+export async function verifyDriveFolder(
+  accessToken: string,
+  folderId: string
+): Promise<{ id: string; name: string } | null> {
+  if (!folderId?.trim()) return null;
+  return getFolderMeta(accessToken, folderId.trim());
+}
+
 /** List app-visible folders at My Drive root (drive.file scope). */
 export async function listDriveRootFolders(
   accessToken: string

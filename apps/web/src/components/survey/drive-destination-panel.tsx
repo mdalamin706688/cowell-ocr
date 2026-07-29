@@ -8,9 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { copy } from "@/lib/copy";
 import {
-  mergeRootFolderOptions,
+  findLiveRootFolder,
   normalizeFolderNameInput,
-  readRootFolderHistory,
+  syncRootFolderHistoryWithLive,
   type DriveRootFolderPref,
   writeLastRootFolder,
 } from "@/lib/drive-root-folder";
@@ -19,7 +19,11 @@ import {
   getConnectedGoogleDrive,
   isGoogleClientConfigured,
 } from "@/lib/google-auth-client";
-import { listDriveChildFolders, listDriveRootFolders } from "@/lib/sheets-export";
+import {
+  listDriveChildFolders,
+  listDriveRootFolders,
+  verifyDriveFolder,
+} from "@/lib/sheets-export";
 import {
   buildDriveExportPreview,
   normalizeProjectNameInput,
@@ -40,6 +44,8 @@ interface DriveDestinationPanelProps {
   onChange: Dispatch<SetStateAction<DriveDestinationValue>>;
 }
 
+type RootStatus = "empty" | "loading" | "existing" | "create" | "stale";
+
 export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanelProps) {
   const googleReady = isGoogleClientConfigured();
   const [open, setOpen] = useState(true);
@@ -48,26 +54,42 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
   const [accountEmail, setAccountEmail] = useState<string | undefined>(
     () => getConnectedGoogleDrive()?.email || value.googleAccountEmail
   );
-  const [options, setOptions] = useState<DriveRootFolderPref[]>(() =>
-    readRootFolderHistory(accountEmail)
-  );
+  /** Live Drive folders only — never ghost cache */
+  const [options, setOptions] = useState<DriveRootFolderPref[]>([]);
+  const [rootsLoading, setRootsLoading] = useState(false);
+  const [rootsLoaded, setRootsLoaded] = useState(false);
   const [childFolderNames, setChildFolderNames] = useState<string[]>([]);
   const [checkingUnique, setCheckingUnique] = useState(false);
   const uniquenessSeq = useRef(0);
+  const rootsSeq = useRef(0);
   const projectCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const valueRef = useRef(value);
+  valueRef.current = value;
 
   const rootName = value.rootFolderName;
   const projectName = value.projectName;
   const rootNormalized = normalizeFolderNameInput(rootName);
   const projectNormalized = normalizeProjectNameInput(projectName);
 
-  const effectiveRootFolderId = useMemo(() => {
-    if (value.rootFolderId) return value.rootFolderId;
-    if (!rootNormalized) return undefined;
-    const match = options.find((o) => o.name.toLowerCase() === rootNormalized.toLowerCase());
-    return match?.id;
-  }, [value.rootFolderId, options, rootNormalized]);
+  const liveMatch = useMemo(
+    () => findLiveRootFolder(options, rootNormalized, value.rootFolderId),
+    [options, rootNormalized, value.rootFolderId]
+  );
+
+  const effectiveRootFolderId = liveMatch?.id;
+
+  const rootStatus: RootStatus = !rootsLoaded || rootsLoading
+    ? rootNormalized
+      ? "loading"
+      : "empty"
+    : !rootNormalized
+      ? "empty"
+      : liveMatch
+        ? "existing"
+        : value.rootFolderId
+          ? "stale"
+          : "create";
 
   const isProjectDuplicate = useCallback(
     (name: string) => {
@@ -80,7 +102,12 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
     [childFolderNames, effectiveRootFolderId]
   );
 
-  const rootError = accountEmail && !rootNormalized ? copy.survey.rootFolderRequired : null;
+  const rootError =
+    accountEmail && !rootNormalized
+      ? copy.survey.rootFolderRequired
+      : rootStatus === "stale"
+        ? copy.survey.rootFolderGone
+        : null;
 
   const projectDuplicate = isProjectDuplicate(projectName);
 
@@ -90,12 +117,22 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
       ? copy.survey.projectNameDuplicate
       : null;
 
-  const isValid =
-    Boolean(accountEmail) &&
-    Boolean(rootNormalized) &&
-    Boolean(projectNormalized) &&
-    !projectDuplicate &&
-    !checkingUnique;
+  /**
+   * Valid when Google connected + root resolved + project unique.
+   * - existing root: uniqueness must finish against live children
+   * - new root (create): no children yet → unique by definition
+   * - stale / still loading roots: not valid
+   */
+  const isValid = Boolean(
+    accountEmail &&
+      rootsLoaded &&
+      !rootsLoading &&
+      rootNormalized &&
+      projectNormalized &&
+      (rootStatus === "existing" || rootStatus === "create") &&
+      !projectDuplicate &&
+      !(rootStatus === "existing" && checkingUnique)
+  );
 
   const pathPreview = buildDriveExportPreview(projectName, rootName);
 
@@ -105,25 +142,41 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
   );
 
   const computeIsValid = useCallback(
-    (next: DriveDestinationValue, checking = checkingUnique) => {
+    (
+      next: DriveDestinationValue,
+      ctx: {
+        options: DriveRootFolderPref[];
+        childFolderNames: string[];
+        checkingUnique: boolean;
+        rootsLoaded: boolean;
+        rootsLoading: boolean;
+        accountEmail?: string;
+      } = {
+        options,
+        childFolderNames,
+        checkingUnique,
+        rootsLoaded,
+        rootsLoading,
+        accountEmail,
+      }
+    ) => {
       const root = normalizeFolderNameInput(next.rootFolderName);
       const project = normalizeProjectNameInput(next.projectName);
-      const rootId =
-        next.rootFolderId ||
-        options.find((o) => o.name.toLowerCase() === root.toLowerCase())?.id;
+      if (!ctx.accountEmail || !ctx.rootsLoaded || ctx.rootsLoading || !root || !project) {
+        return false;
+      }
+      const match = findLiveRootFolder(ctx.options, root, next.rootFolderId);
+      if (next.rootFolderId && !match) return false;
+      const status: RootStatus = match ? "existing" : next.rootFolderId ? "stale" : "create";
+      if (status !== "existing" && status !== "create") return false;
       const duplicate =
-        Boolean(rootId) &&
-        Boolean(project) &&
-        childFolderNames.some((n) => n.toLowerCase() === project.toLowerCase());
-      return (
-        Boolean(accountEmail) &&
-        Boolean(root) &&
-        Boolean(project) &&
-        !duplicate &&
-        !checking
-      );
+        Boolean(match?.id) &&
+        ctx.childFolderNames.some((n) => n.toLowerCase() === project.toLowerCase());
+      if (duplicate) return false;
+      if (status === "existing" && ctx.checkingUnique) return false;
+      return true;
     },
-    [accountEmail, childFolderNames, checkingUnique, options]
+    [accountEmail, childFolderNames, checkingUnique, options, rootsLoaded, rootsLoading]
   );
 
   const pushValue = useCallback(
@@ -136,18 +189,110 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
     [computeIsValid, onChange]
   );
 
-  const refreshFolderOptions = useCallback(async (email: string, accessToken: string) => {
-    const live = await listDriveRootFolders(accessToken);
-    const merged = mergeRootFolderOptions(live, readRootFolderHistory(email));
-    setOptions(merged);
-    return merged;
-  }, []);
-
   const resetRootSelection = useCallback(() => {
     setChildFolderNames([]);
     setCheckingUnique(false);
     uniquenessSeq.current += 1;
   }, []);
+
+  const reconcileSelectionWithLive = useCallback(
+    (live: DriveRootFolderPref[], email: string) => {
+      const current = valueRef.current;
+      const name = normalizeFolderNameInput(current.rootFolderName);
+      if (!name) {
+        onChange({
+          ...current,
+          rootFolderId: undefined,
+          googleAccountEmail: email,
+          isValid: false,
+        });
+        return;
+      }
+
+      const match = findLiveRootFolder(live, name, current.rootFolderId);
+      if (match) {
+        onChange((prev) => {
+          const next = {
+            ...prev,
+            rootFolderName: match.name,
+            rootFolderId: match.id,
+            googleAccountEmail: email,
+          };
+          return {
+            ...next,
+            isValid: computeIsValid(next, {
+              options: live,
+              childFolderNames: [],
+              checkingUnique: Boolean(match.id),
+              rootsLoaded: true,
+              rootsLoading: false,
+              accountEmail: email,
+            }),
+          };
+        });
+        return;
+      }
+
+      // Typed name no longer in Drive (deleted) — keep name as "create new", drop stale id
+      onChange((prev) => {
+        const next = {
+          ...prev,
+          rootFolderId: undefined,
+          googleAccountEmail: email,
+        };
+        return {
+          ...next,
+          isValid: computeIsValid(next, {
+            options: live,
+            childFolderNames: [],
+            checkingUnique: false,
+            rootsLoaded: true,
+            rootsLoading: false,
+            accountEmail: email,
+          }),
+        };
+      });
+    },
+    [computeIsValid, onChange]
+  );
+
+  const refreshFolderOptions = useCallback(
+    async (email: string, accessToken: string) => {
+      const seq = ++rootsSeq.current;
+      setRootsLoading(true);
+      try {
+        let live = await listDriveRootFolders(accessToken);
+        if (seq !== rootsSeq.current) return [];
+
+        // Confirm the selected folder still exists (deleted in Drive → drop from options)
+        const selectedId = valueRef.current.rootFolderId?.trim();
+        if (selectedId) {
+          const meta = await verifyDriveFolder(accessToken, selectedId);
+          if (!meta) {
+            live = live.filter((f) => f.id !== selectedId);
+          }
+        }
+
+        const finalOptions = syncRootFolderHistoryWithLive(email, live);
+        if (seq !== rootsSeq.current) return [];
+        setOptions(finalOptions);
+        setRootsLoaded(true);
+        reconcileSelectionWithLive(finalOptions, email);
+        return finalOptions;
+      } catch {
+        if (seq !== rootsSeq.current) return [];
+        setOptions([]);
+        setRootsLoaded(true);
+        return [];
+      } finally {
+        if (seq === rootsSeq.current) setRootsLoading(false);
+      }
+    },
+    [reconcileSelectionWithLive]
+  );
+
+  const refreshFolderOptionsRef = useRef(refreshFolderOptions);
+  refreshFolderOptionsRef.current = refreshFolderOptions;
 
   const commitRootFolder = useCallback(
     (raw: string) => {
@@ -161,10 +306,12 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
         });
         return;
       }
-      const match = options.find((o) => o.name.toLowerCase() === name.toLowerCase());
-      if (accountEmail) writeLastRootFolder({ name, id: match?.id }, accountEmail);
+      const match = findLiveRootFolder(options, name);
+      if (accountEmail && match?.id) {
+        writeLastRootFolder({ name: match.name, id: match.id }, accountEmail);
+      }
       pushValue({
-        rootFolderName: name,
+        rootFolderName: match?.name || name,
         rootFolderId: match?.id,
         googleAccountEmail: accountEmail,
       });
@@ -181,6 +328,14 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
     const seq = ++uniquenessSeq.current;
     setCheckingUnique(true);
     try {
+      const meta = await verifyDriveFolder(accessToken, parentId);
+      if (seq !== uniquenessSeq.current) return;
+      if (!meta) {
+        setChildFolderNames([]);
+        const session = getConnectedGoogleDrive();
+        if (session) void refreshFolderOptionsRef.current(session.email, session.accessToken);
+        return;
+      }
       const children = await listDriveChildFolders(accessToken, parentId);
       if (seq !== uniquenessSeq.current) return;
       setChildFolderNames(
@@ -229,18 +384,22 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
 
   useEffect(() => {
     const session = getConnectedGoogleDrive();
+    if (session) setAccountEmail(session.email);
+  }, []);
+
+  // Re-sync from Drive whenever the panel is opened (catches deletes in Drive UI)
+  useEffect(() => {
+    if (!open) return;
+    const session = getConnectedGoogleDrive();
     if (!session) return;
     setAccountEmail(session.email);
-    void refreshFolderOptions(session.email, session.accessToken).catch(() =>
-      setOptions(readRootFolderHistory(session.email))
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- once on mount
-  }, []);
+    void refreshFolderOptionsRef.current(session.email, session.accessToken);
+  }, [open]);
 
   // Load / refresh child folders when root or project name changes
   useEffect(() => {
     const session = getConnectedGoogleDrive();
-    if (!session || !effectiveRootFolderId) {
+    if (!session || !effectiveRootFolderId || rootStatus !== "existing") {
       setChildFolderNames([]);
       setCheckingUnique(false);
       return;
@@ -254,7 +413,7 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
     return () => {
       if (projectCheckTimer.current) clearTimeout(projectCheckTimer.current);
     };
-  }, [effectiveRootFolderId, projectNormalized, scheduleChildFolderCheck]);
+  }, [effectiveRootFolderId, projectNormalized, rootStatus, scheduleChildFolderCheck]);
 
   const handleConnect = useCallback(async () => {
     if (!googleReady || busy) return;
@@ -263,8 +422,8 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
     try {
       const account = await connectGoogleDrive({ switchAccount: true });
       setAccountEmail(account.email);
-      await refreshFolderOptions(account.email, account.accessToken);
       resetDestinationForAccount(account.email, value.projectName);
+      await refreshFolderOptions(account.email, account.accessToken);
       setOpen(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Google接続に失敗しました");
@@ -275,7 +434,8 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
 
   const selectRoot = (pref: DriveRootFolderPref) => {
     const name = normalizeFolderNameInput(pref.name);
-    if (!name) return;
+    if (!name || !pref.id) return;
+    resetRootSelection();
     if (accountEmail) writeLastRootFolder({ name, id: pref.id }, accountEmail);
     pushValue({
       rootFolderName: name,
@@ -290,10 +450,7 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
   const canAutoCollapse =
     open &&
     connected &&
-    Boolean(rootNormalized) &&
-    Boolean(projectNormalized) &&
-    !projectDuplicate &&
-    !checkingUnique &&
+    isValid &&
     !busy;
 
   useEffect(() => {
@@ -383,23 +540,45 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
                     value={rootName}
                     options={comboboxOptions}
                     placeholder={copy.survey.rootFolderPlaceholder}
-                    disabled={busy}
+                    disabled={busy || rootsLoading}
                     onChange={(next) => {
                       resetRootSelection();
+                      const normalized = normalizeFolderNameInput(next);
+                      const match = findLiveRootFolder(options, normalized);
                       pushValue({
                         rootFolderName: next,
-                        rootFolderId: undefined,
+                        rootFolderId: match?.id,
                         googleAccountEmail: accountEmail,
                       });
                     }}
                     onSelect={(opt) => selectRoot({ name: opt.label, id: opt.id })}
                     onCommit={commitRootFolder}
-                    emptyMessage={copy.survey.rootFolderEmpty}
+                    emptyMessage={
+                      rootsLoading
+                        ? copy.survey.rootFolderLoading
+                        : copy.survey.rootFolderEmpty
+                    }
                   />
-                  {rootError && (
+                  {rootsLoading ? (
+                    <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Loader2 className="h-3 w-3 animate-spin shrink-0" />
+                      {copy.survey.rootFolderLoading}
+                    </p>
+                  ) : rootError ? (
                     <p className="flex items-center gap-1 text-xs text-destructive">
                       <AlertCircle className="h-3 w-3 shrink-0" />
                       {rootError}
+                    </p>
+                  ) : rootStatus === "create" ? (
+                    <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Check className="h-3 w-3 shrink-0" />
+                      {copy.survey.rootFolderWillCreate}
+                    </p>
+                  ) : rootStatus === "existing" ? (
+                    <p className="text-xs text-muted-foreground">{copy.survey.rootFolderHint}</p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      {copy.survey.rootFolderSelectExisting}
                     </p>
                   )}
                 </div>
@@ -436,9 +615,14 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
                       {projectError}
                     </p>
                   ) : projectNormalized &&
-                    rootNormalized &&
+                    rootStatus === "existing" &&
                     effectiveRootFolderId &&
                     !projectDuplicate ? (
+                    <p className="flex items-center gap-1 text-xs text-lumen">
+                      <Check className="h-3 w-3 shrink-0" />
+                      {copy.survey.projectNameAvailable}
+                    </p>
+                  ) : projectNormalized && rootStatus === "create" ? (
                     <p className="flex items-center gap-1 text-xs text-lumen">
                       <Check className="h-3 w-3 shrink-0" />
                       {copy.survey.projectNameAvailable}

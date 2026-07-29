@@ -25,6 +25,10 @@ function accountKey(email: string): string {
   return email.trim().toLowerCase();
 }
 
+/**
+ * Export fallback only — never use this to invent UI dropdown options.
+ * Empty input becomes the default app root name for backend resolve.
+ */
 export function sanitizeRootFolderName(name?: string): string {
   const cleaned = normalizeFolderNameInput(name);
   return cleaned || DEFAULT_DRIVE_ROOT_FOLDER_NAME;
@@ -75,8 +79,10 @@ function migrateLegacyPrefs(): PrefsMap {
       if (Array.isArray(parsed)) {
         for (const item of parsed) {
           if (!item?.name) continue;
+          const cleaned = normalizeFolderNameInput(item.name);
+          if (!cleaned) continue;
           history.push({
-            name: sanitizeRootFolderName(item.name),
+            name: cleaned,
             id: item.id?.trim() || undefined,
           });
         }
@@ -84,18 +90,18 @@ function migrateLegacyPrefs(): PrefsMap {
     }
 
     const active = localStorage.getItem(ACTIVE_ACCOUNT_KEY)?.trim();
-    if (!active) {
-      // Keep legacy until an account connects; still return empty map
-      return {};
-    }
+    if (!active) return {};
 
+    const cleanedName = normalizeFolderNameInput(name || undefined);
     const map: PrefsMap = {
       [accountKey(active)]: {
-        lastRootName: sanitizeRootFolderName(name || undefined),
+        lastRootName: cleanedName,
         lastRootId: id || undefined,
         history: history.length
           ? history
-          : [{ name: sanitizeRootFolderName(name || undefined), id: id || undefined }],
+          : cleanedName
+            ? [{ name: cleanedName, id: id || undefined }]
+            : [],
       },
     };
     writePrefsMap(map);
@@ -130,14 +136,14 @@ function getAccountPrefs(email: string): AccountDrivePrefs {
   const existing = map[key];
   if (existing) {
     return {
-      lastRootName: sanitizeRootFolderName(existing.lastRootName),
-      lastRootId: existing.lastRootId,
+      lastRootName: normalizeFolderNameInput(existing.lastRootName),
+      lastRootId: existing.lastRootId?.trim() || undefined,
       history: Array.isArray(existing.history) ? existing.history : [],
     };
   }
   return {
-    lastRootName: DEFAULT_DRIVE_ROOT_FOLDER_NAME,
-    history: [{ name: DEFAULT_DRIVE_ROOT_FOLDER_NAME }],
+    lastRootName: "",
+    history: [],
   };
 }
 
@@ -151,11 +157,11 @@ function saveAccountPrefs(email: string, prefs: AccountDrivePrefs): void {
 export function readLastRootFolder(email?: string | null): DriveRootFolderPref {
   const account = email?.trim() || readActiveDriveAccountEmail();
   if (!account) {
-    return { name: DEFAULT_DRIVE_ROOT_FOLDER_NAME };
+    return { name: "" };
   }
   const prefs = getAccountPrefs(account);
   return {
-    name: sanitizeRootFolderName(prefs.lastRootName),
+    name: normalizeFolderNameInput(prefs.lastRootName),
     id: prefs.lastRootId,
   };
 }
@@ -167,63 +173,164 @@ export function writeLastRootFolder(
   const account = email?.trim() || readActiveDriveAccountEmail();
   if (!account) return;
 
-  const name = sanitizeRootFolderName(pref.name);
+  const name = normalizeFolderNameInput(pref.name);
+  if (!name) {
+    saveAccountPrefs(account, {
+      lastRootName: "",
+      lastRootId: undefined,
+      history: getAccountPrefs(account).history,
+    });
+    return;
+  }
+
   const prefs = getAccountPrefs(account);
-  const history = [{ name, id: pref.id?.trim() || undefined }];
+  const id = pref.id?.trim() || undefined;
+  const history: DriveRootFolderPref[] = [{ name, id }];
   for (const item of prefs.history) {
-    if (item.name.toLowerCase() === name.toLowerCase()) continue;
+    const itemName = normalizeFolderNameInput(item.name);
+    if (!itemName || itemName.toLowerCase() === name.toLowerCase()) continue;
     history.push({
-      name: sanitizeRootFolderName(item.name),
+      name: itemName,
       id: item.id?.trim() || undefined,
     });
   }
 
   saveAccountPrefs(account, {
     lastRootName: name,
-    lastRootId: pref.id?.trim() || undefined,
+    lastRootId: id,
     history: history.slice(0, MAX_HISTORY),
   });
 }
 
 export function readRootFolderHistory(email?: string | null): DriveRootFolderPref[] {
   const account = email?.trim() || readActiveDriveAccountEmail();
-  if (!account) return [{ name: DEFAULT_DRIVE_ROOT_FOLDER_NAME }];
+  if (!account) return [];
 
   const prefs = getAccountPrefs(account);
   const seen = new Set<string>();
   const items: DriveRootFolderPref[] = [];
   for (const item of prefs.history) {
-    const name = sanitizeRootFolderName(item.name);
+    const name = normalizeFolderNameInput(item.name);
+    if (!name) continue;
     const key = name.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
     items.push({ name, id: item.id?.trim() || undefined });
   }
-  if (!items.some((i) => i.name === DEFAULT_DRIVE_ROOT_FOLDER_NAME)) {
-    items.push({ name: DEFAULT_DRIVE_ROOT_FOLDER_NAME });
-  }
   return items.slice(0, MAX_HISTORY);
 }
 
-/** Merge Drive-listed folders for the connected account; prefer live ids. */
+/**
+ * Dropdown source of truth = live Drive folders only.
+ * History only reorders / prefers recently used names that still exist.
+ * Never invents a default folder (e.g. JBC-COWELL) that is gone from Drive.
+ */
 export function mergeRootFolderOptions(
   live: DriveRootFolderPref[],
   history: DriveRootFolderPref[] = []
 ): DriveRootFolderPref[] {
+  const liveByName = new Map<string, DriveRootFolderPref>();
+  for (const item of live) {
+    const name = normalizeFolderNameInput(item.name);
+    if (!name || !item.id?.trim()) continue;
+    const key = name.toLowerCase();
+    if (!liveByName.has(key)) {
+      liveByName.set(key, { name, id: item.id.trim() });
+    }
+  }
+
   const seen = new Set<string>();
   const out: DriveRootFolderPref[] = [];
 
-  for (const item of [...live, ...history]) {
-    const name = sanitizeRootFolderName(item.name);
-    const key = name.toLowerCase();
-    if (seen.has(key)) continue;
+  for (const item of history) {
+    const key = normalizeFolderNameInput(item.name).toLowerCase();
+    if (!key || seen.has(key)) continue;
+    const liveMatch = liveByName.get(key);
+    if (!liveMatch) continue;
     seen.add(key);
-    out.push({ name, id: item.id });
+    out.push(liveMatch);
   }
 
-  if (!out.some((i) => i.name === DEFAULT_DRIVE_ROOT_FOLDER_NAME)) {
-    out.unshift({ name: DEFAULT_DRIVE_ROOT_FOLDER_NAME });
+  for (const item of liveByName.values()) {
+    const key = item.name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
   }
 
   return out;
+}
+
+/**
+ * Drop cached roots that no longer exist in Drive. Clears last-used when deleted.
+ * Returns the pruned live-only option list for the combobox.
+ */
+export function syncRootFolderHistoryWithLive(
+  email: string,
+  live: DriveRootFolderPref[]
+): DriveRootFolderPref[] {
+  const account = email.trim();
+  if (!account) return mergeRootFolderOptions(live, []);
+
+  const liveNormalized: DriveRootFolderPref[] = [];
+  const liveById = new Map<string, DriveRootFolderPref>();
+  const liveByName = new Map<string, DriveRootFolderPref>();
+  for (const item of live) {
+    const name = normalizeFolderNameInput(item.name);
+    const id = item.id?.trim();
+    if (!name || !id) continue;
+    const pref = { name, id };
+    liveNormalized.push(pref);
+    liveById.set(id, pref);
+    liveByName.set(name.toLowerCase(), pref);
+  }
+
+  const prefs = getAccountPrefs(account);
+  const history: DriveRootFolderPref[] = [];
+  const seen = new Set<string>();
+  for (const item of prefs.history) {
+    const byId = item.id?.trim() ? liveById.get(item.id.trim()) : undefined;
+    const byName = liveByName.get(normalizeFolderNameInput(item.name).toLowerCase());
+    const match = byId || byName;
+    if (!match) continue;
+    const key = match.name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    history.push(match);
+  }
+
+  const lastById = prefs.lastRootId?.trim()
+    ? liveById.get(prefs.lastRootId.trim())
+    : undefined;
+  const lastByName = liveByName.get(normalizeFolderNameInput(prefs.lastRootName).toLowerCase());
+  const last = lastById || lastByName;
+
+  saveAccountPrefs(account, {
+    lastRootName: last?.name || "",
+    lastRootId: last?.id,
+    history: history.slice(0, MAX_HISTORY),
+  });
+
+  return mergeRootFolderOptions(liveNormalized, history);
+}
+
+/** Resolve a typed/selected root against the live Drive list. */
+export function findLiveRootFolder(
+  live: DriveRootFolderPref[],
+  name: string,
+  id?: string
+): DriveRootFolderPref | undefined {
+  const normalized = normalizeFolderNameInput(name);
+  const wantedId = id?.trim();
+  if (wantedId) {
+    const byId = live.find((o) => o.id === wantedId && normalizeFolderNameInput(o.name));
+    if (byId) return { name: normalizeFolderNameInput(byId.name), id: byId.id };
+  }
+  if (!normalized) return undefined;
+  const byName = live.find(
+    (o) => normalizeFolderNameInput(o.name).toLowerCase() === normalized.toLowerCase()
+  );
+  return byName
+    ? { name: normalizeFolderNameInput(byName.name), id: byName.id }
+    : undefined;
 }
