@@ -55,6 +55,7 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
   const [checkingUnique, setCheckingUnique] = useState(false);
   const uniquenessSeq = useRef(0);
   const projectCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const rootName = value.rootFolderName;
   const projectName = value.projectName;
@@ -285,8 +286,47 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
 
   const connected = Boolean(accountEmail);
 
+  /** Collapse when destination is complete and user clicks/taps outside the panel. */
+  const canAutoCollapse =
+    open &&
+    connected &&
+    Boolean(rootNormalized) &&
+    Boolean(projectNormalized) &&
+    !projectDuplicate &&
+    !checkingUnique &&
+    !busy;
+
+  useEffect(() => {
+    if (!canAutoCollapse) return;
+
+    const isOutsidePanel = (target: EventTarget | null) => {
+      if (!(target instanceof Node)) return false;
+      if (panelRef.current?.contains(target)) return false;
+      // Combobox suggestions render in a body portal — treat as inside the form
+      if (target instanceof Element && target.closest('[role="listbox"]')) return false;
+      return true;
+    };
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (!isOutsidePanel(event.target)) return;
+      setOpen(false);
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setOpen(false);
+    };
+
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [canAutoCollapse]);
+
   return (
-    <div className="ui-card overflow-hidden">
+    <div ref={panelRef} className="ui-card overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
