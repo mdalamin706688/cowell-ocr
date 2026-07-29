@@ -1,4 +1,5 @@
 import { COGNITO_SUPER_ADMIN_GROUP } from "./cognito-config";
+import { copy } from "./copy";
 
 export const SESSION_COOKIE = "cowell_session";
 
@@ -52,16 +53,34 @@ export function createSessionToken(user: SessionUser): string {
 
 export function parseSessionToken(token: string): SessionUser | null {
   try {
-    return JSON.parse(decodeBase64Utf8(token)) as SessionUser;
+    const user = JSON.parse(decodeBase64Utf8(token)) as SessionUser;
+    return normalizeSessionUser(user);
   } catch {
     return null;
   }
 }
 
+/** Ensure role flags are derived from Cognito groups (handles older session cookies). */
+export function normalizeSessionUser(user: SessionUser): SessionUser {
+  const groups = user.groups ?? [];
+  const isSuperAdmin =
+    user.isSuperAdmin === true || groups.includes(COGNITO_SUPER_ADMIN_GROUP);
+  return { ...user, groups, isSuperAdmin };
+}
+
+export function isSessionSuperAdmin(user: SessionUser): boolean {
+  return normalizeSessionUser(user).isSuperAdmin === true;
+}
+
+export function getSessionRoleLabel(user: SessionUser): string {
+  return isSessionSuperAdmin(user) ? copy.roles.superAdmin : copy.roles.user;
+}
+
 export function setClientSession(user: SessionUser): void {
-  cachedSession = user;
+  const normalized = normalizeSessionUser(user);
+  cachedSession = normalized;
   if (typeof document === "undefined") return;
-  const token = createSessionToken(user);
+  const token = createSessionToken(normalized);
   document.cookie = `${SESSION_COOKIE}=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
 }
 

@@ -14,6 +14,10 @@ export const copy = {
     newShort: "新規",
     account: "アカウント",
   },
+  roles: {
+    superAdmin: "Super Admin",
+    user: "User",
+  },
   login: {
     title: "ログイン",
     subtitle: "管理者アカウントでサインイン",

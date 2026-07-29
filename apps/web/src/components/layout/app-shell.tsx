@@ -11,6 +11,7 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import { TransitionLink } from "@/components/ui/transition-link";
 import { useSafeMotion } from "@/hooks/use-safe-motion";
 import { springSnappy } from "@/lib/motion";
+import { getSessionRoleLabel, isSessionSuperAdmin, type SessionUser } from "@/lib/client-auth";
 
 const nav = [
   { href: "/dashboard/", label: copy.nav.home },
@@ -19,12 +20,14 @@ const nav = [
 
 interface AppShellProps {
   children: React.ReactNode;
-  user?: { email: string; name: string } | null;
+  user?: SessionUser | null;
 }
 
 export function AppShell({ children, user }: AppShellProps) {
   const pathname = usePathname();
   const safeMotion = useSafeMotion();
+  const roleLabel = user ? getSessionRoleLabel(user) : "";
+  const isSuperAdmin = user ? isSessionSuperAdmin(user) : false;
 
   return (
     <div className="min-h-screen overflow-x-clip paper-canvas">
@@ -76,7 +79,19 @@ export function AppShell({ children, user }: AppShellProps) {
 
             {user && (
               <div className="rounded-xl border border-border/60 bg-muted/20 px-3.5 py-3">
-                <p className="text-label">{copy.nav.account}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-label">{copy.nav.account}</p>
+                  <span
+                    className={cn(
+                      "shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold tracking-wide",
+                      isSuperAdmin
+                        ? "bg-lumen/15 text-lumen"
+                        : "bg-muted text-muted-foreground"
+                    )}
+                  >
+                    {roleLabel}
+                  </span>
+                </div>
                 <p className="mt-1 truncate text-xs font-medium text-foreground/85">{user.email}</p>
               </div>
             )}

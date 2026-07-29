@@ -14,7 +14,8 @@ function isTranslationError(error: Error): boolean {
   );
 }
 
-export default function GlobalError({
+/** Route-level error UI — must not render <html>/<body> (nested inside root layout). */
+export default function Error({
   error,
   reset,
 }: {
@@ -31,28 +32,24 @@ export default function GlobalError({
     }
   }, [error]);
 
-  const isTranslate = isTranslationError(error);
+  if (isTranslationError(error)) {
+    return null;
+  }
 
   return (
-    <html lang="ja" suppressHydrationWarning>
-      <body className="min-h-screen bg-background font-sans antialiased" suppressHydrationWarning>
-        {!isTranslate && (
-          <div className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-6 text-center">
-            <h1 className="font-display text-xl font-semibold">表示エラーが発生しました</h1>
-            <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
-              一時的な問題が発生しました。再読み込みをお試しください。
-            </p>
-            <div className="mt-6 flex flex-wrap justify-center gap-3">
-              <Button type="button" onClick={() => window.location.reload()}>
-                再読み込み
-              </Button>
-              <Button type="button" variant="outline" onClick={() => reset()}>
-                再試行
-              </Button>
-            </div>
-          </div>
-        )}
-      </body>
-    </html>
+    <div className="mx-auto flex min-h-[50vh] max-w-md flex-col items-center justify-center px-6 text-center">
+      <h1 className="font-display text-xl font-semibold">表示エラーが発生しました</h1>
+      <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
+        一時的な問題が発生しました。再読み込みをお試しください。
+      </p>
+      <div className="mt-6 flex flex-wrap justify-center gap-3">
+        <Button type="button" onClick={() => window.location.reload()}>
+          再読み込み
+        </Button>
+        <Button type="button" variant="outline" onClick={() => reset()}>
+          再試行
+        </Button>
+      </div>
+    </div>
   );
 }

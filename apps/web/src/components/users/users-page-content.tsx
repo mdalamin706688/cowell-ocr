@@ -16,7 +16,7 @@ import {
   type CognitoUserRow,
 } from "@/lib/cognito-admin";
 import { isCognitoAdminConfigured, isCognitoConfigured } from "@/lib/cognito-config";
-import { isPreviewEnvironment } from "@/lib/client-auth";
+import { isPreviewEnvironment, isSessionSuperAdmin } from "@/lib/client-auth";
 import { useWorkspaceSession } from "@/contexts/workspace-session";
 import { cn } from "@/lib/utils";
 
@@ -130,7 +130,7 @@ export function UsersPageContent() {
     }
   };
 
-  const canDelete = session.isSuperAdmin || previewDemo;
+  const canDelete = isSessionSuperAdmin(session) || previewDemo;
 
   return (
     <div className="space-y-8">
