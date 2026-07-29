@@ -8,7 +8,6 @@ import {
   ChevronRight,
   ImagePlus,
   Loader2,
-  Package,
   Trash2,
   Table2,
   X,
@@ -352,20 +351,18 @@ export function ReviewTable({ rows, onRowsChange, query }: ReviewTableProps) {
         label={previewPhoto?.label}
         tone="media"
       >
-        <div className="flex items-center justify-between gap-4 border-b border-white/10 px-4 py-3.5 sm:px-5">
+        <div className="flex items-center justify-between gap-4 border-b border-border/60 px-5 py-4">
           <div className="min-w-0">
-            <p className="text-[11px] font-medium tracking-wide text-white/45">
-              {copy.table.photoPreview}
-            </p>
-            <p className="mt-0.5 truncate text-sm font-semibold text-white/95">
+            <p className="text-eyebrow text-lumen">{copy.table.photoPreview}</p>
+            <p className="mt-1 truncate text-base font-semibold tracking-tight text-foreground">
               {previewPhoto?.label}
             </p>
           </div>
           <Button
             type="button"
-            variant="ghost"
+            variant="outline"
             size="sm"
-            className="h-9 shrink-0 gap-1.5 rounded-full border border-white/15 bg-white/5 px-3.5 text-sm font-semibold text-white/90 hover:bg-white/10 hover:text-white"
+            className="h-9 shrink-0 gap-1.5 rounded-full px-3.5 text-sm font-semibold"
             onClick={() => setPreviewPhoto(null)}
           >
             <X className="h-3.5 w-3.5" />
@@ -373,18 +370,20 @@ export function ReviewTable({ rows, onRowsChange, query }: ReviewTableProps) {
           </Button>
         </div>
         <div
-          className="relative flex min-h-[min(52vh,28rem)] max-h-[min(72vh,42rem)] items-center justify-center overflow-hidden"
+          className="relative flex min-h-[min(48vh,26rem)] max-h-[min(70vh,40rem)] items-center justify-center overflow-hidden p-5 sm:p-7"
           style={{
             background:
-              "radial-gradient(ellipse 70% 60% at 50% 45%, rgba(255,255,255,0.06) 0%, transparent 70%), #0a0a0b",
+              "radial-gradient(ellipse 80% 70% at 50% 40%, hsl(var(--lumen) / 0.06) 0%, transparent 62%), linear-gradient(180deg, hsl(var(--muted) / 0.55) 0%, hsl(var(--card)) 100%)",
           }}
         >
           {previewPhoto ? (
-            <img
-              src={previewPhoto.src}
-              alt={previewPhoto.label}
-              className="relative z-[1] h-auto max-h-[min(68vh,40rem)] w-auto max-w-[min(92vw,60rem)] object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.55)]"
-            />
+            <div className="relative rounded-xl border border-border/70 bg-card p-2 shadow-[0_12px_40px_-16px_rgba(40,28,12,0.35)] sm:p-2.5">
+              <img
+                src={previewPhoto.src}
+                alt={previewPhoto.label}
+                className="h-auto max-h-[min(60vh,34rem)] w-auto max-w-[min(86vw,48rem)] rounded-lg object-contain"
+              />
+            </div>
           ) : null}
         </div>
       </OverlayDialog>
@@ -393,16 +392,15 @@ export function ReviewTable({ rows, onRowsChange, query }: ReviewTableProps) {
         open={Boolean(deleteTarget)}
         onClose={() => setDeleteTarget(null)}
         labelledBy="delete-row-title"
-        panelClassName="border-border/80 shadow-[0_28px_80px_-16px_rgba(0,0,0,0.4)]"
       >
         <div className="relative overflow-hidden">
           <div
-            className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-destructive/80 via-destructive to-destructive/70"
+            className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-destructive/70 via-destructive to-destructive/60"
             aria-hidden
           />
-          <div className="px-6 pb-3 pt-7 text-center sm:px-8">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/[0.09] text-destructive ring-1 ring-inset ring-destructive/20">
-              <Trash2 className="h-6 w-6" strokeWidth={1.75} />
+          <div className="px-6 pb-2 pt-7 text-center sm:px-8">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/[0.08] text-destructive ring-1 ring-inset ring-destructive/15">
+              <Trash2 className="h-5 w-5" strokeWidth={1.75} />
             </div>
             <h2
               id="delete-row-title"
@@ -410,39 +408,33 @@ export function ReviewTable({ rows, onRowsChange, query }: ReviewTableProps) {
             >
               {copy.table.deleteRowTitle}
             </h2>
-            <p className="mx-auto mt-2 max-w-[20rem] text-sm leading-relaxed text-muted-foreground">
+            <p className="mx-auto mt-2 max-w-[19rem] text-sm leading-relaxed text-muted-foreground">
               {copy.table.deleteRowBody}
             </p>
           </div>
 
           {deleteTarget?.label ? (
-            <div className="px-6 pb-1 sm:px-8">
-              <div className="overflow-hidden rounded-xl border border-destructive/20 bg-gradient-to-br from-destructive/[0.06] to-muted/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]">
-                <div className="flex items-stretch gap-0">
-                  <div className="w-1 shrink-0 bg-destructive/80" aria-hidden />
-                  <div className="flex min-w-0 flex-1 items-start gap-3 px-3.5 py-3.5">
-                    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-card text-destructive ring-1 ring-destructive/15">
-                      <Package className="h-4 w-4" strokeWidth={1.75} />
-                    </div>
-                    <div className="min-w-0 flex-1 text-left">
-                      <p className="text-xs font-medium text-muted-foreground">
-                        {copy.table.deleteRowTarget}
-                      </p>
-                      <p className="mt-1 break-words text-[15px] font-semibold leading-snug tracking-tight text-foreground">
-                        {deleteTarget.label}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+            <div className="px-6 pt-2 sm:px-8">
+              <div className="rounded-2xl border border-border/80 bg-gradient-to-b from-muted/60 to-card px-5 py-5 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]">
+                <p className="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground">
+                  {copy.table.deleteRowTarget}
+                </p>
+                <div
+                  className="mx-auto mt-3 h-px w-10 bg-gradient-to-r from-transparent via-destructive/50 to-transparent"
+                  aria-hidden
+                />
+                <p className="mt-3 break-words text-[1.05rem] font-semibold leading-snug tracking-tight text-foreground sm:text-lg">
+                  {deleteTarget.label}
+                </p>
               </div>
             </div>
           ) : null}
 
-          <div className="flex flex-col-reverse gap-2.5 px-6 py-6 sm:flex-row sm:justify-end sm:px-8">
+          <div className="flex flex-col-reverse gap-2.5 px-6 py-6 sm:flex-row sm:justify-center sm:px-8">
             <Button
               type="button"
               variant="outline"
-              className="h-10 flex-1 sm:flex-none sm:min-w-[7.5rem]"
+              className="h-10 flex-1 sm:flex-none sm:min-w-[8rem]"
               onClick={() => setDeleteTarget(null)}
             >
               {copy.table.deleteRowCancel}
@@ -450,7 +442,7 @@ export function ReviewTable({ rows, onRowsChange, query }: ReviewTableProps) {
             <Button
               type="button"
               variant="destructive"
-              className="h-10 flex-1 sm:flex-none sm:min-w-[7.5rem]"
+              className="h-10 flex-1 sm:flex-none sm:min-w-[8rem]"
               onClick={confirmDeleteRow}
               autoFocus
             >

@@ -17,7 +17,7 @@ interface OverlayDialogProps {
   className?: string;
   /** Panel max width — default sm for confirm, none for media */
   panelClassName?: string;
-  /** Darker backdrop for media preview */
+  /** Soft premium backdrop for media preview */
   tone?: "default" | "media";
 }
 
@@ -82,9 +82,10 @@ export function OverlayDialog({
             type="button"
             aria-label="閉じる"
             className={cn(
-              "absolute inset-0 border-0",
-              tone === "media" ? "bg-black/72" : "bg-black/55",
-              "backdrop-blur-[3px]"
+              "absolute inset-0 border-0 backdrop-blur-md",
+              tone === "media"
+                ? "bg-[hsl(28_12%_11%/0.42)]"
+                : "bg-[hsl(28_12%_11%/0.48)]"
             )}
             onClick={onClose}
           />
@@ -94,10 +95,9 @@ export function OverlayDialog({
             aria-label={label}
             aria-labelledby={labelledBy}
             className={cn(
-              "relative z-10 w-full overflow-hidden shadow-[0_28px_80px_-16px_rgba(0,0,0,0.45)]",
-              tone === "media"
-                ? "max-w-[min(94vw,64rem)] rounded-2xl border border-white/10 bg-zinc-950 text-white"
-                : "max-w-md rounded-2xl border border-border/80 bg-card",
+              "relative z-10 w-full overflow-hidden rounded-2xl border border-border/70 bg-card",
+              "shadow-[0_24px_64px_-18px_rgba(40,28,12,0.35)]",
+              tone === "media" ? "max-w-[min(94vw,56rem)]" : "max-w-md",
               panelClassName
             )}
             initial={safeMotion ? { opacity: 0, y: 14, scale: 0.96 } : false}
