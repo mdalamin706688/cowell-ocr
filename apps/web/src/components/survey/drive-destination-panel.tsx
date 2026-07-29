@@ -286,7 +286,7 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
   const connected = Boolean(accountEmail);
 
   return (
-    <div className="ui-card">
+    <div className="ui-card overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -295,11 +295,9 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
       >
         <div className="min-w-0">
           <p className="text-base font-medium">{copy.survey.destinationTitle}</p>
-          {!open && (
-            <p className="text-xs text-muted-foreground mt-0.5 truncate">
-              {connected ? `${accountEmail} · ${pathPreview}` : copy.survey.driveAccountRequired}
-            </p>
-          )}
+          <p className="text-xs text-muted-foreground mt-0.5 truncate">
+            {connected ? `${accountEmail} · ${pathPreview}` : copy.survey.driveAccountRequired}
+          </p>
         </div>
         <ChevronDown
           className={cn(

@@ -10,7 +10,7 @@ interface CollapsiblePanelProps {
   innerClassName?: string;
 }
 
-/** Height-animated collapse — grid 0fr/1fr pattern (no layout jump). */
+/** Height-animated collapse — grid 0fr/1fr + opacity (stable header, no jump). */
 export function CollapsiblePanel({
   open,
   children,
@@ -27,7 +27,15 @@ export function CollapsiblePanel({
       aria-hidden={!open}
     >
       <div className="overflow-hidden min-h-0">
-        <div className={innerClassName}>{children}</div>
+        <div
+          className={cn(
+            "transition-opacity duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] motion-reduce:transition-none",
+            open ? "opacity-100" : "opacity-0",
+            innerClassName
+          )}
+        >
+          {children}
+        </div>
       </div>
     </div>
   );
