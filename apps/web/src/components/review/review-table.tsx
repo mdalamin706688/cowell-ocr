@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { OverlayDialog } from "@/components/ui/overlay-dialog";
 import { cn } from "@/lib/utils";
 import { copy } from "@/lib/copy";
 import { prepareRowPhoto } from "@/lib/row-photo";
@@ -79,17 +80,6 @@ export function ReviewTable({ rows, onRowsChange, query }: ReviewTableProps) {
   useEffect(() => {
     if (page > pageCount - 1) setPage(Math.max(0, pageCount - 1));
   }, [page, pageCount]);
-
-  useEffect(() => {
-    if (!previewPhoto && !deleteTarget) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      setPreviewPhoto(null);
-      setDeleteTarget(null);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [previewPhoto, deleteTarget]);
 
   const updateRow = (id: string, field: keyof OcrRow, value: string) => {
     onRowsChange(rows.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
@@ -356,94 +346,86 @@ export function ReviewTable({ rows, onRowsChange, query }: ReviewTableProps) {
         </div>
       </div>
 
-      {previewPhoto && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-[2px]"
-          role="dialog"
-          aria-modal="true"
-          aria-label={previewPhoto.label}
-          onClick={() => setPreviewPhoto(null)}
-        >
-          <div
-            className="max-h-[90vh] max-w-[90vw] overflow-hidden rounded-xl border border-border/70 bg-card shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
+      <OverlayDialog
+        open={Boolean(previewPhoto)}
+        onClose={() => setPreviewPhoto(null)}
+        label={previewPhoto?.label}
+        tone="media"
+      >
+        <div className="flex items-center justify-between gap-3 border-b border-border/60 bg-card/95 px-4 py-3">
+          <p className="min-w-0 flex-1 truncate text-sm font-semibold tracking-tight text-foreground">
+            {previewPhoto?.label}
+          </p>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 shrink-0 gap-1.5 px-2.5 text-sm font-semibold text-destructive hover:bg-destructive/10 hover:text-destructive"
+            onClick={() => setPreviewPhoto(null)}
           >
-            <div className="flex items-center justify-between gap-3 border-b border-border/70 px-3 py-2.5">
-              <p className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
-                {previewPhoto.label}
-              </p>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 shrink-0 gap-1 px-2.5 text-sm font-semibold text-destructive hover:bg-destructive/10 hover:text-destructive"
-                onClick={() => setPreviewPhoto(null)}
-              >
-                <X className="h-3.5 w-3.5" />
-                {copy.table.close}
-              </Button>
-            </div>
-            <div className="max-h-[calc(90vh-2.75rem)] overflow-auto bg-black/20">
-              <img
-                src={previewPhoto.src}
-                alt={previewPhoto.label}
-                className="h-auto max-h-[calc(90vh-3rem)] w-auto max-w-[90vw] object-contain"
-              />
-            </div>
-          </div>
+            <X className="h-3.5 w-3.5" />
+            {copy.table.close}
+          </Button>
         </div>
-      )}
+        <div className="flex max-h-[min(78vh,44rem)] items-center justify-center overflow-auto bg-zinc-950/[0.04]">
+          {previewPhoto ? (
+            <img
+              src={previewPhoto.src}
+              alt={previewPhoto.label}
+              className="h-auto max-h-[min(78vh,44rem)] w-auto max-w-full object-contain"
+            />
+          ) : null}
+        </div>
+      </OverlayDialog>
 
-      {deleteTarget && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-[2px]"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="delete-row-title"
-          onClick={() => setDeleteTarget(null)}
-        >
-          <div
-            className="w-full max-w-sm overflow-hidden rounded-xl border border-destructive/25 bg-card shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="border-b border-destructive/15 bg-destructive/[0.06] px-5 py-4">
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/15 text-destructive">
-                  <AlertTriangle className="h-5 w-5" />
-                </div>
-                <div className="min-w-0 pt-0.5">
-                  <p id="delete-row-title" className="text-base font-semibold text-foreground">
-                    {copy.table.deleteRowTitle}
-                  </p>
-                  <p className="mt-1 text-sm text-muted-foreground">{copy.table.deleteRowBody}</p>
-                  <p className="mt-2 truncate text-sm font-medium text-destructive/90">
-                    {deleteTarget.label}
-                  </p>
-                </div>
-              </div>
+      <OverlayDialog
+        open={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        labelledBy="delete-row-title"
+        panelClassName="border-destructive/20"
+      >
+        <div className="border-b border-destructive/10 bg-gradient-to-b from-destructive/[0.08] to-transparent px-5 py-5">
+          <div className="flex items-start gap-3.5">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-destructive/12 text-destructive ring-1 ring-destructive/20">
+              <AlertTriangle className="h-5 w-5" />
             </div>
-            <div className="flex items-center justify-end gap-2 px-5 py-4">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setDeleteTarget(null)}
-              >
-                {copy.table.deleteRowCancel}
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                onClick={confirmDeleteRow}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                {copy.table.deleteRowConfirm}
-              </Button>
+            <div className="min-w-0 pt-0.5">
+              <p id="delete-row-title" className="text-base font-semibold tracking-tight text-foreground">
+                {copy.table.deleteRowTitle}
+              </p>
+              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                {copy.table.deleteRowBody}
+              </p>
+              {deleteTarget?.label ? (
+                <p className="mt-2.5 truncate rounded-lg border border-destructive/15 bg-destructive/[0.06] px-2.5 py-1.5 text-sm font-medium text-destructive">
+                  {deleteTarget.label}
+                </p>
+              ) : null}
             </div>
           </div>
         </div>
-      )}
+        <div className="flex items-center justify-end gap-2.5 px-5 py-4">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="min-w-[5.5rem]"
+            onClick={() => setDeleteTarget(null)}
+          >
+            {copy.table.deleteRowCancel}
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            size="sm"
+            className="min-w-[5.5rem]"
+            onClick={confirmDeleteRow}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            {copy.table.deleteRowConfirm}
+          </Button>
+        </div>
+      </OverlayDialog>
     </>
   );
 }
