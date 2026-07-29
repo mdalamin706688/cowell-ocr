@@ -3,6 +3,17 @@
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 
+function isTranslationError(error: Error): boolean {
+  return (
+    error.name === "DOMException" ||
+    error.name === "NotFoundError" ||
+    error.message.includes("removeChild") ||
+    error.message.includes("insertBefore") ||
+    error.message.includes("child of") ||
+    error.message.toLowerCase().includes("hydrat")
+  );
+}
+
 export default function GlobalError({
   error,
   reset,
@@ -14,30 +25,33 @@ export default function GlobalError({
     console.error(error);
   }, [error]);
 
-  const isDomError =
-    error.message.includes("removeChild") ||
-    error.message.includes("insertBefore") ||
-    error.name === "NotFoundError";
+  useEffect(() => {
+    if (isTranslationError(error)) {
+      window.location.reload();
+    }
+  }, [error]);
+
+  const isTranslate = isTranslationError(error);
 
   return (
-    <html lang="ja">
-      <body className="min-h-screen bg-background font-sans antialiased">
-        <div className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-6 text-center">
-          <h1 className="font-display text-xl font-semibold">表示エラーが発生しました</h1>
-          <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
-            {isDomError
-              ? "ブラウザの翻訳機能を使用している場合、ページを再読み込みしてください。"
-              : "一時的な問題が発生しました。再読み込みをお試しください。"}
-          </p>
-          <div className="mt-6 flex flex-wrap justify-center gap-3">
-            <Button type="button" onClick={() => window.location.reload()}>
-              再読み込み
-            </Button>
-            <Button type="button" variant="outline" onClick={() => reset()}>
-              再試行
-            </Button>
+    <html lang="ja" suppressHydrationWarning>
+      <body className="min-h-screen bg-background font-sans antialiased" suppressHydrationWarning>
+        {!isTranslate && (
+          <div className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-6 text-center">
+            <h1 className="font-display text-xl font-semibold">表示エラーが発生しました</h1>
+            <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
+              一時的な問題が発生しました。再読み込みをお試しください。
+            </p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <Button type="button" onClick={() => window.location.reload()}>
+                再読み込み
+              </Button>
+              <Button type="button" variant="outline" onClick={() => reset()}>
+                再試行
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
       </body>
     </html>
   );

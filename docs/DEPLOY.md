@@ -17,6 +17,7 @@ Live URL (after deploy): `https://d1xs8fe440jh05.cloudfront.net`
 | `NEXT_PUBLIC_COGNITO_REGION` | `ap-northeast-1` |
 | `NEXT_PUBLIC_COGNITO_USER_POOL_ID` | Cognito User Pool ID |
 | `NEXT_PUBLIC_COGNITO_CLIENT_ID` | Cognito App Client ID (public) |
+| `NEXT_PUBLIC_COGNITO_IDENTITY_POOL_ID` | Cognito Identity Pool (user admin) |
 | `NEXT_PUBLIC_OCR_API_BASE_URL` | `https://….lambda-url.ap-northeast-1.on.aws` |
 | `NEXT_PUBLIC_OCR_API_ENABLED` | `true` (live OCR) or `false` (demo fallback) |
 | `NEXT_PUBLIC_APP_URL` | `https://d1xs8fe440jh05.cloudfront.net` (optional) |

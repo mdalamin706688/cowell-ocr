@@ -12,7 +12,10 @@ import { TransitionLink } from "@/components/ui/transition-link";
 import { useSafeMotion } from "@/hooks/use-safe-motion";
 import { springSnappy } from "@/lib/motion";
 
-const nav = [{ href: "/dashboard/", label: copy.nav.home }];
+const nav = [
+  { href: "/dashboard/", label: copy.nav.home },
+  { href: "/users/", label: copy.nav.users },
+];
 
 interface AppShellProps {
   children: React.ReactNode;

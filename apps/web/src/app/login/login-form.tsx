@@ -13,6 +13,8 @@ import { copy } from "@/lib/copy";
 import { useNavigation } from "@/contexts/navigation-context";
 import {
   cognitoCompleteNewPassword,
+  cognitoConfirmForgotPassword,
+  cognitoForgotPassword,
   cognitoSignIn,
 } from "@/lib/cognito-auth";
 import { isCognitoConfigured } from "@/lib/cognito-config";
@@ -42,6 +44,12 @@ export function LoginForm() {
     session: string;
     username: string;
   } | null>(null);
+  const [loginMode, setLoginMode] = useState<"signin" | "forgot_request" | "forgot_confirm">(
+    "signin"
+  );
+  const [forgotEmail, setForgotEmail] = useState("");
+  const forgotCodeRef = useRef<HTMLInputElement>(null);
+  const forgotPasswordRef = useRef<HTMLInputElement>(null);
   const autoLoginAttempted = useRef(false);
   const cognito = isCognitoConfigured();
   // Demo skip-login only when Cognito is not configured (static preview fallback)
@@ -142,6 +150,45 @@ export function LoginForm() {
     }
   }, [goDashboard, newPasswordChallenge]);
 
+  const submitForgotRequest = useCallback(async () => {
+    const email = emailRef.current?.value?.trim() ?? forgotEmail;
+    if (!email) return;
+    setLoading(true);
+    setError(null);
+    try {
+      await cognitoForgotPassword(email);
+      setForgotEmail(email);
+      setLoginMode("forgot_confirm");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : copy.errors.loginFailed);
+    } finally {
+      setLoading(false);
+    }
+  }, [forgotEmail]);
+
+  const submitForgotConfirm = useCallback(async () => {
+    const code = forgotCodeRef.current?.value?.trim() ?? "";
+    const next = forgotPasswordRef.current?.value ?? "";
+    if (next.length < 8) {
+      setError(copy.login.newPasswordHint);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      await cognitoConfirmForgotPassword(forgotEmail, code, next);
+      setLoginMode("signin");
+      setError(null);
+      setLoggedOutMessage(false);
+      // Show success via inline message - reuse loggedOut style with success text
+      setForgotEmail("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : copy.errors.loginFailed);
+    } finally {
+      setLoading(false);
+    }
+  }, [forgotEmail]);
+
   useEffect(() => {
     if (!DEV_AUTO_LOGIN || autoLoginAttempted.current || loggedOutMessage || cognito) return;
     autoLoginAttempted.current = true;
@@ -158,12 +205,36 @@ export function LoginForm() {
       void submitNewPassword();
       return;
     }
+    if (loginMode === "forgot_request") {
+      void submitForgotRequest();
+      return;
+    }
+    if (loginMode === "forgot_confirm") {
+      void submitForgotConfirm();
+      return;
+    }
     if (previewDemo) {
       completePreviewLogin();
       return;
     }
     void login(emailRef.current?.value ?? "", passwordRef.current?.value ?? "");
   };
+
+  const formSubtitle = newPasswordChallenge
+    ? copy.login.newPasswordSubtitle
+    : loginMode === "forgot_request"
+      ? copy.login.forgotSubtitle
+      : loginMode === "forgot_confirm"
+        ? copy.login.forgotSent
+        : copy.login.subtitle;
+
+  const submitLabel = newPasswordChallenge
+    ? copy.login.newPasswordSubmit
+    : loginMode === "forgot_request"
+      ? copy.login.forgotSubmit
+      : loginMode === "forgot_confirm"
+        ? copy.login.forgotConfirmSubmit
+        : copy.login.submit;
 
   const heroLines = copy.login.heroTitle.split("\n");
 
@@ -201,17 +272,17 @@ export function LoginForm() {
           <div className="form-surface">
             <h2 className="font-display text-xl font-semibold tracking-tight">{copy.login.title}</h2>
             <p className="mt-1.5 text-sm text-muted-foreground">
-              {newPasswordChallenge ? copy.login.newPasswordSubtitle : copy.login.subtitle}
+              {formSubtitle}
             </p>
 
-            {loggedOutMessage && !newPasswordChallenge && (
-              <p className="mt-4 rounded-lg border border-lumen/20 bg-accent/50 px-3 py-2.5 text-sm">
+            {loggedOutMessage && loginMode === "signin" && !newPasswordChallenge && (
+              <p className="mt-4 rounded-lg border border-lumen/20 bg-accent/50 px-3 py-2 text-sm text-muted-foreground">
                 {copy.login.loggedOut}
               </p>
             )}
 
             <form onSubmit={handleSubmit} className="mt-6 space-y-4" autoComplete="on">
-              {!newPasswordChallenge && (
+              {!newPasswordChallenge && loginMode === "signin" && (
                 <>
                   <div className="space-y-1.5">
                     <Label htmlFor="email" className="text-label">{copy.login.email}</Label>
@@ -236,6 +307,62 @@ export function LoginForm() {
                       required={!previewDemo}
                       autoComplete="current-password"
                     />
+                  </div>
+                  {cognito && (
+                    <button
+                      type="button"
+                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      onClick={() => {
+                        setError(null);
+                        setLoginMode("forgot_request");
+                      }}
+                    >
+                      {copy.login.forgotPassword}
+                    </button>
+                  )}
+                </>
+              )}
+
+              {!newPasswordChallenge && loginMode === "forgot_request" && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="forgot-email" className="text-label">{copy.login.email}</Label>
+                  <Input
+                    ref={emailRef}
+                    id="forgot-email"
+                    type="email"
+                    name="email"
+                    defaultValue={forgotEmail}
+                    required
+                    autoComplete="email"
+                  />
+                </div>
+              )}
+
+              {!newPasswordChallenge && loginMode === "forgot_confirm" && (
+                <>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="forgot-code" className="text-label">{copy.login.forgotCode}</Label>
+                    <Input
+                      ref={forgotCodeRef}
+                      id="forgot-code"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="forgot-new-password" className="text-label">
+                      {copy.login.forgotNewPassword}
+                    </Label>
+                    <Input
+                      ref={forgotPasswordRef}
+                      id="forgot-new-password"
+                      type="password"
+                      minLength={8}
+                      autoComplete="new-password"
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground">{copy.login.newPasswordHint}</p>
                   </div>
                 </>
               )}
@@ -267,11 +394,24 @@ export function LoginForm() {
                   <><Loader2 className="h-4 w-4 animate-spin" />{copy.login.submitting}</>
                 ) : (
                   <>
-                    {newPasswordChallenge ? copy.login.newPasswordSubmit : copy.login.submit}
+                    {submitLabel}
                     <ArrowRight className="h-4 w-4" />
                   </>
                 )}
               </Button>
+
+              {!newPasswordChallenge && loginMode !== "signin" && (
+                <button
+                  type="button"
+                  className="w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  onClick={() => {
+                    setError(null);
+                    setLoginMode("signin");
+                  }}
+                >
+                  {copy.login.backToSignIn}
+                </button>
+              )}
             </form>
           </div>
         </div>

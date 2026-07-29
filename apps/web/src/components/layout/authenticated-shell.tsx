@@ -28,6 +28,7 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   useEffect(() => {
     router.prefetch("/dashboard/");
     router.prefetch("/survey/new/");
+    router.prefetch("/users/");
   }, [router]);
 
   useEffect(() => {

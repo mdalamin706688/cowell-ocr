@@ -22,6 +22,26 @@ export function ContentSkeleton() {
   );
 }
 
+/** Skeleton matching the users admin page */
+export function UsersPageSkeleton() {
+  return (
+    <SkeletonPage label="Loading users">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-4">
+          <SkeletonBlock className="h-12 w-12 shrink-0 rounded-xl" />
+          <div className="space-y-2">
+            <SkeletonBlock className="h-7 w-40 rounded-md" />
+            <SkeletonBlock className="h-4 w-64 max-w-full rounded-md" />
+          </div>
+        </div>
+        <SkeletonBlock className="h-9 w-32 rounded-lg" />
+      </div>
+      <SkeletonBlock className="h-64 w-full rounded-xl" />
+      <SkeletonBlock className="h-48 w-full rounded-xl" />
+    </SkeletonPage>
+  );
+}
+
 /** Skeleton matching the new survey page */
 export function SurveyPageSkeleton() {
   return (

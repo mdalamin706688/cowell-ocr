@@ -1,8 +1,13 @@
+import { COGNITO_SUPER_ADMIN_GROUP } from "./cognito-config";
+
 export const SESSION_COOKIE = "cowell_session";
 
 export interface SessionUser {
   email: string;
   name: string;
+  /** Cognito group names from id token (when using User Pool groups) */
+  groups?: string[];
+  isSuperAdmin?: boolean;
 }
 
 export const DEMO_EMAIL = "admin@cowell.local";
@@ -111,7 +116,7 @@ export function demoLogin(email: string, password: string): SessionUser | null {
 
 /** Static preview login — ignores form values that browser translation may corrupt */
 export function createPreviewSession(): SessionUser {
-  return { email: getDemoEmail(), name: "管理者" };
+  return { email: getDemoEmail(), name: "管理者", groups: [COGNITO_SUPER_ADMIN_GROUP], isSuperAdmin: true };
 }
 
 export function getBasePath(): string {

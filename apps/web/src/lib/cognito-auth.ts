@@ -1,6 +1,7 @@
 import type { SessionUser } from "./client-auth";
 import { clearClientSession, formatUserDisplayName, setClientSession } from "./client-auth";
 import {
+  COGNITO_SUPER_ADMIN_GROUP,
   cognitoIdpEndpoint,
   getCognitoClientId,
   isCognitoConfigured,
@@ -71,6 +72,18 @@ function mapCognitoError(raw: string): string {
   if (msg.includes("invalidparameter") && msg.includes("authflow")) {
     return "Cognitoアプリクライアントで USER_PASSWORD_AUTH を有効にしてください";
   }
+  if (msg.includes("codemismatch") || msg.includes("invalid verification")) {
+    return "確認コードが正しくありません";
+  }
+  if (msg.includes("invalidpassword") || msg.includes("password did not conform")) {
+    return "パスワードの形式が正しくありません（8文字以上）";
+  }
+  if (msg.includes("limitexceeded")) {
+    return "試行回数の上限に達しました。しばらくしてから再度お試しください。";
+  }
+  if (msg.includes("notauthorized") && msg.includes("access")) {
+    return "この操作を行う権限がありません";
+  }
   return raw || "ログインに失敗しました";
 }
 
@@ -86,13 +99,26 @@ function decodeJwtPayload(token: string): Record<string, unknown> {
   }
 }
 
+export function readIdTokenGroups(idToken: string): string[] {
+  const payload = decodeJwtPayload(idToken);
+  const raw = payload["cognito:groups"];
+  if (Array.isArray(raw)) {
+    return raw.map((g) => String(g)).filter(Boolean);
+  }
+  if (typeof raw === "string" && raw.trim()) return [raw.trim()];
+  return [];
+}
+
 function userFromIdToken(idToken: string): SessionUser {
   const payload = decodeJwtPayload(idToken);
   const email = String(payload.email || payload["cognito:username"] || "");
   const rawName = String(payload.name || "").trim();
+  const groups = readIdTokenGroups(idToken);
   return {
     email,
     name: formatUserDisplayName({ email, name: rawName || email }),
+    groups,
+    isSuperAdmin: groups.includes(COGNITO_SUPER_ADMIN_GROUP),
   };
 }
 
@@ -248,4 +274,67 @@ export async function cognitoSignOut(): Promise<void> {
     }
   }
   clearCognitoTokens();
+}
+
+/** Self-service forgot password — sends a verification code to email */
+export async function cognitoForgotPassword(email: string): Promise<void> {
+  if (!isCognitoConfigured()) {
+    throw new Error("Cognito が設定されていません");
+  }
+  await cognitoCall("ForgotPassword", {
+    ClientId: getCognitoClientId(),
+    Username: email.trim(),
+  });
+}
+
+/** Complete forgot password with code from email */
+export async function cognitoConfirmForgotPassword(
+  email: string,
+  code: string,
+  newPassword: string
+): Promise<void> {
+  if (!isCognitoConfigured()) {
+    throw new Error("Cognito が設定されていません");
+  }
+  await cognitoCall("ConfirmForgotPassword", {
+    ClientId: getCognitoClientId(),
+    Username: email.trim(),
+    ConfirmationCode: code.trim(),
+    Password: newPassword,
+  });
+}
+
+/** Change password while signed in */
+export async function cognitoChangePassword(
+  previousPassword: string,
+  proposedPassword: string
+): Promise<void> {
+  if (!isCognitoConfigured()) {
+    throw new Error("Cognito が設定されていません");
+  }
+  let tokens = readCognitoTokens();
+  if (!tokens?.accessToken) {
+    throw new Error("セッションが切れています。再度ログインしてください。");
+  }
+  if (tokens.expiresAt < Date.now() + 60_000) {
+    tokens = (await cognitoRefreshSession()) || tokens;
+  }
+  if (!tokens?.accessToken) {
+    throw new Error("セッションが切れています。再度ログインしてください。");
+  }
+  await cognitoCall("ChangePassword", {
+    AccessToken: tokens.accessToken,
+    PreviousPassword: previousPassword,
+    ProposedPassword: proposedPassword,
+  });
+}
+
+/** Id token for Identity Pool admin credential exchange */
+export async function getCognitoIdToken(): Promise<string | null> {
+  let tokens = readCognitoTokens();
+  if (!tokens?.idToken) return null;
+  if (tokens.expiresAt < Date.now() + 60_000) {
+    tokens = (await cognitoRefreshSession()) || null;
+  }
+  return tokens?.idToken ?? null;
 }

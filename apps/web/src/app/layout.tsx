@@ -44,6 +44,21 @@ export default function RootLayout({
   return (
     <html lang="ja" suppressHydrationWarning>
       <head>
+        {/* Prevent Chrome translate DOM mutations from crashing React */}
+        <script dangerouslySetInnerHTML={{ __html: `
+(function(){
+  var rc=Node.prototype.removeChild;
+  Node.prototype.removeChild=function(child){
+    if(!this.contains(child))return child;
+    return rc.call(this,child);
+  };
+  var ib=Node.prototype.insertBefore;
+  Node.prototype.insertBefore=function(node,ref){
+    if(ref&&!this.contains(ref))return node;
+    return ib.call(this,node,ref);
+  };
+})();
+        `}} />
         <link rel="icon" href={iconHref} type="image/svg+xml" sizes="any" />
         <link rel="icon" href={iconHref} />
         <link rel="shortcut icon" href={iconHref} />
