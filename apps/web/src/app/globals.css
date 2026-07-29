@@ -253,22 +253,28 @@
     top: 13px;
     left: 12px;
     right: 12px;
-    height: 1px;
-    background: linear-gradient(90deg, hsl(var(--border)), hsl(var(--lumen) / 0.35), hsl(var(--border)));
+    height: 2px;
+    background: linear-gradient(
+      90deg,
+      hsl(var(--lumen) / 0.25),
+      hsl(var(--lumen-glow) / 0.85),
+      hsl(var(--lumen) / 0.25)
+    );
   }
 
   .timeline-dot {
     @apply relative z-10 flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold;
-    @apply border border-border bg-card text-muted-foreground;
+    @apply border border-lumen/35 bg-lumen/10 text-lumen;
     box-shadow: 0 0 0 3px hsl(var(--paper));
   }
 
   .timeline-dot-done {
-    @apply border-lumen/30 bg-lumen text-white;
+    @apply border-lumen/40 bg-lumen text-white;
+    box-shadow: 0 0 0 3px hsl(var(--paper)), 0 2px 8px hsl(var(--lumen) / 0.25);
   }
 
   .timeline-dot-active {
-    @apply border-lumen bg-card text-lumen ring-2 ring-lumen/20;
+    @apply border-lumen bg-card text-lumen ring-2 ring-lumen/25;
   }
 
   /* ── Upload ── */

@@ -151,10 +151,10 @@ export function DashboardContent({ userName = "管理者", userEmail }: Dashboar
                     className="flex flex-col items-center text-center"
                     style={{ width: `${100 / copy.dashboard.steps.length}%` }}
                   >
-                    <div className="timeline-dot flex items-center justify-center">
+                    <div className="timeline-dot timeline-dot-done flex items-center justify-center">
                       <Icon className="h-3 w-3" />
                     </div>
-                    <p className="mt-3 text-sm font-medium">{s.label}</p>
+                    <p className="mt-3 text-sm font-medium text-foreground">{s.label}</p>
                     <p className="mt-0.5 text-[11px] text-muted-foreground max-w-[88px]">
                       {s.desc}
                     </p>
