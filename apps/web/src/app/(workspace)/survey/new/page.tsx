@@ -484,36 +484,35 @@ function SurveyWorkflow() {
   return (
     <StaggerReveal placeholder={<SurveyPageSkeleton />}>
       <StaggerItem>
-        <TransitionLink
-          href="/dashboard/"
-          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />{copy.survey.back}
-        </TransitionLink>
-      </StaggerItem>
-
-      <StaggerItem>
-        <div className={cn("flex items-start gap-4", compactTop && "gap-3")}>
-          <div
-            className={cn(
-              "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent/80 text-lumen shadow-sm",
-              compactTop && "h-9 w-9 rounded-lg"
-            )}
+        <div className="flex flex-col gap-2">
+          <TransitionLink
+            href="/dashboard/"
+            className="flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            <Sparkles className="h-5 w-5" />
-          </div>
-          <div>
-            <h1 className={cn("text-title text-xl sm:text-2xl", compactTop && "text-lg sm:text-xl")}>
-              {copy.survey.title}
-            </h1>
-            <p
+            <ArrowLeft className="h-3.5 w-3.5" />{copy.survey.back}
+          </TransitionLink>
+          <div className={cn("flex items-start gap-4", compactTop && "gap-3")}>
+            <div
               className={cn(
-                "text-muted-foreground leading-snug",
-                compactTop ? "mt-0.5 text-xs" : "mt-1.5 text-sm leading-relaxed"
+                "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent/80 text-lumen shadow-sm",
+                compactTop && "h-9 w-9 rounded-lg"
               )}
             >
-              {copy.survey.subtitle}
-            </p>
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div>
+              <h1 className={cn("text-title text-xl sm:text-2xl", compactTop && "text-lg sm:text-xl")}>
+                {copy.survey.title}
+              </h1>
+              <p
+                className={cn(
+                  "text-muted-foreground leading-snug",
+                  compactTop ? "mt-0.5 text-xs" : "mt-1.5 text-sm leading-relaxed"
+                )}
+              >
+                {copy.survey.subtitle}
+              </p>
+            </div>
           </div>
         </div>
       </StaggerItem>
