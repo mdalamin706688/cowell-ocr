@@ -11,6 +11,7 @@ import { LoginSkeleton } from "@/components/layout/content-skeleton";
 import { StaggerItem, StaggerReveal } from "@/components/motion/stagger-reveal";
 import { copy } from "@/lib/copy";
 import { useNavigation } from "@/contexts/navigation-context";
+import { versionedAppRoute } from "@/lib/route-version";
 import {
   cognitoCompleteNewPassword,
   cognitoConfirmForgotPassword,
@@ -58,7 +59,7 @@ export function LoginForm() {
 
   const goDashboard = useCallback(() => {
     startNavigation("/dashboard/");
-    router.replace("/dashboard/");
+    router.replace(versionedAppRoute("/dashboard/"));
   }, [router, startNavigation]);
 
   const completePreviewLogin = useCallback(() => {
@@ -67,9 +68,9 @@ export function LoginForm() {
   }, [goDashboard]);
 
   useEffect(() => {
-    router.prefetch("/dashboard/");
-    router.prefetch("/users/");
-    router.prefetch("/survey/new/");
+    router.prefetch(versionedAppRoute("/dashboard/"));
+    router.prefetch(versionedAppRoute("/users/"));
+    router.prefetch(versionedAppRoute("/survey/new/"));
   }, [router]);
 
   useEffect(() => {
@@ -78,7 +79,7 @@ export function LoginForm() {
       setLoggedOutMessage(true);
     }
     if (fromLegacyLogout) {
-      router.replace("/login/");
+      router.replace(versionedAppRoute("/login/"));
     }
   }, [router, searchParams]);
 
@@ -119,7 +120,7 @@ export function LoginForm() {
         }
 
         startNavigation("/dashboard/");
-        router.push("/dashboard/");
+        router.push(versionedAppRoute("/dashboard/"));
         router.refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : copy.errors.loginFailed);

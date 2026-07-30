@@ -57,12 +57,13 @@ try {
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { versionedAppRoute } from "@/lib/route-version";
 
 export default function HomePage() {
   const router = useRouter();
   useEffect(() => {
     const session = document.cookie.includes("cowell_session=");
-    router.replace(session ? "/dashboard/" : "/login/");
+    router.replace(versionedAppRoute(session ? "/dashboard/" : "/login/"));
   }, [router]);
   return null;
 }
@@ -95,6 +96,8 @@ export default function HomePage() {
         process.env.NEXT_PUBLIC_OCR_API_ENABLED === "false" ? "false" : "true",
       NEXT_PUBLIC_APP_URL:
         process.env.NEXT_PUBLIC_APP_URL ?? "https://d1xs8fe440jh05.cloudfront.net",
+      NEXT_PUBLIC_APP_BUILD_ID:
+        process.env.GITHUB_SHA ?? process.env.NEXT_PUBLIC_APP_BUILD_ID ?? "local",
     },
   });
 

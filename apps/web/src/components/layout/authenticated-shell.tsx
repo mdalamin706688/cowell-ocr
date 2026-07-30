@@ -15,6 +15,7 @@ import {
   type SessionUser,
 } from "@/lib/client-auth";
 import { prefetchWorkspaceRoutes } from "@/lib/prefetch-workspace";
+import { versionedAppRoute } from "@/lib/route-version";
 import {
   clearShellSessionUser,
   getShellSessionUser,
@@ -76,7 +77,7 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
             clearClientSession();
             clearShellSessionUser();
             lastUser.current = null;
-            if (!cancelled) router.replace("/login/");
+            if (!cancelled) router.replace(versionedAppRoute("/login/"));
             return;
           }
           if (!cancelled) {
@@ -91,7 +92,7 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
         if (preview) {
           const session = peekClientSession();
           if (!session) {
-            if (!cancelled) router.replace("/login/");
+            if (!cancelled) router.replace(versionedAppRoute("/login/"));
             return;
           }
           if (!cancelled) {
@@ -107,7 +108,7 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
           cache: "no-store",
         });
         if (!res.ok) {
-          if (!cancelled) router.replace("/login/");
+          if (!cancelled) router.replace(versionedAppRoute("/login/"));
           return;
         }
         const session = (await res.json()) as SessionUser;
@@ -119,7 +120,7 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
         }
       } catch {
         if (!cancelled && !peekClientSession() && !isShellLocked()) {
-          router.replace("/login/");
+          router.replace(versionedAppRoute("/login/"));
         }
       }
     }

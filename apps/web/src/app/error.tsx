@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { versionedAppRoute } from "@/lib/route-version";
 
 /**
  * SPA recovery only — never document.reload (that remounts expanded shell).
@@ -50,7 +51,7 @@ export default function Error({
       const onDashboard = pathname === "/dashboard/" || pathname === "/dashboard";
       const safe = onLogin ? "/login/" : onDashboard ? "/users/" : "/dashboard/";
       const t = window.setTimeout(() => {
-        router.replace(safe);
+        router.replace(versionedAppRoute(safe));
         window.setTimeout(() => reset(), 80);
       }, 50);
       return () => window.clearTimeout(t);
@@ -81,7 +82,7 @@ export default function Error({
           onClick={() => {
             setGiveUp(false);
             attempts.current = 0;
-            router.replace("/dashboard/");
+            router.replace(versionedAppRoute("/dashboard/"));
             window.setTimeout(() => reset(), 80);
           }}
         >

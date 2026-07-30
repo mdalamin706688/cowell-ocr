@@ -16,6 +16,7 @@ import {
   setFlash,
 } from "@/lib/client-auth";
 import { clearShellSessionUser } from "@/lib/shell-session";
+import { versionedAppRoute } from "@/lib/route-version";
 
 interface LogoutButtonProps {
   variant?: "sidebar" | "mobile";
@@ -36,7 +37,7 @@ export function LogoutButton({ variant = "sidebar", className }: LogoutButtonPro
         clearShellSessionUser();
         setFlash(FLASH_LOGGED_OUT);
         startNavigation("/login/");
-        router.replace("/login/");
+        router.replace(versionedAppRoute("/login/"));
         return;
       }
 
@@ -45,7 +46,7 @@ export function LogoutButton({ variant = "sidebar", className }: LogoutButtonPro
         clearShellSessionUser();
         setFlash(FLASH_LOGGED_OUT);
         startNavigation("/login/");
-        router.replace("/login/");
+        router.replace(versionedAppRoute("/login/"));
         return;
       }
 
@@ -57,7 +58,7 @@ export function LogoutButton({ variant = "sidebar", className }: LogoutButtonPro
       clearShellSessionUser();
       setFlash(FLASH_LOGGED_OUT);
       startNavigation("/login/");
-      router.replace("/login/");
+      router.replace(versionedAppRoute("/login/"));
     } catch {
       setLoading(false);
     }

@@ -42,9 +42,9 @@ export default function RootLayout({
   const appleHref = `${basePath}/apple-touch-icon.svg`;
 
   return (
-    <html lang="ja" suppressHydrationWarning>
+    <html lang="ja" translate="no" suppressHydrationWarning>
       <head>
-        {/* Pre-paint sidebar + translate-safe DOM — must run before first paint */}
+        {/* Resolve persisted shell geometry before CSS paints. */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -54,27 +54,20 @@ export default function RootLayout({
       document.documentElement.classList.add('sidebar-collapsed');
     }
   } catch (e) {}
-  var rc=Node.prototype.removeChild;
-  Node.prototype.removeChild=function(child){
-    if(!this.contains(child))return child;
-    return rc.call(this,child);
-  };
-  var ib=Node.prototype.insertBefore;
-  Node.prototype.insertBefore=function(node,ref){
-    if(ref&&!this.contains(ref))return node;
-    return ib.call(this,node,ref);
-  };
+  document.documentElement.classList.add('sidebar-state-ready');
 })();
 `,
           }}
         />
+        <meta name="google" content="notranslate" />
         <link rel="icon" href={iconHref} type="image/svg+xml" sizes="any" />
         <link rel="icon" href={iconHref} />
         <link rel="shortcut icon" href={iconHref} />
         <link rel="apple-touch-icon" href={appleHref} />
       </head>
       <body
-        className={`${inter.variable} ${noto.variable} font-sans antialiased`}
+        className={`${inter.variable} ${noto.variable} notranslate font-sans antialiased`}
+        translate="no"
         suppressHydrationWarning
       >
         <div className="grain" aria-hidden="true" />

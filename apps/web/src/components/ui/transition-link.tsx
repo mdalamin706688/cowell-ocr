@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { useNavigation } from "@/contexts/navigation-context";
+import { versionedAppRoute } from "@/lib/route-version";
 import { cn } from "@/lib/utils";
 
 function normalizePath(path: string): string {
@@ -34,6 +35,7 @@ export function TransitionLink({
   const pathname = usePathname();
   const { startNavigation } = useNavigation();
   const active = normalizePath(pathname) === normalizePath(href);
+  const route = versionedAppRoute(href);
 
   return (
     <button
@@ -46,7 +48,7 @@ export function TransitionLink({
       )}
       onMouseEnter={(event) => {
         onMouseEnter?.(event);
-        router.prefetch(href);
+        router.prefetch(route);
       }}
       onClick={(event) => {
         onClick?.(event);
@@ -54,7 +56,7 @@ export function TransitionLink({
         event.preventDefault();
         if (active) return;
         startNavigation(href);
-        router.push(href);
+        router.push(route);
       }}
     >
       {children}

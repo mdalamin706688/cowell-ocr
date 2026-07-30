@@ -24,6 +24,7 @@ function writeStorage(collapsed: boolean): void {
 function syncDocumentClass(collapsed: boolean): void {
   if (typeof document === "undefined") return;
   document.documentElement.classList.toggle(SIDEBAR_COLLAPSED_CLASS, collapsed);
+  document.documentElement.classList.add("sidebar-state-ready");
 }
 
 /** User preference (localStorage). */

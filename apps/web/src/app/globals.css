@@ -242,12 +242,19 @@
 
   .shell-aside {
     width: 300px;
+    visibility: hidden;
+  }
+  html.sidebar-state-ready .shell-aside {
+    visibility: visible;
     transition: width 280ms cubic-bezier(0.22, 1, 0.36, 1);
   }
   .shell-aside-inner {
     padding: 1.5rem;
   }
   .shell-main {
+    transition: none;
+  }
+  html.sidebar-state-ready .shell-main {
     transition: padding-left 280ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
