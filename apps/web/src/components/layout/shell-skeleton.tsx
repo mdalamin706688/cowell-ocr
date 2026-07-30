@@ -1,21 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { SkeletonBlock } from "@/components/layout/skeleton-primitives";
+import { useSidebarCollapsed } from "@/hooks/use-sidebar-collapsed";
 import { cn } from "@/lib/utils";
 
-const SIDEBAR_KEY = "cowell_sidebar_collapsed";
-
 export function ShellSkeleton() {
-  const [collapsed, setCollapsed] = useState(false);
-
-  useEffect(() => {
-    try {
-      setCollapsed(localStorage.getItem(SIDEBAR_KEY) === "1");
-    } catch {
-      // ignore storage
-    }
-  }, []);
+  const { collapsed } = useSidebarCollapsed();
 
   return (
     <div className="min-h-screen overflow-x-clip paper-canvas">

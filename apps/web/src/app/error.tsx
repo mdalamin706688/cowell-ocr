@@ -2,17 +2,7 @@
 
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
-
-function isTranslationError(error: Error): boolean {
-  return (
-    error.name === "DOMException" ||
-    error.name === "NotFoundError" ||
-    error.message.includes("removeChild") ||
-    error.message.includes("insertBefore") ||
-    error.message.includes("child of") ||
-    error.message.toLowerCase().includes("hydrat")
-  );
-}
+import { isDomMutationError } from "@/lib/dom-mutation-error";
 
 /** Route-level error UI — must not render <html>/<body> (nested inside root layout). */
 export default function Error({
@@ -27,12 +17,13 @@ export default function Error({
   }, [error]);
 
   useEffect(() => {
-    if (isTranslationError(error)) {
-      window.location.reload();
+    // Soft recover — full reload remounts the workspace shell on static hosts.
+    if (isDomMutationError(error)) {
+      reset();
     }
-  }, [error]);
+  }, [error, reset]);
 
-  if (isTranslationError(error)) {
+  if (isDomMutationError(error)) {
     return null;
   }
 

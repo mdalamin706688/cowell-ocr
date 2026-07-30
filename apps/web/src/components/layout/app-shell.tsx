@@ -1,8 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
 import {
   CircleUserRound,
   House,
@@ -17,16 +15,13 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/brand/logo";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { TransitionLink } from "@/components/ui/transition-link";
-import { useSafeMotion } from "@/hooks/use-safe-motion";
-import { springSnappy } from "@/lib/motion";
+import { useSidebarCollapsed } from "@/hooks/use-sidebar-collapsed";
 import { getSessionRoleLabel, isSessionSuperAdmin, type SessionUser } from "@/lib/client-auth";
 
 const nav = [
   { href: "/dashboard/", label: copy.nav.home, icon: House },
   { href: "/users/", label: copy.nav.users, icon: UsersRound },
 ];
-
-const SIDEBAR_KEY = "cowell_sidebar_collapsed";
 
 function isNavActive(pathname: string, href: string): boolean {
   const p = pathname.endsWith("/") ? pathname : `${pathname}/`;
@@ -41,28 +36,11 @@ interface AppShellProps {
 
 export function AppShell({ children, user }: AppShellProps) {
   const pathname = usePathname();
-  const safeMotion = useSafeMotion();
+  const { collapsed, setCollapsed } = useSidebarCollapsed();
   const roleLabel = user ? getSessionRoleLabel(user) : "";
   const isSuperAdmin = user ? isSessionSuperAdmin(user) : false;
-  const [collapsed, setCollapsed] = useState(false);
-  const collapsedIconRailItem =
+  const railItem =
     "mx-auto flex h-11 w-11 items-center justify-center rounded-xl border border-border/70 bg-card/70";
-
-  useEffect(() => {
-    try {
-      setCollapsed(localStorage.getItem(SIDEBAR_KEY) === "1");
-    } catch {
-      // ignore storage restriction
-    }
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(SIDEBAR_KEY, collapsed ? "1" : "0");
-    } catch {
-      // ignore storage restriction
-    }
-  }, [collapsed]);
 
   return (
     <div className="min-h-screen overflow-x-clip paper-canvas">
@@ -73,7 +51,7 @@ export function AppShell({ children, user }: AppShellProps) {
         )}
       >
         <div className={cn("relative flex h-full flex-col", collapsed ? "px-3 pt-0 pb-4" : "p-6")}>
-          {collapsed && (
+          {collapsed ? (
             <div className="absolute left-1/2 top-4 z-10 flex -translate-x-1/2 flex-col items-center gap-7">
               <TransitionLink
                 href="/dashboard/"
@@ -99,47 +77,11 @@ export function AppShell({ children, user }: AppShellProps) {
                 <PanelLeftOpen className="h-4 w-4" />
               </Button>
             </div>
-          )}
-
-          {!collapsed && (
+          ) : (
             <div className="mb-8 flex items-center justify-between gap-4">
-            <TransitionLink
-              href="/dashboard/"
-              className={cn(
-                "block min-w-0 flex-1 transition-opacity hover:opacity-90",
-                collapsed && "pointer-events-none opacity-0 w-0 overflow-hidden"
-              )}
-            >
-              <Logo size="md" />
-            </TransitionLink>
-            {collapsed && (
-              <TransitionLink
-                href="/dashboard/"
-                className="relative mt-0 flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] forest-panel"
-                title="Cowell OCR"
-                aria-label="Cowell OCR"
-              >
-                <div className="absolute inset-0 rounded-[10px] ring-1 ring-lumen-glow/25 ring-inset" />
-                <svg viewBox="0 0 24 24" fill="none" className="relative h-4 w-4 text-lumen-glow" aria-hidden>
-                  <path d="M12 2.5L7.5 10.5H11v9h2v-9h3.5L12 2.5z" fill="currentColor" />
-                  <ellipse cx="12" cy="20.5" rx="4.5" ry="1.2" fill="currentColor" opacity="0.35" />
-                </svg>
+              <TransitionLink href="/dashboard/" className="block min-w-0 flex-1 transition-opacity hover:opacity-90">
+                <Logo size="md" />
               </TransitionLink>
-            )}
-            {collapsed && (
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                aria-label="サイドバーを展開"
-                onClick={() => setCollapsed(false)}
-                className="mt-0 h-9 w-9 shrink-0 border-border/70 bg-card/70 hover:bg-muted/40"
-                title="展開"
-              >
-                <PanelLeftOpen className="h-4 w-4" />
-              </Button>
-            )}
-            {!collapsed && (
               <Button
                 type="button"
                 variant="outline"
@@ -151,14 +93,13 @@ export function AppShell({ children, user }: AppShellProps) {
               >
                 <PanelLeftClose className="h-4 w-4" />
               </Button>
-            )}
             </div>
           )}
 
-          {collapsed && <div className="h-40" />}
+          {collapsed && <div className="h-40" aria-hidden />}
 
           {!collapsed && <p className="text-eyebrow mb-3 px-3">{copy.nav.menu}</p>}
-          <nav className="flex flex-col gap-1">
+          <nav className="flex flex-col gap-1" aria-label={copy.nav.menu}>
             {nav.map(({ href, label, icon: Icon }) => {
               const active = isNavActive(pathname, href);
               return (
@@ -166,26 +107,17 @@ export function AppShell({ children, user }: AppShellProps) {
                   key={href}
                   href={href}
                   title={label}
+                  aria-current={active ? "page" : undefined}
                   className={cn(
                     "nav-link relative overflow-hidden",
-                    collapsed && `${collapsedIconRailItem} px-0 py-0`,
+                    collapsed && `${railItem} px-0 py-0`,
                     active
                       ? "nav-link-active text-foreground border-lumen/60 bg-accent/80 ring-1 ring-lumen/35"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                   )}
                 >
-                  {active && safeMotion ? (
-                    <motion.span
-                      layoutId="workspace-nav-active"
-                      className="absolute inset-0 rounded-lg bg-accent/70 shadow-sm"
-                      transition={springSnappy}
-                      aria-hidden
-                    />
-                  ) : active ? (
-                    <span
-                      className="absolute inset-0 rounded-lg bg-accent/70 shadow-sm"
-                      aria-hidden
-                    />
+                  {active ? (
+                    <span className="absolute inset-0 rounded-lg bg-accent/70 shadow-sm" aria-hidden />
                   ) : null}
                   <span
                     className={cn(
@@ -195,6 +127,7 @@ export function AppShell({ children, user }: AppShellProps) {
                   >
                     <Icon className={cn("shrink-0", collapsed ? "h-5 w-5" : "h-4 w-4")} />
                     {!collapsed && <span>{label}</span>}
+                    {collapsed && <span className="sr-only">{label}</span>}
                   </span>
                 </TransitionLink>
               );
@@ -202,22 +135,24 @@ export function AppShell({ children, user }: AppShellProps) {
           </nav>
 
           <div className="mt-auto space-y-3 border-t border-border/50 pt-5">
-            <TransitionLink href="/survey/new/">
-              <Button
-                size="sm"
-                className={cn("shadow-none", collapsed ? `${collapsedIconRailItem} p-0` : "w-full")}
-                title={copy.nav.newSurvey}
-              >
-                <Plus className={cn(collapsed ? "h-5 w-5" : "h-3.5 w-3.5")} />
-                {!collapsed && copy.nav.newSurvey}
-              </Button>
+            <TransitionLink
+              href="/survey/new/"
+              title={copy.nav.newSurvey}
+              className={cn(
+                "inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-semibold btn-lumen text-white shadow-none",
+                collapsed ? `${railItem} border-transparent p-0` : "h-9 w-full rounded-xl px-4"
+              )}
+            >
+              <Plus className={cn(collapsed ? "h-5 w-5" : "h-3.5 w-3.5")} />
+              {!collapsed && copy.nav.newSurvey}
+              {collapsed && <span className="sr-only">{copy.nav.newSurvey}</span>}
             </TransitionLink>
 
             {user && (
               <div
                 className={cn(
                   "rounded-xl border border-border/60 bg-muted/20",
-                  collapsed ? `${collapsedIconRailItem} p-0` : "px-3.5 py-3"
+                  collapsed ? `${railItem} p-0` : "px-3.5 py-3"
                 )}
                 title={`${copy.nav.account}: ${user.email} (${roleLabel})`}
               >
@@ -227,9 +162,7 @@ export function AppShell({ children, user }: AppShellProps) {
                     <span
                       className={cn(
                         "shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold tracking-wide",
-                        isSuperAdmin
-                          ? "bg-lumen/15 text-lumen"
-                          : "bg-muted text-muted-foreground"
+                        isSuperAdmin ? "bg-lumen/15 text-lumen" : "bg-muted text-muted-foreground"
                       )}
                     >
                       {roleLabel}
@@ -255,7 +188,7 @@ export function AppShell({ children, user }: AppShellProps) {
             {collapsed ? (
               <LogoutButton
                 variant="mobile"
-                className={`${collapsedIconRailItem} [&_svg]:h-5 [&_svg]:w-5`}
+                className={`${railItem} [&_svg]:h-5 [&_svg]:w-5`}
               />
             ) : (
               <LogoutButton variant="sidebar" />
@@ -265,19 +198,22 @@ export function AppShell({ children, user }: AppShellProps) {
       </aside>
 
       <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border/60 bg-card/90 px-4 backdrop-blur-md shadow-sm lg:hidden">
-        <TransitionLink href="/dashboard/"><Logo size="sm" /></TransitionLink>
+        <TransitionLink href="/dashboard/">
+          <Logo size="sm" />
+        </TransitionLink>
         <div className="flex items-center gap-2">
           <TransitionLink href="/survey/new/">
-            <Button size="sm"><Plus className="h-3.5 w-3.5" />{copy.nav.newShort}</Button>
+            <Button size="sm">
+              <Plus className="h-3.5 w-3.5" />
+              {copy.nav.newShort}
+            </Button>
           </TransitionLink>
           <LogoutButton variant="mobile" />
         </div>
       </header>
 
       <main className={cn("transition-[padding] duration-300", collapsed ? "lg:pl-[88px]" : "lg:pl-[300px]")}>
-        <div className="mx-auto max-w-6xl px-6 py-10 sm:px-8 sm:py-12">
-          {children}
-        </div>
+        <div className="mx-auto max-w-6xl px-6 py-10 sm:px-8 sm:py-12">{children}</div>
       </main>
     </div>
   );

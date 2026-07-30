@@ -8,6 +8,7 @@ import { WorkspaceSessionProvider } from "@/contexts/workspace-session";
 import { getCognitoSessionUser } from "@/lib/cognito-auth";
 import { isCognitoConfigured } from "@/lib/cognito-config";
 import {
+  clearClientSession,
   isPreviewEnvironment,
   peekClientSession,
   setClientSession,
@@ -22,6 +23,8 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   const router = useRouter();
   const cognito = isCognitoConfigured();
   const preview = isPreviewEnvironment() && !cognito;
+
+  // Prefer cached session so soft navigations never flash the full shell skeleton.
   const [user, setUser] = useState<SessionUser | null>(null);
   const [ready, setReady] = useState(false);
 
@@ -35,11 +38,18 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
     let cancelled = false;
 
     async function loadSession() {
+      const cached = peekClientSession();
+      if (cached && !cancelled) {
+        setUser(cached);
+        setReady(true);
+      }
+
       try {
         if (cognito) {
           const session = await getCognitoSessionUser();
           if (!session) {
-            router.replace("/login/");
+            clearClientSession();
+            if (!cancelled) router.replace("/login/");
             return;
           }
           if (!cancelled) {
@@ -53,7 +63,7 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
         if (preview) {
           const session = peekClientSession();
           if (!session) {
-            router.replace("/login/");
+            if (!cancelled) router.replace("/login/");
             return;
           }
           if (!cancelled) {
@@ -68,33 +78,27 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
           cache: "no-store",
         });
         if (!res.ok) {
-          router.replace("/login/");
+          if (!cancelled) router.replace("/login/");
           return;
         }
         const session = (await res.json()) as SessionUser;
         if (!cancelled) {
+          setClientSession(session);
           setUser(session);
           setReady(true);
         }
       } catch {
-        router.replace("/login/");
+        if (!cancelled && !peekClientSession()) {
+          router.replace("/login/");
+        }
       }
     }
 
-    if (!ready) void loadSession();
+    void loadSession();
     return () => {
       cancelled = true;
     };
-  }, [cognito, preview, ready, router]);
-
-  // Hydrate session synchronously on the client right after login navigation
-  useEffect(() => {
-    if (cognito || !preview || ready) return;
-    const session = peekClientSession();
-    if (!session) return;
-    setUser(session);
-    setReady(true);
-  }, [cognito, preview, ready]);
+  }, [cognito, preview, router]);
 
   if (!ready || !user) {
     return <ShellSkeleton />;

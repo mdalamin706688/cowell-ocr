@@ -5,33 +5,25 @@ import { useEffect } from "react";
 import { NavigationProvider } from "@/contexts/navigation-context";
 import { NavigationProgress } from "@/components/motion/navigation-progress";
 import { NavigationRouteSkeleton } from "@/components/motion/navigation-route-skeleton";
+import { isDomMutationError, isDomMutationErrorEvent } from "@/lib/dom-mutation-error";
 
-function isTranslateDomError(message: string, name: string): boolean {
-  return (
-    name === "NotFoundError" ||
-    name === "DOMException" ||
-    message.includes("removeChild") ||
-    message.includes("insertBefore") ||
-    message.includes("child of")
-  );
-}
-
-function TranslationErrorGuard() {
+/**
+ * Swallow translate / Framer DOM races. Never hard-reload — that destroys SPA
+ * state and remounts the sidebar on CloudFront static hosts.
+ */
+function DomMutationErrorGuard() {
   useEffect(() => {
     const handleError = (event: ErrorEvent) => {
       const msg = event.message ?? "";
       const name = (event.error as Error | null)?.name ?? "";
-      if (isTranslateDomError(msg, name)) {
+      if (isDomMutationErrorEvent(msg, name) || isDomMutationError(event.error)) {
         event.preventDefault();
-        window.location.reload();
       }
     };
 
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      const err = event.reason as Error | null;
-      if (err && isTranslateDomError(err.message ?? "", err.name ?? "")) {
+      if (isDomMutationError(event.reason)) {
         event.preventDefault();
-        window.location.reload();
       }
     };
 
@@ -49,7 +41,7 @@ function TranslationErrorGuard() {
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <NavigationProvider>
-      <TranslationErrorGuard />
+      <DomMutationErrorGuard />
       <NavigationProgress />
       <NavigationRouteSkeleton />
       {children}

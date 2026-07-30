@@ -22,7 +22,7 @@ interface NavigationContextValue {
 
 const NavigationContext = createContext<NavigationContextValue | null>(null);
 
-const ROUTE_ORDER = ["/login/", "/dashboard/", "/survey/new/"];
+const ROUTE_ORDER = ["/login/", "/dashboard/", "/users/", "/survey/new/"];
 
 function routeIndex(path: string): number {
   const normalized = path.endsWith("/") ? path : `${path}/`;

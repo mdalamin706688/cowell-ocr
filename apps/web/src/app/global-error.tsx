@@ -1,17 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-
-function isTranslationError(error: Error): boolean {
-  return (
-    error.name === "DOMException" ||
-    error.name === "NotFoundError" ||
-    error.message.includes("removeChild") ||
-    error.message.includes("insertBefore") ||
-    error.message.includes("child of") ||
-    error.message.toLowerCase().includes("hydrat")
-  );
-}
+import { isDomMutationError } from "@/lib/dom-mutation-error";
 
 /** Root-level fallback — only used when the root layout itself fails. */
 export default function GlobalError({
@@ -23,10 +13,14 @@ export default function GlobalError({
 }) {
   useEffect(() => {
     console.error(error);
-    if (isTranslationError(error)) {
-      window.location.reload();
+    if (isDomMutationError(error)) {
+      reset();
     }
-  }, [error]);
+  }, [error, reset]);
+
+  if (isDomMutationError(error)) {
+    return null;
+  }
 
   return (
     <html lang="ja" suppressHydrationWarning>
