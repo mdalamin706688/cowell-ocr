@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { OverlayDialog } from "@/components/ui/overlay-dialog";
+import { UsersPageSkeleton } from "@/components/layout/content-skeleton";
 import { StaggerItem, StaggerReveal } from "@/components/motion/stagger-reveal";
 import { ChangePasswordCard } from "@/components/users/change-password-card";
 import { copy } from "@/lib/copy";
@@ -134,7 +135,7 @@ export function UsersPageContent() {
   const canDelete = isSessionSuperAdmin(session) || previewDemo;
 
   return (
-    <StaggerReveal>
+    <StaggerReveal placeholder={<UsersPageSkeleton />}>
       <StaggerItem>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-4">

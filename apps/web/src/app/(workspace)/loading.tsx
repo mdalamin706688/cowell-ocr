@@ -1,4 +1,13 @@
-/** Keep previous route visible during chunk fetch (avoids CloudFront Suspense jump). */
+"use client";
+
+import { usePathname } from "next/navigation";
+import { RouteContentSkeleton } from "@/components/layout/content-skeleton";
+import { useNavigation } from "@/contexts/navigation-context";
+
 export default function WorkspaceLoading() {
-  return null;
+  const pathname = usePathname();
+  const { pendingHref } = useNavigation();
+  const target = pendingHref ?? pathname;
+
+  return <RouteContentSkeleton href={target} />;
 }

@@ -1,4 +1,5 @@
-/** Keep previous route visible during chunk fetch (avoids CloudFront Suspense jump). */
+import { ContentSkeleton } from "@/components/layout/content-skeleton";
+
 export default function DashboardLoading() {
-  return null;
+  return <ContentSkeleton />;
 }

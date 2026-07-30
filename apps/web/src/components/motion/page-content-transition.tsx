@@ -1,16 +1,54 @@
 "use client";
 
+import { AnimatePresence, motion } from "framer-motion";
+import { usePathname } from "next/navigation";
+import { useNavigation } from "@/contexts/navigation-context";
+import { useSafeMotion } from "@/hooks/use-safe-motion";
+import { getPageMotion, pageTransitionTween, type PageMotionVariant } from "@/lib/motion";
+import { cn } from "@/lib/utils";
+
+interface PageContentTransitionProps {
+  children: React.ReactNode;
+  className?: string;
+  variant?: PageMotionVariant;
+}
+
 /**
- * Workspace polish lives in StaggerReveal (skeleton ↔ content).
- * Avoid remount transforms here — they caused soft-nav jumps.
+ * Soft page enter/exit within the persistent workspace shell.
+ * Sidebar stays mounted — only main content slides.
  */
 export function PageContentTransition({
   children,
   className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  variant?: "workspace" | "auth";
-}) {
-  return <div className={className}>{children}</div>;
+  variant = "workspace",
+}: PageContentTransitionProps) {
+  const pathname = usePathname();
+  const { direction } = useNavigation();
+  const safeMotion = useSafeMotion();
+  const pageMotion = getPageMotion(variant, direction);
+
+  if (!safeMotion) {
+    return (
+      <div className={className} key={pathname}>
+        {children}
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn("relative isolate overflow-x-clip", className)}>
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={pathname}
+          initial={pageMotion.initial}
+          animate={pageMotion.animate}
+          exit={pageMotion.exit}
+          transition={pageTransitionTween}
+          className="w-full overflow-x-clip"
+        >
+          {children}
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
 }

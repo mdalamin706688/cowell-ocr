@@ -1,4 +1,4 @@
-/** Errors from browser translate / Framer Motion DOM races — recover without full reload. */
+/** Errors from browser translate / Framer Motion DOM races — never hard-reload. */
 
 export function isDomMutationError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
@@ -20,8 +20,8 @@ export function isDomMutationErrorEvent(message: string, name: string): boolean 
 }
 
 /**
- * Static export / CloudFront: stale or flaky JS chunk fetches after deploy or
- * soft-nav. Recover with a single reload (guarded against loops).
+ * Static export / CloudFront: stale JS chunk after deploy.
+ * Detect only — callers should soft-recover (reset), not auto-reload soft-nav.
  */
 export function isChunkLoadError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
@@ -38,23 +38,10 @@ export function isChunkLoadError(error: unknown): boolean {
   );
 }
 
-const CHUNK_RELOAD_KEY = "cowell_chunk_reload_at";
-
-/** Returns true if a reload was triggered. */
-export function recoverFromChunkLoadError(error: unknown): boolean {
-  if (typeof window === "undefined") return false;
-  if (!isChunkLoadError(error)) return false;
-
-  try {
-    const last = Number(sessionStorage.getItem(CHUNK_RELOAD_KEY) || "0");
-    const now = Date.now();
-    // Avoid reload loops if the chunk is permanently missing.
-    if (last && now - last < 15_000) return false;
-    sessionStorage.setItem(CHUNK_RELOAD_KEY, String(now));
-  } catch {
-    // sessionStorage blocked — still try once
-  }
-
-  window.location.reload();
-  return true;
+/**
+ * Soft-nav must stay SPA. Auto `location.reload()` after a skeleton looked like a
+ * full CloudFront refresh. Only return true so callers can soft-reset; never reload here.
+ */
+export function recoverFromChunkLoadError(_error: unknown): boolean {
+  return false;
 }

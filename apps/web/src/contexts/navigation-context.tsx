@@ -10,14 +10,13 @@ import {
   type ReactNode,
 } from "react";
 import { usePathname } from "next/navigation";
-import { MIN_SKELETON_MS, PAGE_TRANSITION_MS } from "@/lib/motion";
+import { PAGE_TRANSITION_MS } from "@/lib/motion";
 
 interface NavigationContextValue {
   isNavigating: boolean;
   progress: number;
   direction: number;
   pendingHref: string | null;
-  navStartedAt: number;
   startNavigation: (targetHref?: string) => void;
 }
 
@@ -41,7 +40,6 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const [progress, setProgress] = useState(0);
   const [direction, setDirection] = useState(1);
   const [pendingHref, setPendingHref] = useState<string | null>(null);
-  const [navStartedAt, setNavStartedAt] = useState(0);
   const startedAt = useRef(0);
   const prevPath = useRef(pathname);
 
@@ -52,9 +50,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
         setPendingHref(targetHref);
         setDirection(routeIndex(targetHref) >= routeIndex(pathname) ? 1 : -1);
       }
-      const now = Date.now();
-      startedAt.current = now;
-      setNavStartedAt(now);
+      startedAt.current = Date.now();
       setIsNavigating(true);
       setProgress(12);
       requestAnimationFrame(() => setProgress(58));
@@ -70,45 +66,34 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     setDirection(to >= from ? 1 : -1);
     prevPath.current = pathname;
 
-    if (!startedAt.current) {
-      const now = Date.now();
-      startedAt.current = now;
-      setNavStartedAt(now);
+    if (!isNavigating) {
+      setIsNavigating(true);
+      setProgress(58);
     }
-
-    setIsNavigating(true);
-    setProgress(58);
 
     const elapsed = Date.now() - (startedAt.current || Date.now());
     const remaining = Math.max(0, PAGE_TRANSITION_MS - elapsed);
 
-    const finishTimer = window.setTimeout(() => setProgress(100), remaining);
+    const finishTimer = window.setTimeout(() => {
+      setProgress(100);
+    }, remaining);
+
     const hideTimer = window.setTimeout(() => {
       setIsNavigating(false);
       setProgress(0);
+      setPendingHref(null);
       startedAt.current = 0;
-    }, remaining + 80);
+    }, remaining + 280);
 
     return () => {
       window.clearTimeout(finishTimer);
       window.clearTimeout(hideTimer);
     };
-  }, [pathname]);
-
-  // Keep a single route skeleton until the beat ends (no second page skeleton).
-  useEffect(() => {
-    if (!pendingHref) return;
-    if (normalizeRoutePath(pathname) !== normalizeRoutePath(pendingHref)) return;
-
-    const elapsed = Date.now() - (startedAt.current || Date.now());
-    const wait = Math.max(0, MIN_SKELETON_MS - elapsed);
-    const timer = window.setTimeout(() => setPendingHref(null), wait);
-    return () => window.clearTimeout(timer);
-  }, [pathname, pendingHref]);
+  }, [pathname, isNavigating]);
 
   return (
     <NavigationContext.Provider
-      value={{ isNavigating, progress, direction, pendingHref, navStartedAt, startNavigation }}
+      value={{ isNavigating, progress, direction, pendingHref, startNavigation }}
     >
       {children}
     </NavigationContext.Provider>
@@ -123,7 +108,6 @@ export function useNavigation() {
       progress: 0,
       direction: 1,
       pendingHref: null,
-      navStartedAt: 0,
       startNavigation: (_targetHref?: string) => {},
     };
   }

@@ -1,4 +1,5 @@
-/** Keep previous route visible during chunk fetch (avoids CloudFront Suspense jump). */
+import { SurveyPageSkeleton } from "@/components/layout/content-skeleton";
+
 export default function SurveyLoading() {
-  return null;
+  return <SurveyPageSkeleton />;
 }

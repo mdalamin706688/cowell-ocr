@@ -1,8 +1,7 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { usePathname } from "next/navigation";
-import { useNavigation } from "@/contexts/navigation-context";
+import { AnimatePresence, motion } from "framer-motion";
+import { usePageReady } from "@/hooks/use-page-ready";
 import { useSafeMotion } from "@/hooks/use-safe-motion";
 import { easeOutExpo, SKELETON_FADE_MS, staggerContainer, staggerItem } from "@/lib/motion";
 import { cn } from "@/lib/utils";
@@ -11,34 +10,43 @@ interface StaggerRevealProps {
   children: React.ReactNode;
   className?: string;
   placeholder?: React.ReactNode;
-  ready?: boolean;
 }
 
-/**
- * Soft opacity stagger after the route skeleton crossfade.
- * No translate — keeps soft-nav jump-free while feeling finished.
- */
-export function StaggerReveal({ children, className }: StaggerRevealProps) {
-  const pathname = usePathname();
-  const { pendingHref } = useNavigation();
+export function StaggerReveal({ children, className, placeholder }: StaggerRevealProps) {
   const safeMotion = useSafeMotion();
-  const reveal = !pendingHref;
+  const pageReady = usePageReady();
 
   if (!safeMotion) {
-    return <div className={cn("flex w-full flex-col gap-8", className)}>{children}</div>;
+    return <div className={cn(className)}>{children}</div>;
   }
 
   return (
-    <motion.div
-      key={pathname}
-      className={cn("flex w-full flex-col gap-8 overflow-x-clip", className)}
-      variants={staggerContainer}
-      initial={false}
-      animate={reveal ? "show" : "hidden"}
-      transition={{ duration: SKELETON_FADE_MS / 1000, ease: easeOutExpo }}
-    >
-      {children}
-    </motion.div>
+    <div className={cn("flex w-full flex-col gap-8 overflow-x-clip", className)}>
+      <AnimatePresence mode="wait" initial={false}>
+        {!pageReady ? (
+          <motion.div
+            key="placeholder"
+            initial={false}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: SKELETON_FADE_MS / 1000, ease: easeOutExpo }}
+            aria-busy
+          >
+            {placeholder}
+          </motion.div>
+        ) : (
+          <motion.div
+            key="content"
+            variants={staggerContainer}
+            initial="hidden"
+            animate="show"
+            className="flex w-full flex-col gap-8"
+          >
+            {children}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -52,11 +60,14 @@ export function StaggerItem({
   const safeMotion = useSafeMotion();
 
   if (!safeMotion) {
-    return <div className={cn("w-full shrink-0", className)}>{children}</div>;
+    return <div className={cn("w-full", className)}>{children}</div>;
   }
 
   return (
-    <motion.div className={cn("w-full shrink-0 overflow-hidden", className)} variants={staggerItem}>
+    <motion.div
+      className={cn("w-full shrink-0 overflow-hidden", className)}
+      variants={staggerItem}
+    >
       {children}
     </motion.div>
   );
