@@ -1,23 +1,16 @@
 "use client";
 
 import { SkeletonBlock } from "@/components/layout/skeleton-primitives";
-import { useSidebarCollapsed } from "@/hooks/use-sidebar-collapsed";
-import { cn } from "@/lib/utils";
 
-/** First-load only — mirrors AppShell widths via html.sidebar-collapsed CSS. */
+/** First-load only — widths follow html.sidebar-collapsed CSS. */
 export function ShellSkeleton() {
-  const { collapsed } = useSidebarCollapsed();
-
   return (
     <div className="min-h-screen overflow-x-clip paper-canvas">
       <aside
-        className={cn(
-          "shell-aside fixed inset-y-0 left-0 z-40 hidden border-r border-border/60 bg-card/95 lg:block",
-          collapsed ? "w-[88px]" : "w-[300px]"
-        )}
+        className="shell-aside fixed inset-y-0 left-0 z-40 hidden border-r border-border/60 bg-card/95 lg:block"
         suppressHydrationWarning
       >
-        <div className={cn("flex h-full flex-col", collapsed ? "px-3 pt-0 pb-4" : "p-6")}>
+        <div className="shell-aside-inner flex h-full flex-col">
           <div className="shell-collapsed-only mb-2 flex h-32 flex-col items-center pt-4">
             <SkeletonBlock className="h-11 w-11 rounded-xl" />
             <SkeletonBlock className="mt-7 h-9 w-9 rounded-lg" />
@@ -57,10 +50,7 @@ export function ShellSkeleton() {
         <SkeletonBlock className="h-8 w-20" />
       </header>
 
-      <main
-        className={cn("shell-main", collapsed ? "lg:pl-[88px]" : "lg:pl-[300px]")}
-        suppressHydrationWarning
-      >
+      <main className="shell-main" suppressHydrationWarning>
         <div className="mx-auto max-w-6xl space-y-6 px-6 py-10 sm:px-8 sm:py-12">
           <SkeletonBlock className="h-8 w-64" />
           <SkeletonBlock className="h-4 w-96 max-w-full" />

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-/** Google Translate / Edge Translate mutate the DOM and break React exit animations */
+/** Google Translate / Edge Translate mutate the DOM and break React animations */
 export function isBrowserTranslated(): boolean {
   if (typeof document === "undefined") return false;
   const html = document.documentElement;
@@ -19,7 +19,10 @@ export function useBrowserTranslated(): boolean {
   );
 
   useEffect(() => {
-    const update = () => setTranslated(isBrowserTranslated());
+    const update = () => {
+      const next = isBrowserTranslated();
+      setTranslated((prev) => (prev === next ? prev : next));
+    };
     update();
 
     const observer = new MutationObserver(update);

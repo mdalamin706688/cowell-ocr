@@ -6,11 +6,12 @@ import {
   getSidebarCollapsedSnapshot,
   hydrateSidebarCollapsedFromStorage,
   setSidebarCollapsed,
+  setSidebarCollapsedOverride,
   subscribeSidebarCollapsed,
   toggleSidebarCollapsed,
 } from "@/lib/sidebar-collapse";
 
-/** Collapsed sidebar preference shared across shell + skeleton (no remount flash). */
+/** Collapsed sidebar preference shared across shell (no remount flash). */
 export function useSidebarCollapsed() {
   const collapsed = useSyncExternalStore(
     subscribeSidebarCollapsed,
@@ -26,9 +27,13 @@ export function useSidebarCollapsed() {
     setSidebarCollapsed(value);
   }, []);
 
+  const setCollapsedOverride = useCallback((value: boolean | null) => {
+    setSidebarCollapsedOverride(value);
+  }, []);
+
   const toggleCollapsed = useCallback(() => {
     toggleSidebarCollapsed();
   }, []);
 
-  return { collapsed, setCollapsed, toggleCollapsed };
+  return { collapsed, setCollapsed, setCollapsedOverride, toggleCollapsed };
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { isSoftRecoverableError } from "@/lib/dom-mutation-error";
 
 const RESET_KEY = "cowell_soft_error_resets";
 
@@ -35,15 +34,15 @@ export default function GlobalError({
   reset: () => void;
 }) {
   const key = String(error.digest || error.message || error.name || "unknown");
-  const [giveUp, setGiveUp] = useState(false);
+  const [giveUp, setGiveUp] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return readResetCount(key) >= 2;
+  });
 
   useEffect(() => {
     console.error(error);
-    if (!isSoftRecoverableError(error)) {
-      setGiveUp(true);
-      return;
-    }
-    if (readResetCount(key) >= 2) {
+    const count = readResetCount(key);
+    if (count >= 2) {
       setGiveUp(true);
       return;
     }
@@ -51,7 +50,7 @@ export default function GlobalError({
     reset();
   }, [error, key, reset]);
 
-  if (!giveUp && isSoftRecoverableError(error)) {
+  if (!giveUp) {
     return null;
   }
 

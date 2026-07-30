@@ -231,7 +231,7 @@
 
   /*
    * Sidebar collapsed preference (set on <html> before paint).
-   * Prevents expanded ShellSkeleton flash on static/CloudFront navigations.
+   * Width/chrome are CSS-only so route changes cannot flash expanded rail.
    */
   html:not(.sidebar-collapsed) .shell-collapsed-only {
     display: none !important;
@@ -239,7 +239,22 @@
   html.sidebar-collapsed .shell-expanded-only {
     display: none !important;
   }
+
+  .shell-aside {
+    width: 300px;
+    transition: width 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .shell-aside-inner {
+    padding: 1.5rem;
+  }
+  .shell-main {
+    transition: padding-left 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
   @media (min-width: 1024px) {
+    .shell-main {
+      padding-left: 300px;
+    }
     html.sidebar-collapsed .shell-aside {
       width: 88px !important;
     }
@@ -249,15 +264,6 @@
     html.sidebar-collapsed .shell-main {
       padding-left: 88px !important;
     }
-    html:not(.sidebar-collapsed) .shell-aside {
-      width: 300px !important;
-    }
-    html:not(.sidebar-collapsed) .shell-aside .shell-aside-inner {
-      padding: 1.5rem !important;
-    }
-    html:not(.sidebar-collapsed) .shell-main {
-      padding-left: 300px !important;
-    }
     html.sidebar-collapsed .shell-aside .nav-link.shell-collapsed-nav {
       width: 2.75rem;
       height: 2.75rem;
@@ -265,8 +271,61 @@
       margin-right: auto;
       padding: 0;
       border-radius: 0.75rem;
-      border-width: 1px;
+      border: 1px solid hsl(var(--border) / 0.7);
+      background: hsl(var(--card) / 0.7);
     }
+    html.sidebar-collapsed .shell-aside .shell-nav-item {
+      height: 100%;
+      width: 100%;
+      justify-content: center;
+      gap: 0;
+    }
+    html.sidebar-collapsed .shell-aside .shell-nav-icon {
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+    html.sidebar-collapsed .shell-aside .shell-new-survey {
+      width: 2.75rem;
+      height: 2.75rem;
+      margin-left: auto;
+      margin-right: auto;
+      padding: 0;
+      border-radius: 0.75rem;
+      border-color: transparent;
+    }
+    html.sidebar-collapsed .shell-aside .shell-account {
+      width: 2.75rem;
+      height: 2.75rem;
+      margin-left: auto;
+      margin-right: auto;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    html.sidebar-collapsed .shell-aside .shell-account-row {
+      justify-content: center;
+    }
+  }
+
+  .page-enter {
+    animation: page-enter 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .page-enter-item {
+    animation: page-enter-item 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .page-enter-item:nth-child(1) { animation-delay: 40ms; }
+  .page-enter-item:nth-child(2) { animation-delay: 90ms; }
+  .page-enter-item:nth-child(3) { animation-delay: 140ms; }
+  .page-enter-item:nth-child(4) { animation-delay: 190ms; }
+  .page-enter-item:nth-child(5) { animation-delay: 240ms; }
+  @keyframes page-enter {
+    from { opacity: 0.92; }
+    to { opacity: 1; }
+  }
+  @keyframes page-enter-item {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
   /* ── Nav ── */

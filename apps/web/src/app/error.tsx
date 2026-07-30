@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { isSoftRecoverableError } from "@/lib/dom-mutation-error";
 
 const RESET_KEY = "cowell_soft_error_resets";
 
@@ -31,7 +30,7 @@ function errorKey(error: Error & { digest?: string }): string {
   return String(error.digest || error.message || error.name || "unknown");
 }
 
-/** Route-level error UI — must not render <html>/<body> (nested inside root layout). */
+/** Soft-recover first — never trap the user on 表示エラー for transient soft-nav races. */
 export default function Error({
   error,
   reset,
@@ -40,32 +39,28 @@ export default function Error({
   reset: () => void;
 }) {
   const key = errorKey(error);
-  const [giveUp, setGiveUp] = useState(() =>
-    typeof window !== "undefined" && isSoftRecoverableError(error)
-      ? readResetCount(key) >= 2
-      : !isSoftRecoverableError(error)
-  );
+  const [giveUp, setGiveUp] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return readResetCount(key) >= 2;
+  });
 
   useEffect(() => {
     console.error(error);
   }, [error]);
 
   useEffect(() => {
-    if (!isSoftRecoverableError(error)) {
-      setGiveUp(true);
-      return;
-    }
     const count = readResetCount(key);
     if (count >= 2) {
       setGiveUp(true);
       return;
     }
+    // Soft-reset any client error once/twice — CloudFront often strips messages.
     bumpResetCount(key);
     const t = window.setTimeout(() => reset(), 40);
     return () => window.clearTimeout(t);
   }, [error, key, reset]);
 
-  if (!giveUp && isSoftRecoverableError(error)) {
+  if (!giveUp) {
     return null;
   }
 

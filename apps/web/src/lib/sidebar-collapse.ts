@@ -13,20 +13,6 @@ function readStorage(): boolean {
   }
 }
 
-function syncDocumentClass(collapsed: boolean): void {
-  if (typeof document === "undefined") return;
-  document.documentElement.classList.toggle(SIDEBAR_COLLAPSED_CLASS, collapsed);
-}
-
-/** Eager client hydrate — matches blocking script in root layout. */
-let memoryCollapsed =
-  typeof window !== "undefined" ? readStorage() : false;
-if (typeof document !== "undefined") {
-  syncDocumentClass(memoryCollapsed);
-}
-
-const listeners = new Set<Listener>();
-
 function writeStorage(collapsed: boolean): void {
   try {
     localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? "1" : "0");
@@ -35,18 +21,41 @@ function writeStorage(collapsed: boolean): void {
   }
 }
 
+function syncDocumentClass(collapsed: boolean): void {
+  if (typeof document === "undefined") return;
+  document.documentElement.classList.toggle(SIDEBAR_COLLAPSED_CLASS, collapsed);
+}
+
+/** User preference (localStorage). */
+let preferenceCollapsed =
+  typeof window !== "undefined" ? readStorage() : false;
+
+/**
+ * Temporary override (e.g. survey review focus). null = use preference.
+ * Never written to localStorage — leaving a page cannot “expand” a collapsed user preference.
+ */
+let overrideCollapsed: boolean | null = null;
+
+const listeners = new Set<Listener>();
+
+function effectiveCollapsed(): boolean {
+  return overrideCollapsed ?? preferenceCollapsed;
+}
+
 function emit(): void {
+  const next = effectiveCollapsed();
+  syncDocumentClass(next);
   listeners.forEach((listener) => listener());
 }
 
-export function getSidebarCollapsedSnapshot(): boolean {
-  return memoryCollapsed;
+if (typeof document !== "undefined") {
+  syncDocumentClass(effectiveCollapsed());
 }
 
-/**
- * Prefer the pre-paint <html> class so hydration matches what the user already sees
- * (blocking script), instead of always returning expanded=false.
- */
+export function getSidebarCollapsedSnapshot(): boolean {
+  return effectiveCollapsed();
+}
+
 export function getSidebarCollapsedServerSnapshot(): boolean {
   if (typeof document !== "undefined") {
     return document.documentElement.classList.contains(SIDEBAR_COLLAPSED_CLASS);
@@ -54,22 +63,35 @@ export function getSidebarCollapsedServerSnapshot(): boolean {
   return false;
 }
 
+export function getSidebarPreferenceSnapshot(): boolean {
+  return preferenceCollapsed;
+}
+
 export function subscribeSidebarCollapsed(listener: Listener): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
 }
 
+/** Persist user preference (collapse toggle). Clears temporary override. */
 export function setSidebarCollapsed(collapsed: boolean): void {
-  memoryCollapsed = collapsed;
+  preferenceCollapsed = collapsed;
+  overrideCollapsed = null;
   writeStorage(collapsed);
-  syncDocumentClass(collapsed);
+  emit();
+}
+
+/** Temporary visual override — does not change stored preference. */
+export function setSidebarCollapsedOverride(collapsed: boolean | null): void {
+  if (overrideCollapsed === collapsed) return;
+  overrideCollapsed = collapsed;
   emit();
 }
 
 export function hydrateSidebarCollapsedFromStorage(): void {
-  setSidebarCollapsed(readStorage());
+  preferenceCollapsed = readStorage();
+  emit();
 }
 
 export function toggleSidebarCollapsed(): void {
-  setSidebarCollapsed(!memoryCollapsed);
+  setSidebarCollapsed(!preferenceCollapsed);
 }

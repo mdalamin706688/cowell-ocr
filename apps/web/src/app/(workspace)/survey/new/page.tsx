@@ -22,7 +22,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { copy } from "@/lib/copy";
 import { isPreviewEnvironment } from "@/lib/client-auth";
 import { useSidebarCollapsed } from "@/hooks/use-sidebar-collapsed";
-import { getSidebarCollapsedSnapshot } from "@/lib/sidebar-collapse";
 import {
   normalizeFolderNameInput,
   writeLastRootFolder,
@@ -73,8 +72,7 @@ function SurveyWorkflow() {
   });
   const exportLock = useRef(false);
   const reviewSectionRef = useRef<HTMLDivElement | null>(null);
-  const sidebarBeforeFocus = useRef<boolean | null>(null);
-  const { setCollapsed } = useSidebarCollapsed();
+  const { setCollapsedOverride } = useSidebarCollapsed();
   const compactTop = step === "review" || step === "export" || step === "complete";
   const uploadedImageByName = useMemo(() => {
     const map = new Map<string, { base64: string; mimeType: string; previewUrl?: string }>();
@@ -121,32 +119,28 @@ function SurveyWorkflow() {
 
   useEffect(() => {
     if (step !== "review") {
-      if (sidebarBeforeFocus.current !== null) {
-        setCollapsed(sidebarBeforeFocus.current);
-        sidebarBeforeFocus.current = null;
-      }
+      setCollapsedOverride(null);
       setReviewFocusMode(false);
       setAbortOpen(false);
     }
-  }, [setCollapsed, step]);
+  }, [setCollapsedOverride, step]);
+
+  // Leaving the survey page must clear focus override without touching user preference.
+  useEffect(() => {
+    return () => setCollapsedOverride(null);
+  }, [setCollapsedOverride]);
 
   const setFocusMode = useCallback(
     (on: boolean) => {
       if (on) {
-        if (sidebarBeforeFocus.current === null) {
-          sidebarBeforeFocus.current = getSidebarCollapsedSnapshot();
-        }
-        setCollapsed(true);
+        setCollapsedOverride(true);
         setReviewFocusMode(true);
         return;
       }
       setReviewFocusMode(false);
-      if (sidebarBeforeFocus.current !== null) {
-        setCollapsed(sidebarBeforeFocus.current);
-        sidebarBeforeFocus.current = null;
-      }
+      setCollapsedOverride(null);
     },
-    [setCollapsed]
+    [setCollapsedOverride]
   );
 
   const abortSurvey = useCallback(() => {

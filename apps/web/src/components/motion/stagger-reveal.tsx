@@ -1,9 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { usePageReady } from "@/hooks/use-page-ready";
-import { useSafeMotion } from "@/hooks/use-safe-motion";
-import { staggerContainer, staggerItem } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 interface StaggerRevealProps {
@@ -13,11 +10,9 @@ interface StaggerRevealProps {
 }
 
 /**
- * Skeleton → content handoff without AnimatePresence exit (avoids removeChild
- * races that surface as 表示エラー on CloudFront).
+ * Skeleton → content without Framer. Framer remounts caused 表示エラー on soft-nav.
  */
 export function StaggerReveal({ children, className, placeholder }: StaggerRevealProps) {
-  const safeMotion = useSafeMotion();
   const pageReady = usePageReady();
 
   if (!pageReady) {
@@ -28,19 +23,10 @@ export function StaggerReveal({ children, className, placeholder }: StaggerRevea
     );
   }
 
-  if (!safeMotion) {
-    return <div className={cn("flex w-full flex-col gap-8", className)}>{children}</div>;
-  }
-
   return (
-    <motion.div
-      className={cn("flex w-full flex-col gap-8 overflow-x-clip", className)}
-      variants={staggerContainer}
-      initial="hidden"
-      animate="show"
-    >
+    <div className={cn("page-enter flex w-full flex-col gap-8 overflow-x-clip", className)}>
       {children}
-    </motion.div>
+    </div>
   );
 }
 
@@ -51,18 +37,5 @@ export function StaggerItem({
   children: React.ReactNode;
   className?: string;
 }) {
-  const safeMotion = useSafeMotion();
-
-  if (!safeMotion) {
-    return <div className={cn("w-full", className)}>{children}</div>;
-  }
-
-  return (
-    <motion.div
-      className={cn("w-full shrink-0 overflow-hidden", className)}
-      variants={staggerItem}
-    >
-      {children}
-    </motion.div>
-  );
+  return <div className={cn("page-enter-item w-full shrink-0", className)}>{children}</div>;
 }
