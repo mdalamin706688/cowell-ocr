@@ -1,9 +1,9 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { usePageReady } from "@/hooks/use-page-ready";
 import { useSafeMotion } from "@/hooks/use-safe-motion";
-import { easeOutExpo, SKELETON_FADE_MS, staggerContainer, staggerItem } from "@/lib/motion";
+import { staggerContainer, staggerItem } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 interface StaggerRevealProps {
@@ -12,41 +12,35 @@ interface StaggerRevealProps {
   placeholder?: React.ReactNode;
 }
 
+/**
+ * Skeleton → content handoff without AnimatePresence exit (avoids removeChild
+ * races that surface as 表示エラー on CloudFront).
+ */
 export function StaggerReveal({ children, className, placeholder }: StaggerRevealProps) {
   const safeMotion = useSafeMotion();
   const pageReady = usePageReady();
 
+  if (!pageReady) {
+    return (
+      <div className={cn("flex w-full flex-col gap-8 overflow-x-clip", className)} aria-busy>
+        {placeholder}
+      </div>
+    );
+  }
+
   if (!safeMotion) {
-    return <div className={cn(className)}>{children}</div>;
+    return <div className={cn("flex w-full flex-col gap-8", className)}>{children}</div>;
   }
 
   return (
-    <div className={cn("flex w-full flex-col gap-8 overflow-x-clip", className)}>
-      <AnimatePresence mode="wait" initial={false}>
-        {!pageReady ? (
-          <motion.div
-            key="placeholder"
-            initial={false}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: SKELETON_FADE_MS / 1000, ease: easeOutExpo }}
-            aria-busy
-          >
-            {placeholder}
-          </motion.div>
-        ) : (
-          <motion.div
-            key="content"
-            variants={staggerContainer}
-            initial="hidden"
-            animate="show"
-            className="flex w-full flex-col gap-8"
-          >
-            {children}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+    <motion.div
+      className={cn("flex w-full flex-col gap-8 overflow-x-clip", className)}
+      variants={staggerContainer}
+      initial="hidden"
+      animate="show"
+    >
+      {children}
+    </motion.div>
   );
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { useNavigation } from "@/contexts/navigation-context";
 import { useSafeMotion } from "@/hooks/use-safe-motion";
@@ -14,8 +14,8 @@ interface PageContentTransitionProps {
 }
 
 /**
- * Soft page enter/exit within the persistent workspace shell.
- * Sidebar stays mounted — only main content slides.
+ * Enter-only page motion. Exit AnimatePresence (mode="wait") remounts DOM and
+ * triggers removeChild races → 表示エラー on CloudFront / Chrome translate.
  */
 export function PageContentTransition({
   children,
@@ -37,18 +37,15 @@ export function PageContentTransition({
 
   return (
     <div className={cn("relative isolate overflow-x-clip", className)}>
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.div
-          key={pathname}
-          initial={pageMotion.initial}
-          animate={pageMotion.animate}
-          exit={pageMotion.exit}
-          transition={pageTransitionTween}
-          className="w-full overflow-x-clip"
-        >
-          {children}
-        </motion.div>
-      </AnimatePresence>
+      <motion.div
+        key={pathname}
+        initial={pageMotion.initial}
+        animate={pageMotion.animate}
+        transition={pageTransitionTween}
+        className="w-full overflow-x-clip"
+      >
+        {children}
+      </motion.div>
     </div>
   );
 }

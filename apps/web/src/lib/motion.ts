@@ -70,13 +70,13 @@ export function getPageMotion(
   exit: { opacity: number; x: number; scale: number };
 } {
   const forward = direction >= 0;
-  const distance = variant === "workspace" ? 40 : 24;
+  const distance = variant === "workspace" ? 28 : 18;
   const enterX = forward ? distance : -distance;
-  const exitX = forward ? -distance * 0.7 : distance * 0.7;
 
+  // Enter-only — exit animations cause DOM removeChild races on static hosts.
   return {
-    initial: { opacity: 0.92, x: enterX, scale: 0.992 },
+    initial: { opacity: 0.94, x: enterX, scale: 0.995 },
     animate: { opacity: 1, x: 0, scale: 1 },
-    exit: { opacity: 0, x: exitX, scale: 0.996 },
+    exit: { opacity: 1, x: 0, scale: 1 },
   };
 }

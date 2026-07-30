@@ -2,16 +2,19 @@
 
 export function isDomMutationError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
-  const err = error as { name?: string; message?: string };
+  const err = error as { name?: string; message?: string; digest?: string };
   const name = err.name ?? "";
-  const message = err.message ?? "";
+  const message = (err.message ?? "").toLowerCase();
   return (
     name === "NotFoundError" ||
     name === "DOMException" ||
-    message.includes("removeChild") ||
-    message.includes("insertBefore") ||
+    message.includes("removechild") ||
+    message.includes("insertbefore") ||
     message.includes("child of") ||
-    message.toLowerCase().includes("hydrat")
+    message.includes("hydrat") ||
+    message.includes("the node to be removed is not a child") ||
+    // Next production often strips the real message but keeps a digest.
+    (Boolean(err.digest) && (message === "" || message.includes("application error")))
   );
 }
 
@@ -38,9 +41,13 @@ export function isChunkLoadError(error: unknown): boolean {
   );
 }
 
+/** Soft-recoverable render/nav errors — show error UI only if reset keeps failing. */
+export function isSoftRecoverableError(error: unknown): boolean {
+  return isDomMutationError(error) || isChunkLoadError(error);
+}
+
 /**
- * Soft-nav must stay SPA. Auto `location.reload()` after a skeleton looked like a
- * full CloudFront refresh. Only return true so callers can soft-reset; never reload here.
+ * Soft-nav must stay SPA. Never auto location.reload() here.
  */
 export function recoverFromChunkLoadError(_error: unknown): boolean {
   return false;

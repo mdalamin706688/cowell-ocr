@@ -1,7 +1,30 @@
 "use client";
 
-import { useEffect } from "react";
-import { isChunkLoadError, isDomMutationError } from "@/lib/dom-mutation-error";
+import { useEffect, useState } from "react";
+import { isSoftRecoverableError } from "@/lib/dom-mutation-error";
+
+const RESET_KEY = "cowell_soft_error_resets";
+
+function readResetCount(key: string): number {
+  try {
+    const map = JSON.parse(sessionStorage.getItem(RESET_KEY) || "{}") as Record<string, number>;
+    return map[key] || 0;
+  } catch {
+    return 0;
+  }
+}
+
+function bumpResetCount(key: string): number {
+  try {
+    const map = JSON.parse(sessionStorage.getItem(RESET_KEY) || "{}") as Record<string, number>;
+    const next = (map[key] || 0) + 1;
+    map[key] = next;
+    sessionStorage.setItem(RESET_KEY, JSON.stringify(map));
+    return next;
+  } catch {
+    return 1;
+  }
+}
 
 /** Root-level fallback — only used when the root layout itself fails. */
 export default function GlobalError({
@@ -11,14 +34,24 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const key = String(error.digest || error.message || error.name || "unknown");
+  const [giveUp, setGiveUp] = useState(false);
+
   useEffect(() => {
     console.error(error);
-    if (isDomMutationError(error) || isChunkLoadError(error)) {
-      reset();
+    if (!isSoftRecoverableError(error)) {
+      setGiveUp(true);
+      return;
     }
-  }, [error, reset]);
+    if (readResetCount(key) >= 2) {
+      setGiveUp(true);
+      return;
+    }
+    bumpResetCount(key);
+    reset();
+  }, [error, key, reset]);
 
-  if (isChunkLoadError(error) || isDomMutationError(error)) {
+  if (!giveUp && isSoftRecoverableError(error)) {
     return null;
   }
 
@@ -42,10 +75,30 @@ export default function GlobalError({
             一時的な問題が発生しました。再読み込みをお試しください。
           </p>
           <div style={{ marginTop: "1.5rem", display: "flex", gap: "0.75rem" }}>
-            <button type="button" onClick={() => window.location.reload()}>
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  sessionStorage.removeItem(RESET_KEY);
+                } catch {
+                  // ignore
+                }
+                window.location.reload();
+              }}
+            >
               再読み込み
             </button>
-            <button type="button" onClick={() => reset()}>
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  sessionStorage.removeItem(RESET_KEY);
+                } catch {
+                  // ignore
+                }
+                reset();
+              }}
+            >
               再試行
             </button>
           </div>
