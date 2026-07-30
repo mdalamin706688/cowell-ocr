@@ -1,67 +1,63 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import type { ComponentProps, MouseEvent } from "react";
+import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { useNavigation } from "@/contexts/navigation-context";
 import { cn } from "@/lib/utils";
-
-type TransitionLinkProps = ComponentProps<typeof Link>;
 
 function normalizePath(path: string): string {
   if (!path) return "/";
   return path.endsWith("/") ? path : `${path}/`;
 }
 
+type TransitionLinkProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "type"> & {
+  href: string;
+  children?: ReactNode;
+  /** Accepted for API compat — always soft-prefetched on hover */
+  prefetch?: boolean;
+};
+
 /**
- * Soft SPA navigation. Capture-phase preventDefault so Next/browser never
- * follows the href on static hosts (full document load → shell skeleton flash).
+ * In-app navigation with ZERO <a href> document loads.
+ * Critical for CloudFront static export + collapsed sidebar (no shell remount).
  */
 export function TransitionLink({
   href,
   onClick,
   onMouseEnter,
-  prefetch = true,
   className,
+  children,
+  prefetch: _prefetch = true,
   ...props
 }: TransitionLinkProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { startNavigation } = useNavigation();
-  const hrefString = typeof href === "string" ? href : href.pathname ?? "";
-
-  const softNavigate = (event: MouseEvent<HTMLAnchorElement>) => {
-    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
-      return false;
-    }
-    if (!hrefString) return false;
-    event.preventDefault();
-    event.stopPropagation();
-    if (normalizePath(pathname) === normalizePath(hrefString)) return true;
-    startNavigation(hrefString);
-    router.push(hrefString);
-    return true;
-  };
+  const active = normalizePath(pathname) === normalizePath(href);
 
   return (
-    <Link
-      href={href}
-      prefetch={prefetch}
-      scroll={false}
+    <button
+      type="button"
       {...props}
-      className={cn("transition-opacity duration-150 active:opacity-80", className)}
-      onClickCapture={(event) => {
-        softNavigate(event);
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "cursor-pointer border-0 bg-transparent p-0 text-left appearance-none transition-opacity duration-150 active:opacity-80",
+        className
+      )}
+      onMouseEnter={(event) => {
+        onMouseEnter?.(event);
+        router.prefetch(href);
       }}
       onClick={(event) => {
         onClick?.(event);
         if (event.defaultPrevented) return;
-        softNavigate(event);
+        event.preventDefault();
+        if (active) return;
+        startNavigation(href);
+        router.push(href);
       }}
-      onMouseEnter={(event) => {
-        onMouseEnter?.(event);
-        if (hrefString) router.prefetch(hrefString);
-      }}
-    />
+    >
+      {children}
+    </button>
   );
 }

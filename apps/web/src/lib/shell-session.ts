@@ -2,11 +2,12 @@ import type { SessionUser } from "@/lib/client-auth";
 import { peekClientSession } from "@/lib/client-auth";
 
 /**
- * Tab-lifetime workspace session — survives AuthenticatedShell remounts so we
- * never flash ShellSkeleton mid soft-nav (looks like a full CloudFront reload).
+ * Tab-lifetime workspace shell lock.
+ * Once the real AppShell has painted, never swap it for ShellSkeleton again
+ * in this tab — that flash is what looked like a CloudFront full reload.
  */
 let shellUser: SessionUser | null = null;
-let shellReady = false;
+let shellLocked = false;
 
 export function getShellSessionUser(): SessionUser | null {
   if (shellUser) return shellUser;
@@ -18,16 +19,24 @@ export function getShellSessionUser(): SessionUser | null {
   }
 }
 
+export function isShellLocked(): boolean {
+  return shellLocked;
+}
+
 export function isShellSessionReady(): boolean {
-  return shellReady || Boolean(getShellSessionUser());
+  return shellLocked || Boolean(getShellSessionUser());
 }
 
 export function setShellSessionUser(user: SessionUser | null): void {
+  if (!user) {
+    shellUser = null;
+    return;
+  }
   shellUser = user;
-  shellReady = Boolean(user);
+  shellLocked = true;
 }
 
 export function clearShellSessionUser(): void {
   shellUser = null;
-  shellReady = false;
+  shellLocked = false;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { ShellSkeleton } from "@/components/layout/shell-skeleton";
@@ -18,6 +18,7 @@ import { prefetchWorkspaceRoutes } from "@/lib/prefetch-workspace";
 import {
   clearShellSessionUser,
   getShellSessionUser,
+  isShellLocked,
   setShellSessionUser,
 } from "@/lib/shell-session";
 
@@ -26,13 +27,16 @@ interface AuthenticatedShellProps {
 }
 
 /**
- * AppShell stays mounted for the tab lifetime. ShellSkeleton only on first
- * unauthenticated paint — never mid soft-nav (that felt like a full reload).
+ * Complete workspace SPA shell:
+ * - AppShell mounts once per tab after auth
+ * - Soft-nav never swaps shell for ShellSkeleton
+ * - Collapse state lives on <html>, independent of route
  */
 export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   const router = useRouter();
   const cognito = isCognitoConfigured();
   const preview = isPreviewEnvironment() && !cognito;
+  const lastUser = useRef<SessionUser | null>(getShellSessionUser());
 
   const [user, setUser] = useState<SessionUser | null>(() => getShellSessionUser());
 
@@ -40,13 +44,18 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
     const cached = getShellSessionUser();
     if (!cached) return;
     setShellSessionUser(cached);
+    lastUser.current = cached;
     setUser(cached);
   }, []);
 
   useEffect(() => {
     prefetchWorkspaceRoutes(router);
-    const warm = window.setTimeout(() => prefetchWorkspaceRoutes(router), 1200);
-    return () => window.clearTimeout(warm);
+    const warm = window.setTimeout(() => prefetchWorkspaceRoutes(router), 800);
+    const warm2 = window.setTimeout(() => prefetchWorkspaceRoutes(router), 2500);
+    return () => {
+      window.clearTimeout(warm);
+      window.clearTimeout(warm2);
+    };
   }, [router]);
 
   useEffect(() => {
@@ -56,6 +65,7 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
       const cached = peekClientSession();
       if (cached && !cancelled) {
         setShellSessionUser(cached);
+        lastUser.current = cached;
         setUser(cached);
       }
 
@@ -65,12 +75,14 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
           if (!session) {
             clearClientSession();
             clearShellSessionUser();
+            lastUser.current = null;
             if (!cancelled) router.replace("/login/");
             return;
           }
           if (!cancelled) {
             setClientSession(session);
             setShellSessionUser(session);
+            lastUser.current = session;
             setUser(session);
           }
           return;
@@ -84,6 +96,7 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
           }
           if (!cancelled) {
             setShellSessionUser(session);
+            lastUser.current = session;
             setUser(session);
           }
           return;
@@ -101,10 +114,11 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
         if (!cancelled) {
           setClientSession(session);
           setShellSessionUser(session);
+          lastUser.current = session;
           setUser(session);
         }
       } catch {
-        if (!cancelled && !peekClientSession()) {
+        if (!cancelled && !peekClientSession() && !isShellLocked()) {
           router.replace("/login/");
         }
       }
@@ -116,7 +130,8 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
     };
   }, [cognito, preview, router]);
 
-  const sessionUser = user ?? getShellSessionUser();
+  // Once locked, keep painting the live shell even if React state flickers.
+  const sessionUser = user ?? lastUser.current ?? getShellSessionUser();
   if (!sessionUser) {
     return <ShellSkeleton />;
   }

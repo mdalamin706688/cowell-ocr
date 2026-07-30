@@ -1,7 +1,6 @@
 "use client";
 
-import { PageContentTransition } from "@/components/motion/page-content-transition";
-
+/** Workspace page slot — layout (AppShell) stays mounted; only page body swaps. */
 export default function WorkspaceTemplate({ children }: { children: React.ReactNode }) {
-  return <PageContentTransition>{children}</PageContentTransition>;
+  return <div className="w-full">{children}</div>;
 }

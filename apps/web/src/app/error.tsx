@@ -5,8 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
 /**
- * Soft-nav must never trap users on 表示エラー.
- * Prefer silent reset / safe-route escape over the Japanese error wall.
+ * SPA recovery only — never document.reload (that remounts expanded shell).
  */
 export default function Error({
   error,
@@ -77,7 +76,15 @@ export default function Error({
         一時的な問題が発生しました。ホームに戻るか、再試行してください。
       </p>
       <div className="mt-6 flex flex-wrap justify-center gap-3">
-        <Button type="button" onClick={() => window.location.assign("/dashboard/")}>
+        <Button
+          type="button"
+          onClick={() => {
+            setGiveUp(false);
+            attempts.current = 0;
+            router.replace("/dashboard/");
+            window.setTimeout(() => reset(), 80);
+          }}
+        >
           ホームへ
         </Button>
         <Button

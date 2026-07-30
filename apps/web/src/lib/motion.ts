@@ -1,17 +1,17 @@
 /** Shared motion tokens — premium easing, consistent across the app */
 export const easeOutExpo = [0.22, 1, 0.36, 1] as const;
 
-/** Route slide duration — synced with progress bar */
-export const PAGE_TRANSITION_MS = 620;
+/** Route progress duration — keep short; shell must stay mounted */
+export const PAGE_TRANSITION_MS = 320;
 
 /** Brief pause after slide before stagger reveal */
-export const PAGE_REVEAL_DELAY_MS = 72;
+export const PAGE_REVEAL_DELAY_MS = 40;
 
-/** Minimum time skeleton stays visible */
-export const MIN_SKELETON_MS = 520;
+/** Minimum time content skeleton stays visible */
+export const MIN_SKELETON_MS = 220;
 
 /** Skeleton fade-out when handing off to content */
-export const SKELETON_FADE_MS = 320;
+export const SKELETON_FADE_MS = 200;
 
 export const springSnappy = {
   type: "spring" as const,

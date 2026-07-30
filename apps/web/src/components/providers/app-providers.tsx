@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { useEffect } from "react";
 import { NavigationProvider } from "@/contexts/navigation-context";
 import { NavigationProgress } from "@/components/motion/navigation-progress";
-import { NavigationRouteSkeleton } from "@/components/motion/navigation-route-skeleton";
 import {
   isChunkLoadError,
   isDomMutationError,
@@ -12,8 +11,7 @@ import {
 } from "@/lib/dom-mutation-error";
 
 /**
- * Swallow translate / Framer / chunk races. Never hard-reload — that remounts
- * the workspace shell (ShellSkeleton flash) on CloudFront static hosts.
+ * Swallow translate / chunk races. Never hard-reload — remounts shell on CloudFront.
  */
 function DomMutationErrorGuard() {
   useEffect(() => {
@@ -54,7 +52,6 @@ export function AppProviders({ children }: { children: ReactNode }) {
       if ("scrollRestoration" in window.history) {
         window.history.scrollRestoration = "manual";
       }
-      // Clear sticky soft-error lock from older builds.
       sessionStorage.removeItem("cowell_soft_error_resets");
     } catch {
       // ignore
@@ -65,7 +62,6 @@ export function AppProviders({ children }: { children: ReactNode }) {
     <NavigationProvider>
       <DomMutationErrorGuard />
       <NavigationProgress />
-      <NavigationRouteSkeleton />
       {children}
     </NavigationProvider>
   );
