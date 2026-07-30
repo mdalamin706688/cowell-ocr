@@ -47,7 +47,6 @@ export function UsersPageContent() {
   const [creating, setCreating] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<CognitoUserRow | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
@@ -67,7 +66,6 @@ export function UsersPageContent() {
       setUsers([]);
     } finally {
       setLoading(false);
-      setInitialLoadDone(true);
     }
   }, [adminReady, previewDemo]);
 
