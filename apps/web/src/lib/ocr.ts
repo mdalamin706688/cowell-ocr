@@ -1,6 +1,35 @@
 import type { OcrRow } from "@cowell/shared";
-import { SURVEY_COLUMNS } from "@cowell/shared";
+import { EXPORT_SHEET_COLUMNS } from "@cowell/shared";
 import { generateId } from "./utils";
+
+function exportRowCells(r: OcrRow): string[] {
+  const qty = (r.quantity ?? "").trim();
+  const n = Number(qty.replace(/,/g, ""));
+  const quantity =
+    qty && !Number.isNaN(n) && Number.isFinite(n) && Math.abs(n - Math.round(n)) < 1e-9
+      ? String(Math.round(n))
+      : qty;
+  return [
+    (r.floor ?? "").trim(),
+    (r.location ?? "").trim(),
+    (r.fixtureModel ?? "").trim(),
+    (r.existingProduct ?? "").trim(),
+    r.photoBase64 ? "添付済み" : "",
+    quantity,
+    (r.notes ?? "").trim(),
+    "",
+    "",
+    "",
+    "",
+    "",
+  ];
+}
+
+export function rowsToTsv(rows: OcrRow[]): string {
+  const header = [...EXPORT_SHEET_COLUMNS].join("\t");
+  const body = rows.map((r) => exportRowCells(r).join("\t")).join("\n");
+  return `${header}\n${body}`;
+}
 
 /** Parse TSV OCR output into structured survey rows */
 export function parseTsvToRows(text: string, sourceFile?: string): OcrRow[] {
@@ -66,24 +95,6 @@ export function parseTsvToRows(text: string, sourceFile?: string): OcrRow[] {
 
     return row;
   });
-}
-
-export function rowsToTsv(rows: OcrRow[]): string {
-  const header = [...SURVEY_COLUMNS].join("\t");
-  const body = rows
-    .map((r) =>
-      [
-        r.floor,
-        r.location,
-        r.fixtureModel,
-        r.existingProduct,
-        r.photoBase64 ? "添付済み" : "",
-        r.quantity,
-        r.notes,
-      ].join("\t")
-    )
-    .join("\n");
-  return `${header}\n${body}`;
 }
 
 export async function compressImage(

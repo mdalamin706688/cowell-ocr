@@ -22,7 +22,10 @@ export const GEMINI_PRICING = {
 export const DEFAULT_OCR_PROMPT =
   "画像内の表をTSV形式（タブ区切り、1行目はヘッダー）で出力してください。表が複数ある場合は空行で区切ってください。表以外のテキストはそのまま出力してください。";
 
-/** 現調スプレッドシート列定義 */
+/**
+ * Review UI columns (includes 写真 for row photo attachment).
+ * Spreadsheet export uses EXPORT_SHEET_COLUMNS to match client sample-output.xlsx.
+ */
 export const SURVEY_COLUMNS = [
   "フロア",
   "設置場所",
@@ -33,7 +36,29 @@ export const SURVEY_COLUMNS = [
   "備考",
 ] as const;
 
+/**
+ * Google Sheets export — OCR fields first (matches API / review UI), then pricing columns from sample-output.xlsx.
+ */
+export const EXPORT_SHEET_COLUMNS = [
+  "フロア",
+  "設置場所",
+  "器具品番",
+  "既設商品名",
+  "写真",
+  "数量",
+  "備考",
+  "選定商品",
+  "定価",
+  "仕切り単価",
+  "合計",
+  "備考",
+] as const;
+
+/** 1-based row index of first OCR data row (after title + header). */
+export const EXPORT_SHEET_DATA_START_ROW = 3;
+
 export type SurveyColumn = (typeof SURVEY_COLUMNS)[number];
+export type ExportSheetColumn = (typeof EXPORT_SHEET_COLUMNS)[number];
 
 export interface UploadedFile {
   id: string;

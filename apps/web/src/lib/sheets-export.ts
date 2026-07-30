@@ -1,4 +1,8 @@
-import { SURVEY_COLUMNS, type OcrRow } from "@cowell/shared";
+import {
+  EXPORT_SHEET_COLUMNS,
+  EXPORT_SHEET_DATA_START_ROW,
+  type OcrRow,
+} from "@cowell/shared";
 import {
   DEFAULT_DRIVE_ROOT_FOLDER_NAME,
   sanitizeRootFolderName,
@@ -102,8 +106,8 @@ export interface SheetsExportOptions {
   onProgress?: ExportProgressCallback;
 }
 
-const PHOTO_COLUMN_INDEX = SURVEY_COLUMNS.indexOf("写真");
 const SHEET_TAB_TITLE = "現調データ";
+const PHOTO_COLUMN_INDEX = EXPORT_SHEET_COLUMNS.indexOf("写真");
 const PHOTO_FOLDER_NAME = "画像";
 const SOURCE_FOLDER_NAME = "元ファイル";
 const DRIVE_FOLDER_MIME = "application/vnd.google-apps.folder";
@@ -123,19 +127,56 @@ function authHeaders(accessToken: string): HeadersInit {
   };
 }
 
-function buildSheetValues(rows: OcrRow[]): string[][] {
+function formatExportCell(value: string | undefined): string {
+  return (value ?? "").trim();
+}
+
+/** Quantity from OCR — drop spurious decimals like 36.0 → 36 */
+function formatExportQuantity(value: string | undefined): string {
+  const raw = (value ?? "").trim();
+  if (!raw) return "";
+  const n = Number(raw.replace(/,/g, ""));
+  if (!Number.isNaN(n) && Number.isFinite(n) && Math.abs(n - Math.round(n)) < 1e-9) {
+    return String(Math.round(n));
+  }
+  return raw;
+}
+
+/** Map one OCR row to export cells (OCR JSON fields only; pricing columns blank). */
+function mapOcrRowToExportValues(row: OcrRow): string[] {
   return [
-    [...SURVEY_COLUMNS],
-    ...rows.map((r) => [
-      r.floor,
-      r.location,
-      r.fixtureModel,
-      r.existingProduct,
-      "",
-      r.quantity,
-      r.notes,
-    ]),
+    formatExportCell(row.floor),
+    formatExportCell(row.location),
+    formatExportCell(row.fixtureModel),
+    formatExportCell(row.existingProduct),
+    "", // 写真 — IMAGE() applied after upload
+    formatExportQuantity(row.quantity),
+    formatExportCell(row.notes),
+    "",
+    "",
+    "",
+    "",
+    "",
   ];
+}
+
+function buildSheetValues(rows: OcrRow[], sheetTitle: string): string[][] {
+  // Title row = project/site name (like sample-output.xlsx), never root folder (JBC-COWELL).
+  const title = sheetTitle.trim();
+  if (!title) {
+    throw new Error("スプレッドシートのタイトル（案件名）が未設定です");
+  }
+  return [[title], [...EXPORT_SHEET_COLUMNS], ...rows.map(mapOcrRowToExportValues)];
+}
+
+function columnLetter(index: number): string {
+  let n = index;
+  let label = "";
+  while (n >= 0) {
+    label = String.fromCharCode(65 + (n % 26)) + label;
+    n = Math.floor(n / 26) - 1;
+  }
+  return label;
 }
 
 function driveImageUrl(fileId: string): string {
@@ -711,6 +752,298 @@ async function createResultSpreadsheet(
   return spreadsheetId;
 }
 
+/** Column pixel widths (OCR cols + sample pricing cols). */
+const EXPORT_COLUMN_PIXEL_WIDTHS = [
+  70, // フロア
+  160, // 設置場所
+  250, // 器具品番
+  270, // 既設商品名
+  140, // 写真
+  64, // 数量
+  350, // 備考
+  260, // 選定商品
+  190, // 定価
+  100, // 仕切り単価
+  140, // 合計
+  480, // 備考（選定側）
+] as const;
+
+const NOTES_COLUMN_INDEXES = [6, 11] as const;
+const PRODUCT_COLUMN_INDEX = 3;
+const PHOTO_COL_INDEX = PHOTO_COLUMN_INDEX;
+const QTY_COLUMN_INDEX = 5;
+
+function textLineCount(text: string, charsPerLine: number): number {
+  const raw = (text || "").trim();
+  if (!raw) return 1;
+  return raw.split(/\r?\n/).reduce((sum, line) => {
+    const len = line.length || 1;
+    return sum + Math.max(1, Math.ceil(len / charsPerLine));
+  }, 0);
+}
+
+function estimateRowHeightPx(row: OcrRow, hasPhoto: boolean): number {
+  const lines = Math.max(
+    textLineCount(row.existingProduct, 32),
+    textLineCount(row.notes, 28),
+    textLineCount(row.location, 18),
+    textLineCount(row.fixtureModel, 22)
+  );
+  const textHeight = 20 + lines * 16;
+  if (hasPhoto) return Math.min(140, Math.max(96, textHeight));
+  return Math.min(140, Math.max(28, textHeight));
+}
+
+/**
+ * Apply sample-like spreadsheet formatting: title, headers, borders,
+ * column widths, wrap text, and row heights for long cells.
+ */
+async function formatExportedSpreadsheet(
+  accessToken: string,
+  spreadsheetId: string,
+  rows: OcrRow[]
+): Promise<void> {
+  const colCount = EXPORT_SHEET_COLUMNS.length;
+  const dataStart = 2; // 0-based: row 3 in sheet
+  const dataEnd = dataStart + rows.length;
+  const sheetId = 0;
+
+  const thinBorder = {
+    style: "SOLID" as const,
+    width: 1,
+    color: { red: 0.72, green: 0.72, blue: 0.72 },
+  };
+  const allBorders = {
+    top: thinBorder,
+    bottom: thinBorder,
+    left: thinBorder,
+    right: thinBorder,
+  };
+
+  const requests: Record<string, unknown>[] = [
+    // Title: merge A1:C1
+    {
+      mergeCells: {
+        range: {
+          sheetId,
+          startRowIndex: 0,
+          endRowIndex: 1,
+          startColumnIndex: 0,
+          endColumnIndex: 3,
+        },
+        mergeType: "MERGE_ALL",
+      },
+    },
+    // Title row height (~80px like sample)
+    {
+      updateDimensionProperties: {
+        range: { sheetId, dimension: "ROWS", startIndex: 0, endIndex: 1 },
+        properties: { pixelSize: 80 },
+        fields: "pixelSize",
+      },
+    },
+    // Title style: bold, larger, centered, wrap
+    {
+      repeatCell: {
+        range: {
+          sheetId,
+          startRowIndex: 0,
+          endRowIndex: 1,
+          startColumnIndex: 0,
+          endColumnIndex: 3,
+        },
+        cell: {
+          userEnteredFormat: {
+            textFormat: {
+              bold: true,
+              fontSize: 13,
+              fontFamily: "Noto Sans JP",
+            },
+            horizontalAlignment: "CENTER",
+            verticalAlignment: "MIDDLE",
+            wrapStrategy: "WRAP",
+            borders: {
+              bottom: {
+                style: "SOLID",
+                width: 1,
+                color: { red: 0.55, green: 0.55, blue: 0.55 },
+              },
+            },
+          },
+        },
+        fields:
+          "userEnteredFormat(textFormat,horizontalAlignment,verticalAlignment,wrapStrategy,borders)",
+      },
+    },
+    // Header row
+    {
+      repeatCell: {
+        range: {
+          sheetId,
+          startRowIndex: 1,
+          endRowIndex: 2,
+          startColumnIndex: 0,
+          endColumnIndex: colCount,
+        },
+        cell: {
+          userEnteredFormat: {
+            textFormat: {
+              bold: true,
+              fontSize: 10,
+              fontFamily: "Noto Sans JP",
+            },
+            horizontalAlignment: "CENTER",
+            verticalAlignment: "MIDDLE",
+            wrapStrategy: "WRAP",
+            backgroundColor: { red: 0.9, green: 0.93, blue: 0.98 },
+            borders: allBorders,
+          },
+        },
+        fields:
+          "userEnteredFormat(textFormat,horizontalAlignment,verticalAlignment,wrapStrategy,backgroundColor,borders)",
+      },
+    },
+    // Header row height
+    {
+      updateDimensionProperties: {
+        range: { sheetId, dimension: "ROWS", startIndex: 1, endIndex: 2 },
+        properties: { pixelSize: 36 },
+        fields: "pixelSize",
+      },
+    },
+    // Freeze title + header
+    {
+      updateSheetProperties: {
+        properties: {
+          sheetId,
+          gridProperties: { frozenRowCount: 2 },
+        },
+        fields: "gridProperties.frozenRowCount",
+      },
+    },
+    // Column widths
+    ...EXPORT_COLUMN_PIXEL_WIDTHS.map((pixelSize, index) => ({
+      updateDimensionProperties: {
+        range: {
+          sheetId,
+          dimension: "COLUMNS",
+          startIndex: index,
+          endIndex: index + 1,
+        },
+        properties: { pixelSize },
+        fields: "pixelSize",
+      },
+    })),
+  ];
+
+  if (rows.length > 0) {
+    // Data body: light fill, borders, vertical middle, wrap
+    requests.push({
+      repeatCell: {
+        range: {
+          sheetId,
+          startRowIndex: dataStart,
+          endRowIndex: dataEnd,
+          startColumnIndex: 0,
+          endColumnIndex: colCount,
+        },
+        cell: {
+          userEnteredFormat: {
+            textFormat: {
+              fontSize: 10,
+              fontFamily: "Noto Sans JP",
+            },
+            verticalAlignment: "MIDDLE",
+            wrapStrategy: "WRAP",
+            backgroundColor: { red: 0.93, green: 0.95, blue: 0.99 },
+            borders: allBorders,
+          },
+        },
+        fields:
+          "userEnteredFormat(textFormat,verticalAlignment,wrapStrategy,backgroundColor,borders)",
+      },
+    });
+
+    // Quantity centered
+    requests.push({
+      repeatCell: {
+        range: {
+          sheetId,
+          startRowIndex: dataStart,
+          endRowIndex: dataEnd,
+          startColumnIndex: QTY_COLUMN_INDEX,
+          endColumnIndex: QTY_COLUMN_INDEX + 1,
+        },
+        cell: {
+          userEnteredFormat: {
+            horizontalAlignment: "CENTER",
+            verticalAlignment: "MIDDLE",
+          },
+        },
+        fields: "userEnteredFormat(horizontalAlignment,verticalAlignment)",
+      },
+    });
+
+    // Stronger wrap on product, photo placeholder, notes columns
+    for (const col of [PRODUCT_COLUMN_INDEX, PHOTO_COL_INDEX, ...NOTES_COLUMN_INDEXES]) {
+      requests.push({
+        repeatCell: {
+          range: {
+            sheetId,
+            startRowIndex: dataStart,
+            endRowIndex: dataEnd,
+            startColumnIndex: col,
+            endColumnIndex: col + 1,
+          },
+          cell: {
+            userEnteredFormat: {
+              wrapStrategy: "WRAP",
+              verticalAlignment: "MIDDLE",
+              horizontalAlignment: "LEFT",
+            },
+          },
+          fields: "userEnteredFormat(wrapStrategy,verticalAlignment,horizontalAlignment)",
+        },
+      });
+    }
+
+    // Per-row heights so long notes / product names break visibly
+    rows.forEach((row, index) => {
+      const startIndex = dataStart + index;
+      const hasPhoto = Boolean(row.photoBase64 && row.photoMimeType);
+      requests.push({
+        updateDimensionProperties: {
+          range: {
+            sheetId,
+            dimension: "ROWS",
+            startIndex,
+            endIndex: startIndex + 1,
+          },
+          properties: { pixelSize: estimateRowHeightPx(row, hasPhoto) },
+          fields: "pixelSize",
+        },
+      });
+    });
+  }
+
+  const res = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
+    {
+      method: "POST",
+      headers: authHeaders(accessToken),
+      body: JSON.stringify({ requests }),
+    }
+  );
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(
+      (err as { error?: { message?: string } }).error?.message ||
+        "スプレッドシートの書式設定に失敗しました"
+    );
+  }
+}
+
 /**
  * Two-step upload: metadata+parents first, then media.
  * Multipart often dropped parents so files drifted to My Drive root.
@@ -852,10 +1185,6 @@ async function uploadSourceFilesToDrive(
   return count;
 }
 
-function columnLetter(index: number): string {
-  return String.fromCharCode("A".charCodeAt(0) + index);
-}
-
 async function attachRowPhotos(
   accessToken: string,
   spreadsheetId: string,
@@ -864,7 +1193,10 @@ async function attachRowPhotos(
   onItem?: (done: number, total: number) => void
 ): Promise<number> {
   const photoRows = rows
-    .map((row, index) => ({ row, sheetRow: index + 2 }))
+    .map((row, index) => ({
+      row,
+      sheetRow: index + EXPORT_SHEET_DATA_START_ROW,
+    }))
     .filter((item) => item.row.photoBase64 && item.row.photoMimeType);
 
   if (!photoRows.length) return 0;
@@ -878,7 +1210,7 @@ async function attachRowPhotos(
       accessToken,
       row.photoBase64!,
       row.photoMimeType!,
-      buildRowPhotoFileName(sheetRow - 1),
+      buildRowPhotoFileName(sheetRow - EXPORT_SHEET_DATA_START_ROW + 1),
       photoFolderId
     );
     const cell = `${columnLetter(PHOTO_COLUMN_INDEX)}${sheetRow}`;
@@ -998,7 +1330,7 @@ async function touchSpreadsheetFile(
       method: "PATCH",
       headers: authHeaders(accessToken),
       body: JSON.stringify({
-        description: `Cowell OCR · ${new Date().toISOString()}`,
+        description: "Cowell OCR",
       }),
     }
   );
@@ -1084,11 +1416,11 @@ async function exportRowsWithAccessTokenUnlocked(
   emitProgress(onProgress, 28, "spreadsheet");
 
   const updateRes = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/A1?valueInputOption=USER_ENTERED`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/A1?valueInputOption=RAW`,
     {
       method: "PUT",
       headers,
-      body: JSON.stringify({ values: buildSheetValues(rows) }),
+      body: JSON.stringify({ values: buildSheetValues(rows, projectFolderName) }),
     }
   );
 
@@ -1096,6 +1428,8 @@ async function exportRowsWithAccessTokenUnlocked(
     const err = await updateRes.json();
     throw new Error(err.error?.message || "データの書き込みに失敗しました");
   }
+
+  await formatExportedSpreadsheet(accessToken, spreadsheetId, rows);
   emitProgress(onProgress, 35, "spreadsheet");
 
   let photoCount = 0;
