@@ -1,5 +1,4 @@
-import { UsersPageSkeleton } from "@/components/layout/content-skeleton";
-
+/** Keep previous route visible during chunk fetch (avoids CloudFront Suspense jump). */
 export default function UsersLoading() {
-  return <UsersPageSkeleton />;
+  return null;
 }
