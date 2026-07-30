@@ -170,6 +170,13 @@ export const copy = {
       tokens: "トークン",
       cost: "コスト",
     },
+    focusExpand: "表示領域を拡大",
+    focusCollapse: "通常表示に戻す",
+    abort: "中止する",
+    abortTitle: "処理を中止しますか？",
+    abortBody: "現在の読み取り結果と入力内容は破棄されます。この操作は取り消せません。",
+    abortConfirm: "中止する",
+    abortCancel: "キャンセル",
   },
   upload: {
     drop: "ファイルを選択またはドラッグ",

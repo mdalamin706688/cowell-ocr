@@ -4,8 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StepPanel } from "@/components/motion/step-panel";
 import { StaggerItem, StaggerReveal } from "@/components/motion/stagger-reveal";
 import {
-  ArrowLeft, ArrowRight, CheckCircle2, Download,
-  ExternalLink, Loader2, Maximize2, Minimize2, ScanLine, Sparkles,
+  ArrowRight, CheckCircle2, Download,
+  ExternalLink, Loader2, Maximize2, Minimize2, ScanLine, Sparkles, Square,
 } from "lucide-react";
 import { SurveyProvider, useSurvey } from "@/contexts/survey-context";
 import { StepIndicator } from "@/components/workflow/step-indicator";
@@ -16,9 +16,12 @@ import { ExportProgressPanel } from "@/components/survey/export-progress-panel";
 import { ProcessingPanel } from "@/components/survey/processing-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { OverlayDialog } from "@/components/ui/overlay-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { copy } from "@/lib/copy";
 import { isPreviewEnvironment } from "@/lib/client-auth";
+import { useSidebarCollapsed } from "@/hooks/use-sidebar-collapsed";
+import { getSidebarCollapsedSnapshot } from "@/lib/sidebar-collapse";
 import {
   normalizeFolderNameInput,
   writeLastRootFolder,
@@ -53,6 +56,7 @@ function SurveyWorkflow() {
   const [reviewTab, setReviewTab] = useState<"table" | "raw">("table");
   const [tableQuery, setTableQuery] = useState("");
   const [reviewFocusMode, setReviewFocusMode] = useState(false);
+  const [abortOpen, setAbortOpen] = useState(false);
   const [csvExport, setCsvExport] = useState(false);
   const [exportTitle, setExportTitle] = useState("");
   const [destination, setDestination] = useState<{
@@ -68,6 +72,8 @@ function SurveyWorkflow() {
   });
   const exportLock = useRef(false);
   const reviewSectionRef = useRef<HTMLDivElement | null>(null);
+  const sidebarBeforeFocus = useRef<boolean | null>(null);
+  const { setCollapsed } = useSidebarCollapsed();
   const compactTop = step === "review" || step === "export" || step === "complete";
   const uploadedImageByName = useMemo(() => {
     const map = new Map<string, { base64: string; mimeType: string; previewUrl?: string }>();
@@ -114,10 +120,49 @@ function SurveyWorkflow() {
 
   useEffect(() => {
     if (step !== "review") {
+      if (sidebarBeforeFocus.current !== null) {
+        setCollapsed(sidebarBeforeFocus.current);
+        sidebarBeforeFocus.current = null;
+      }
       setReviewFocusMode(false);
+      setAbortOpen(false);
     }
-  }, [step]);
+  }, [setCollapsed, step]);
 
+  const setFocusMode = useCallback(
+    (on: boolean) => {
+      if (on) {
+        if (sidebarBeforeFocus.current === null) {
+          sidebarBeforeFocus.current = getSidebarCollapsedSnapshot();
+        }
+        setCollapsed(true);
+        setReviewFocusMode(true);
+        return;
+      }
+      setReviewFocusMode(false);
+      if (sidebarBeforeFocus.current !== null) {
+        setCollapsed(sidebarBeforeFocus.current);
+        sidebarBeforeFocus.current = null;
+      }
+    },
+    [setCollapsed]
+  );
+
+  const abortSurvey = useCallback(() => {
+    setAbortOpen(false);
+    setFocusMode(false);
+    reset();
+    setCsvExport(false);
+    setTableQuery("");
+    setReviewTab("table");
+    setDestination({
+      rootFolderName: "",
+      projectName: "",
+      googleAccountEmail: destination.googleAccountEmail,
+      isValid: false,
+    });
+    setStep("upload");
+  }, [destination.googleAccountEmail, reset, setFocusMode, setStep]);
   const runOcr = useCallback(async () => {
     if (!files.length) return;
     setProcessing(true);
@@ -316,9 +361,9 @@ function SurveyWorkflow() {
                   variant="outline"
                   size="icon"
                   className="h-8 w-8"
-                  title={reviewFocusMode ? "通常表示に戻す" : "表示領域を拡大"}
-                  aria-label={reviewFocusMode ? "通常表示に戻す" : "表示領域を拡大"}
-                  onClick={() => setReviewFocusMode((v) => !v)}
+                  title={reviewFocusMode ? copy.survey.focusCollapse : copy.survey.focusExpand}
+                  aria-label={reviewFocusMode ? copy.survey.focusCollapse : copy.survey.focusExpand}
+                  onClick={() => setFocusMode(!reviewFocusMode)}
                 >
                   {reviewFocusMode ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
                 </Button>
@@ -389,8 +434,9 @@ function SurveyWorkflow() {
             </div>
           </div>
           <div className="flex justify-between pt-1">
-            <Button variant="outline" size="sm" onClick={() => setStep("upload")}>
-              <ArrowLeft className="h-3.5 w-3.5" />戻る
+            <Button variant="outline" size="sm" onClick={() => setAbortOpen(true)}>
+              <Square className="h-3.5 w-3.5" />
+              {copy.survey.abort}
             </Button>
             <Button
               onClick={exportToSheets}
@@ -413,6 +459,27 @@ function SurveyWorkflow() {
               )}
             </Button>
           </div>
+
+          <OverlayDialog
+            open={abortOpen}
+            onClose={() => setAbortOpen(false)}
+            label={copy.survey.abortTitle}
+          >
+            <div className="p-6">
+              <h2 className="text-lg font-semibold tracking-tight">{copy.survey.abortTitle}</h2>
+              <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+                {copy.survey.abortBody}
+              </p>
+              <div className="mt-6 flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setAbortOpen(false)}>
+                  {copy.survey.abortCancel}
+                </Button>
+                <Button type="button" variant="destructive" onClick={abortSurvey}>
+                  {copy.survey.abortConfirm}
+                </Button>
+              </div>
+            </div>
+          </OverlayDialog>
         </StepPanel>
       )}
 
