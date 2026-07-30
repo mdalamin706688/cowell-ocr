@@ -1,16 +1,16 @@
 /** Shared motion tokens — premium, stable (no layout jump) */
 export const easeOutExpo = [0.22, 1, 0.36, 1] as const;
 
-/** Top progress bar — synced with route settle */
-export const PAGE_TRANSITION_MS = 420;
+/** Top progress bar — short; content unlock is independent */
+export const PAGE_TRANSITION_MS = 280;
 
-export const PAGE_REVEAL_DELAY_MS = 48;
+export const PAGE_REVEAL_DELAY_MS = 40;
 
-/** Skeleton stays long enough to feel intentional, short enough to stay snappy */
-export const MIN_SKELETON_MS = 320;
+/** Skeleton beat from click — overlaps CloudFront chunk fetch */
+export const MIN_SKELETON_MS = 280;
 
 /** Crossfade skeleton → content */
-export const SKELETON_FADE_MS = 240;
+export const SKELETON_FADE_MS = 200;
 
 /** @deprecated — pending skeleton shows immediately */
 export const SKELETON_SHOW_DELAY_MS = 0;

@@ -17,6 +17,8 @@ interface NavigationContextValue {
   progress: number;
   direction: number;
   pendingHref: string | null;
+  /** Epoch ms when the current soft-nav started (skeleton timing overlaps chunk load). */
+  navStartedAt: number;
   startNavigation: (targetHref?: string) => void;
 }
 
@@ -40,6 +42,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const [progress, setProgress] = useState(0);
   const [direction, setDirection] = useState(1);
   const [pendingHref, setPendingHref] = useState<string | null>(null);
+  const [navStartedAt, setNavStartedAt] = useState(0);
   const startedAt = useRef(0);
   const prevPath = useRef(pathname);
 
@@ -50,7 +53,9 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
         setPendingHref(targetHref);
         setDirection(routeIndex(targetHref) >= routeIndex(pathname) ? 1 : -1);
       }
-      startedAt.current = Date.now();
+      const now = Date.now();
+      startedAt.current = now;
+      setNavStartedAt(now);
       setIsNavigating(true);
       setProgress(12);
       requestAnimationFrame(() => setProgress(58));
@@ -66,8 +71,14 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     setDirection(to >= from ? 1 : -1);
     prevPath.current = pathname;
 
-    // Drop content skeleton as soon as the destination route mounts.
+    // Destination mounted — hand off to page StaggerReveal (same skeleton).
     setPendingHref(null);
+
+    if (!startedAt.current) {
+      const now = Date.now();
+      startedAt.current = now;
+      setNavStartedAt(now);
+    }
 
     if (!isNavigating) {
       setIsNavigating(true);
@@ -84,7 +95,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     const hideTimer = window.setTimeout(() => {
       setIsNavigating(false);
       setProgress(0);
-    }, remaining + 140);
+      startedAt.current = 0;
+    }, remaining + 80);
 
     return () => {
       window.clearTimeout(finishTimer);
@@ -94,7 +106,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
 
   return (
     <NavigationContext.Provider
-      value={{ isNavigating, progress, direction, pendingHref, startNavigation }}
+      value={{ isNavigating, progress, direction, pendingHref, navStartedAt, startNavigation }}
     >
       {children}
     </NavigationContext.Provider>
@@ -109,6 +121,7 @@ export function useNavigation() {
       progress: 0,
       direction: 1,
       pendingHref: null,
+      navStartedAt: 0,
       startNavigation: (_targetHref?: string) => {},
     };
   }

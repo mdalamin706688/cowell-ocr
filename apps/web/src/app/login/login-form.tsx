@@ -68,6 +68,8 @@ export function LoginForm() {
 
   useEffect(() => {
     router.prefetch("/dashboard/");
+    router.prefetch("/users/");
+    router.prefetch("/survey/new/");
   }, [router]);
 
   useEffect(() => {

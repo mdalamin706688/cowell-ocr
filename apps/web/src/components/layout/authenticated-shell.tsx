@@ -14,6 +14,7 @@ import {
   setClientSession,
   type SessionUser,
 } from "@/lib/client-auth";
+import { prefetchWorkspaceRoutes } from "@/lib/prefetch-workspace";
 
 interface AuthenticatedShellProps {
   children: React.ReactNode;
@@ -29,9 +30,9 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    router.prefetch("/dashboard/");
-    router.prefetch("/survey/new/");
-    router.prefetch("/users/");
+    prefetchWorkspaceRoutes(router);
+    const warm = window.setTimeout(() => prefetchWorkspaceRoutes(router), 1200);
+    return () => window.clearTimeout(warm);
   }, [router]);
 
   useEffect(() => {

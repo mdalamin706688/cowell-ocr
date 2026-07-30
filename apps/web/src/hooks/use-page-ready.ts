@@ -2,38 +2,46 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { useNavigation } from "@/contexts/navigation-context";
+import { normalizeRoutePath, useNavigation } from "@/contexts/navigation-context";
 import { MIN_SKELETON_MS } from "@/lib/motion";
 
 /**
- * Page content unlocks after navigation settles + a short premium skeleton beat.
- * Same timing on localhost and CloudFront.
+ * Unlock content when the destination is mounted and the skeleton beat
+ * (measured from click) has elapsed — overlaps CloudFront chunk download
+ * so total time matches localhost.
  */
 export function usePageReady(): boolean {
   const pathname = usePathname();
-  const { isNavigating } = useNavigation();
+  const { pendingHref, navStartedAt } = useNavigation();
   const [ready, setReady] = useState(false);
   const pathRef = useRef(pathname);
-  const readyAt = useRef(0);
 
   useEffect(() => {
     pathRef.current = pathname;
     setReady(false);
-    readyAt.current = Date.now();
   }, [pathname]);
 
   useEffect(() => {
-    if (isNavigating) return;
+    const stillPending =
+      Boolean(pendingHref) &&
+      normalizeRoutePath(pendingHref!) !== normalizeRoutePath(pathname);
 
-    const elapsed = Date.now() - readyAt.current;
+    if (stillPending) {
+      setReady(false);
+      return;
+    }
+
+    const started = navStartedAt || Date.now();
+    const reveal = () => {
+      if (pathRef.current !== pathname) return;
+      setReady(true);
+    };
+
+    const elapsed = Date.now() - started;
     const wait = Math.max(0, MIN_SKELETON_MS - elapsed);
-
-    const revealTimer = window.setTimeout(() => {
-      if (pathRef.current === pathname) setReady(true);
-    }, wait);
-
-    return () => window.clearTimeout(revealTimer);
-  }, [pathname, isNavigating]);
+    const timer = window.setTimeout(reveal, wait);
+    return () => window.clearTimeout(timer);
+  }, [pathname, pendingHref, navStartedAt]);
 
   return ready;
 }

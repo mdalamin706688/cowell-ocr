@@ -42,6 +42,7 @@ export function TransitionLink({
         }
         if (!hrefString) return;
         if (normalizePath(pathname) === normalizePath(hrefString)) return;
+        router.prefetch(hrefString);
         startNavigation(hrefString);
       }}
       onMouseEnter={(event) => {
