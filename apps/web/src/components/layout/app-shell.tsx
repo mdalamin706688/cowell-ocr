@@ -35,8 +35,8 @@ interface AppShellProps {
 }
 
 /**
- * Sidebar stays mounted across soft-nav. Width/chrome come ONLY from
- * `html.sidebar-collapsed` CSS — never from React class thrash on route change.
+ * Sidebar stays mounted across soft-nav. Its explicit data state is present on
+ * the first AppShell frame, so refresh never paints an expanded intermediate.
  */
 export function AppShell({ children, user }: AppShellProps) {
   const pathname = usePathname();
@@ -45,7 +45,10 @@ export function AppShell({ children, user }: AppShellProps) {
   const isSuperAdmin = user ? isSessionSuperAdmin(user) : false;
 
   return (
-    <div className="min-h-screen overflow-x-clip paper-canvas">
+    <div
+      className="workspace-shell min-h-screen overflow-x-clip paper-canvas"
+      data-sidebar-state={collapsed ? "collapsed" : "expanded"}
+    >
       <aside
         className="shell-aside fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-border/60 bg-card/95 backdrop-blur-md lg:flex shadow-[1px_0_24px_hsl(28_12%_11%/0.03)]"
         suppressHydrationWarning

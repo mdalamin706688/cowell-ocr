@@ -230,31 +230,24 @@
   }
 
   /*
-   * Sidebar collapsed preference (set on <html> before paint).
-   * Width/chrome are CSS-only so route changes cannot flash expanded rail.
+   * Shell geometry is explicit on the mounted workspace shell. The auth loader
+   * has no sidebar, so refresh cannot paint an expanded rail before hydration.
    */
-  html:not(.sidebar-collapsed) .shell-collapsed-only {
+  .workspace-shell[data-sidebar-state="expanded"] .shell-collapsed-only {
     display: none !important;
   }
-  html.sidebar-collapsed .shell-expanded-only {
+  .workspace-shell[data-sidebar-state="collapsed"] .shell-expanded-only {
     display: none !important;
   }
 
   .shell-aside {
     width: 300px;
-    visibility: hidden;
-  }
-  html.sidebar-state-ready .shell-aside {
-    visibility: visible;
     transition: width 280ms cubic-bezier(0.22, 1, 0.36, 1);
   }
   .shell-aside-inner {
     padding: 1.5rem;
   }
   .shell-main {
-    transition: none;
-  }
-  html.sidebar-state-ready .shell-main {
     transition: padding-left 280ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
@@ -262,19 +255,19 @@
     .shell-main {
       padding-left: 300px;
     }
-    html.sidebar-collapsed .shell-aside {
+    .workspace-shell[data-sidebar-state="collapsed"] .shell-aside {
       width: 88px !important;
     }
-    html.sidebar-collapsed .shell-aside .shell-aside-inner {
+    .workspace-shell[data-sidebar-state="collapsed"] .shell-aside .shell-aside-inner {
       padding: 0 0.75rem 1rem !important;
     }
-    html.sidebar-collapsed .shell-main {
+    .workspace-shell[data-sidebar-state="collapsed"] .shell-main {
       padding-left: 88px !important;
     }
-    html.sidebar-collapsed .shell-aside .shell-rail-column {
+    .workspace-shell[data-sidebar-state="collapsed"] .shell-aside .shell-rail-column {
       align-items: center;
     }
-    html.sidebar-collapsed .shell-aside .shell-rail-item {
+    .workspace-shell[data-sidebar-state="collapsed"] .shell-aside .shell-rail-item {
       width: 2.75rem;
       height: 2.75rem;
       min-width: 2.75rem;
@@ -287,10 +280,10 @@
       line-height: 0;
       border-radius: 0.75rem;
     }
-    html.sidebar-collapsed .shell-aside .shell-rail-item > * {
+    .workspace-shell[data-sidebar-state="collapsed"] .shell-aside .shell-rail-item > * {
       grid-area: 1 / 1;
     }
-    html.sidebar-collapsed .shell-aside .shell-rail-control {
+    .workspace-shell[data-sidebar-state="collapsed"] .shell-aside .shell-rail-control {
       width: 2.25rem;
       height: 2.25rem;
       min-width: 2.25rem;
@@ -301,37 +294,37 @@
       place-items: center;
       flex: none;
     }
-    html.sidebar-collapsed .shell-aside .nav-link.shell-collapsed-nav {
+    .workspace-shell[data-sidebar-state="collapsed"] .shell-aside .nav-link.shell-collapsed-nav {
       border: 1px solid hsl(var(--border) / 0.7);
       background: hsl(var(--card) / 0.7);
     }
-    html.sidebar-collapsed .shell-aside .shell-nav-item {
+    .workspace-shell[data-sidebar-state="collapsed"] .shell-aside .shell-nav-item {
       height: 100%;
       width: 100%;
       justify-content: center;
       gap: 0;
     }
-    html.sidebar-collapsed .shell-aside .shell-nav-icon {
+    .workspace-shell[data-sidebar-state="collapsed"] .shell-aside .shell-nav-icon {
       width: 1.25rem;
       height: 1.25rem;
       display: block;
       flex: none;
     }
-    html.sidebar-collapsed .shell-aside .shell-new-survey {
+    .workspace-shell[data-sidebar-state="collapsed"] .shell-aside .shell-new-survey {
       border-color: transparent;
     }
-    html.sidebar-collapsed .shell-aside .shell-account {
+    .workspace-shell[data-sidebar-state="collapsed"] .shell-aside .shell-account {
       padding: 0 !important;
     }
-    html.sidebar-collapsed .shell-aside .shell-account-row {
+    .workspace-shell[data-sidebar-state="collapsed"] .shell-aside .shell-account-row {
       width: 100%;
       height: 100%;
       display: grid;
       place-items: center;
       justify-content: center;
     }
-    html.sidebar-collapsed .shell-aside .shell-rail-item > svg,
-    html.sidebar-collapsed .shell-aside .shell-account-row > svg {
+    .workspace-shell[data-sidebar-state="collapsed"] .shell-aside .shell-rail-item > svg,
+    .workspace-shell[data-sidebar-state="collapsed"] .shell-aside .shell-account-row > svg {
       width: 1.25rem;
       height: 1.25rem;
       display: block;

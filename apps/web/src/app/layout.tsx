@@ -44,21 +44,6 @@ export default function RootLayout({
   return (
     <html lang="ja" translate="no" suppressHydrationWarning>
       <head>
-        {/* Resolve persisted shell geometry before CSS paints. */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-(function(){
-  try {
-    if (localStorage.getItem('cowell_sidebar_collapsed') === '1') {
-      document.documentElement.classList.add('sidebar-collapsed');
-    }
-  } catch (e) {}
-  document.documentElement.classList.add('sidebar-state-ready');
-})();
-`,
-          }}
-        />
         <meta name="google" content="notranslate" />
         <link rel="icon" href={iconHref} type="image/svg+xml" sizes="any" />
         <link rel="icon" href={iconHref} />

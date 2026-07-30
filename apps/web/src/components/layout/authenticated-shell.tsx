@@ -37,9 +37,11 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   const router = useRouter();
   const cognito = isCognitoConfigured();
   const preview = isPreviewEnvironment() && !cognito;
-  const lastUser = useRef<SessionUser | null>(getShellSessionUser());
+  const lastUser = useRef<SessionUser | null>(null);
 
-  const [user, setUser] = useState<SessionUser | null>(() => getShellSessionUser());
+  // Hydration invariant: server and first client render the same neutral loader.
+  // The real shell mounts after useLayoutEffect with collapse state already known.
+  const [user, setUser] = useState<SessionUser | null>(null);
 
   useLayoutEffect(() => {
     const cached = getShellSessionUser();
@@ -132,7 +134,7 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   }, [cognito, preview, router]);
 
   // Once locked, keep painting the live shell even if React state flickers.
-  const sessionUser = user ?? lastUser.current ?? getShellSessionUser();
+  const sessionUser = user ?? lastUser.current;
   if (!sessionUser) {
     return <ShellSkeleton />;
   }

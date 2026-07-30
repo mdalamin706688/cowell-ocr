@@ -1,7 +1,6 @@
-/** Shared collapsed-sidebar preference — synced to <html> before paint. */
+/** Shared collapsed-sidebar preference. */
 
 export const SIDEBAR_COLLAPSED_KEY = "cowell_sidebar_collapsed";
-export const SIDEBAR_COLLAPSED_CLASS = "sidebar-collapsed";
 
 type Listener = () => void;
 
@@ -21,12 +20,6 @@ function writeStorage(collapsed: boolean): void {
   }
 }
 
-function syncDocumentClass(collapsed: boolean): void {
-  if (typeof document === "undefined") return;
-  document.documentElement.classList.toggle(SIDEBAR_COLLAPSED_CLASS, collapsed);
-  document.documentElement.classList.add("sidebar-state-ready");
-}
-
 /** User preference (localStorage). */
 let preferenceCollapsed =
   typeof window !== "undefined" ? readStorage() : false;
@@ -44,13 +37,7 @@ function effectiveCollapsed(): boolean {
 }
 
 function emit(): void {
-  const next = effectiveCollapsed();
-  syncDocumentClass(next);
   listeners.forEach((listener) => listener());
-}
-
-if (typeof document !== "undefined") {
-  syncDocumentClass(effectiveCollapsed());
 }
 
 export function getSidebarCollapsedSnapshot(): boolean {
@@ -58,9 +45,6 @@ export function getSidebarCollapsedSnapshot(): boolean {
 }
 
 export function getSidebarCollapsedServerSnapshot(): boolean {
-  if (typeof document !== "undefined") {
-    return document.documentElement.classList.contains(SIDEBAR_COLLAPSED_CLASS);
-  }
   return false;
 }
 
