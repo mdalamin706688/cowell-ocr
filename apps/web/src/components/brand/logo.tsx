@@ -32,7 +32,13 @@ export function Logo({ size = "md", variant = "dark", className }: LogoProps) {
           Cowell<span className={isLight ? "text-lumen-glow" : "text-lumen"}> OCR</span>
         </p>
         {s.sub !== "hidden" && (
-          <p className={cn("mt-1 font-medium tracking-wide", s.sub, isLight ? "text-white/45" : "text-muted-foreground")}>
+          <p
+            className={cn(
+              "mt-1 font-medium tracking-wide whitespace-nowrap",
+              s.sub,
+              isLight ? "text-white/45" : "text-muted-foreground"
+            )}
+          >
             {copy.app.tagline}
           </p>
         )}

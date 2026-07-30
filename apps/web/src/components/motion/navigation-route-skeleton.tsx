@@ -18,6 +18,11 @@ export function NavigationRouteSkeleton() {
 
   if (!safeMotion || !isNavigating || !pendingHref) return null;
   if (normalizePath(pathname) === normalizePath(pendingHref)) return null;
+  // Avoid full-screen skeleton for intra-workspace transitions (e.g. home <-> users),
+  // which causes visible "jump" despite sharing the same shell layout.
+  const currentIsLogin = isLoginRoute(pathname);
+  const targetIsLogin = isLoginRoute(pendingHref);
+  if (currentIsLogin === targetIsLogin) return null;
 
   return (
     <div className="fixed inset-0 z-[90] overflow-auto paper-canvas" aria-busy aria-live="polite">

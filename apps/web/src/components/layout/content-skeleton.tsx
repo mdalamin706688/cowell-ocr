@@ -54,28 +54,17 @@ export function SurveyPageSkeleton() {
         </div>
       </div>
 
-      <div className="flex justify-between gap-2 px-1">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="flex flex-1 flex-col items-center gap-2">
-            <SkeletonBlock className="h-7 w-7 rounded-full" />
-            <SkeletonBlock className="hidden h-2.5 w-12 sm:block rounded-md" />
-          </div>
-        ))}
-      </div>
+      {/* Calmer, premium loading bar instead of multiple tiny shimmering dots */}
+      <SkeletonBlock className="h-8 w-full rounded-xl" />
 
       <SkeletonGroup>
         <SkeletonBlock className="h-5 w-36 rounded-md" />
-        <SkeletonBlock className="h-44 w-full rounded-xl" />
+        <SkeletonBlock className="h-52 w-full rounded-xl" />
       </SkeletonGroup>
 
       <SkeletonGroup>
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 space-y-2">
-            <SkeletonBlock className="h-5 w-40 rounded-md" />
-            <SkeletonBlock className="h-3.5 w-52 max-w-full rounded-md" />
-          </div>
-          <SkeletonBlock className="h-4 w-4 shrink-0 rounded-sm" />
-        </div>
+        <SkeletonBlock className="h-5 w-40 rounded-md" />
+        <SkeletonBlock className="h-14 w-full rounded-lg" />
       </SkeletonGroup>
 
       <div className="flex justify-end">
@@ -87,6 +76,10 @@ export function SurveyPageSkeleton() {
 
 export function isSurveyRoute(path: string): boolean {
   return path.includes("/survey");
+}
+
+export function isUsersRoute(path: string): boolean {
+  return path.includes("/users");
 }
 
 export function isLoginRoute(path: string): boolean {
@@ -126,5 +119,7 @@ export function LoginSkeleton() {
 
 export function RouteContentSkeleton({ href }: { href: string }) {
   if (isLoginRoute(href)) return <LoginSkeleton />;
-  return isSurveyRoute(href) ? <SurveyPageSkeleton /> : <ContentSkeleton />;
+  if (isSurveyRoute(href)) return <SurveyPageSkeleton />;
+  if (isUsersRoute(href)) return <UsersPageSkeleton />;
+  return <ContentSkeleton />;
 }

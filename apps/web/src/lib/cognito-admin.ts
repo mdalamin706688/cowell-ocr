@@ -28,7 +28,7 @@ interface UserType {
   Attributes?: AttributeType[];
   UserStatus?: string;
   Enabled?: boolean;
-  UserCreateDate?: string;
+  UserCreateDate?: string | number;
 }
 
 interface ListUsersResponse {
@@ -41,6 +41,22 @@ function attr(user: UserType, name: string): string {
   return hit?.Value?.trim() || "";
 }
 
+function parseCognitoCreateDate(value?: string | number): Date | undefined {
+  if (value == null) return undefined;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? undefined : value;
+
+  const asNumber = typeof value === "number" ? value : Number(value);
+  if (Number.isFinite(asNumber)) {
+    // Cognito can return epoch seconds; detect and convert.
+    const ms = asNumber < 1_000_000_000_000 ? asNumber * 1000 : asNumber;
+    const date = new Date(ms);
+    return Number.isNaN(date.getTime()) ? undefined : date;
+  }
+
+  const date = new Date(String(value));
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
 function mapUser(user: UserType): CognitoUserRow {
   const email = attr(user, "email") || user.Username || "";
   return {
@@ -48,7 +64,7 @@ function mapUser(user: UserType): CognitoUserRow {
     email,
     status: user.UserStatus || "UNKNOWN",
     enabled: user.Enabled !== false,
-    createdAt: user.UserCreateDate ? new Date(user.UserCreateDate) : undefined,
+    createdAt: parseCognitoCreateDate(user.UserCreateDate),
     groups: [],
   };
 }

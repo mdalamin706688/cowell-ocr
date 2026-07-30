@@ -5,10 +5,9 @@ import { StepPanel } from "@/components/motion/step-panel";
 import { SurveyPageSkeleton } from "@/components/layout/content-skeleton";
 import { StaggerItem, StaggerReveal } from "@/components/motion/stagger-reveal";
 import {
-  ArrowLeft, ArrowRight, CheckCircle2, ChevronDown, Download,
-  ExternalLink, Loader2, ScanLine, Sparkles,
+  ArrowLeft, ArrowRight, CheckCircle2, Download,
+  ExternalLink, Loader2, Maximize2, Minimize2, ScanLine, Sparkles,
 } from "lucide-react";
-import { DEFAULT_OCR_PROMPT } from "@cowell/shared";
 import { SurveyProvider, useSurvey } from "@/contexts/survey-context";
 import { StepIndicator } from "@/components/workflow/step-indicator";
 import { FileUploadZone } from "@/components/upload/file-upload-zone";
@@ -16,7 +15,6 @@ import { ReviewTable } from "@/components/review/review-table";
 import { DriveDestinationPanel } from "@/components/survey/drive-destination-panel";
 import { ExportProgressPanel } from "@/components/survey/export-progress-panel";
 import { ProcessingPanel } from "@/components/survey/processing-panel";
-import { CollapsiblePanel } from "@/components/ui/collapsible-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -43,7 +41,7 @@ import { cn, formatCurrencyUsd, formatDuration } from "@/lib/utils";
 function SurveyWorkflow() {
   const {
     step, files, quality, prompt, ocrResult, rows, exportUrl, error,
-    setStep, setFiles, setQuality, setPrompt, setOcrResult, setRows, setExportUrl, setError, reset,
+    setStep, setFiles, setQuality, setOcrResult, setRows, setExportUrl, setError, reset,
   } = useSurvey();
   const [processing, setProcessing] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -55,7 +53,7 @@ function SurveyWorkflow() {
   const [exportDetail, setExportDetail] = useState<string | undefined>();
   const [reviewTab, setReviewTab] = useState<"table" | "raw">("table");
   const [tableQuery, setTableQuery] = useState("");
-  const [promptOpen, setPromptOpen] = useState(false);
+  const [reviewFocusMode, setReviewFocusMode] = useState(false);
   const [csvExport, setCsvExport] = useState(false);
   const [exportTitle, setExportTitle] = useState("");
   const [destination, setDestination] = useState<{
@@ -114,6 +112,12 @@ function SurveyWorkflow() {
     // Ensure table header/card stays in view when switching back from RAW.
     el.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "auto" });
   }, [reviewTab]);
+
+  useEffect(() => {
+    if (step !== "review") {
+      setReviewFocusMode(false);
+    }
+  }, [step]);
 
   const runOcr = useCallback(async () => {
     if (!files.length) return;
@@ -246,34 +250,7 @@ function SurveyWorkflow() {
             </div>
           </div>
 
-          <div className="ui-card overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setPromptOpen((v) => !v)}
-              className="ui-card-header w-full text-left hover:bg-muted/20 transition-colors"
-            >
-              <div>
-                <p className="text-base font-medium">{copy.survey.prompt}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{copy.survey.promptHint}</p>
-              </div>
-              <ChevronDown
-                className={cn(
-                  "h-4 w-4 text-muted-foreground transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
-                  promptOpen && "rotate-180"
-                )}
-              />
-            </button>
-            <CollapsiblePanel open={promptOpen}>
-              <div className="ui-card-body border-t border-border/60 pt-4">
-                <textarea
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-muted/20 p-3.5 text-sm font-mono min-h-[120px] resize-y focus:outline-none focus:ring-2 focus:ring-lumen/15 focus:border-lumen/30"
-                  placeholder={DEFAULT_OCR_PROMPT}
-                />
-              </div>
-            </CollapsiblePanel>
-          </div>
+          {/* AI prompt editor intentionally hidden */}
 
           <div className="flex justify-end pt-1">
             <Button disabled={!files.length} onClick={runOcr} size="lg">
@@ -327,12 +304,27 @@ function SurveyWorkflow() {
               </span>
             ))}
           </div>
-          <DriveDestinationPanel value={destination} onChange={setDestination} />
+          {!reviewFocusMode && (
+            <DriveDestinationPanel value={destination} onChange={setDestination} />
+          )}
 
           <div className="ui-card">
             <div className="ui-card-header">
               <p className="text-base font-medium">{copy.survey.reviewTitle}</p>
-              <span className="text-label">{copy.survey.reviewRows(rows.length)}</span>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  title={reviewFocusMode ? "通常表示に戻す" : "表示領域を拡大"}
+                  aria-label={reviewFocusMode ? "通常表示に戻す" : "表示領域を拡大"}
+                  onClick={() => setReviewFocusMode((v) => !v)}
+                >
+                  {reviewFocusMode ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                </Button>
+                <span className="text-label">{copy.survey.reviewRows(rows.length)}</span>
+              </div>
             </div>
             <div className="ui-card-body pt-3">
               <Tabs value={reviewTab} onValueChange={(v) => handleReviewTabChange(v as "table" | "raw")}>
@@ -514,9 +506,11 @@ function SurveyWorkflow() {
         </StaggerItem>
       )}
 
-      <StaggerItem>
-        <StepIndicator current={step} compact={compactTop} />
-      </StaggerItem>
+      {!reviewFocusMode && (
+        <StaggerItem>
+          <StepIndicator current={step} compact={compactTop} />
+        </StaggerItem>
+      )}
 
       {error && (
         <StaggerItem>

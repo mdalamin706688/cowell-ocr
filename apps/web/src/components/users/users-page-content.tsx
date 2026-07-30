@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { OverlayDialog } from "@/components/ui/overlay-dialog";
+import { UsersPageSkeleton } from "@/components/layout/content-skeleton";
 import { ChangePasswordCard } from "@/components/users/change-password-card";
 import { copy } from "@/lib/copy";
 import {
@@ -46,6 +47,7 @@ export function UsersPageContent() {
   const [creating, setCreating] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<CognitoUserRow | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
@@ -65,6 +67,7 @@ export function UsersPageContent() {
       setUsers([]);
     } finally {
       setLoading(false);
+      setInitialLoadDone(true);
     }
   }, [adminReady, previewDemo]);
 
@@ -131,6 +134,10 @@ export function UsersPageContent() {
   };
 
   const canDelete = isSessionSuperAdmin(session) || previewDemo;
+
+  if (!initialLoadDone && loading) {
+    return <UsersPageSkeleton />;
+  }
 
   return (
     <div className="space-y-8">
