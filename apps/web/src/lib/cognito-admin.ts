@@ -41,7 +41,7 @@ function attr(user: UserType, name: string): string {
   return hit?.Value?.trim() || "";
 }
 
-function parseCognitoCreateDate(value?: string | number): Date | undefined {
+function parseCognitoCreateDate(value?: string | number | Date): Date | undefined {
   if (value == null) return undefined;
   if (value instanceof Date) return Number.isNaN(value.getTime()) ? undefined : value;
 
