@@ -8,11 +8,12 @@ import { cn } from "@/lib/utils";
 interface StaggerRevealProps {
   children: React.ReactNode;
   className?: string;
-  /** Unused — route skeletons are owned by loading.tsx / WorkspacePendingSkeleton. */
   placeholder?: React.ReactNode;
 }
 
-/** Premium enter stagger after the route (or its skeleton) has settled. */
+/**
+ * Soft stagger without opacity-0 start — starting hidden caused a visible content jump.
+ */
 export function StaggerReveal({ children, className }: StaggerRevealProps) {
   const safeMotion = useSafeMotion();
 
@@ -24,7 +25,7 @@ export function StaggerReveal({ children, className }: StaggerRevealProps) {
     <motion.div
       className={cn("flex w-full flex-col gap-8 overflow-x-clip", className)}
       variants={staggerContainer}
-      initial="hidden"
+      initial={false}
       animate="show"
     >
       {children}

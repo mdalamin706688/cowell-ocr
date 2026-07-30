@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { OverlayDialog } from "@/components/ui/overlay-dialog";
-import { UsersPageSkeleton } from "@/components/layout/content-skeleton";
 import { ChangePasswordCard } from "@/components/users/change-password-card";
 import { copy } from "@/lib/copy";
 import {
@@ -135,11 +134,6 @@ export function UsersPageContent() {
 
   const canDelete = isSessionSuperAdmin(session) || previewDemo;
 
-  // First visit: full content skeleton (shell already mounted).
-  if (!initialLoadDone) {
-    return <UsersPageSkeleton />;
-  }
-
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -156,7 +150,7 @@ export function UsersPageContent() {
           </div>
         </div>
         {(adminReady || previewDemo) && (
-          <Button onClick={() => setShowAdd(true)} disabled={loading}>
+          <Button onClick={() => setShowAdd(true)} disabled={!initialLoadDone || loading}>
             <Plus className="h-4 w-4" />
             {copy.users.addUser}
           </Button>
@@ -187,13 +181,23 @@ export function UsersPageContent() {
               </tr>
             </thead>
             <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={4} className="px-4 py-10 text-center text-muted-foreground">
-                    <Loader2 className="inline h-4 w-4 animate-spin mr-2" />
-                    {copy.users.loading}
-                  </td>
-                </tr>
+              {!initialLoadDone || loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={`sk-${i}`} className="border-b border-border/40 last:border-0">
+                    <td className="px-4 py-3">
+                      <span className="skeleton-block inline-block h-4 w-44 max-w-full rounded-md" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="skeleton-block inline-block h-4 w-20 rounded-md" />
+                    </td>
+                    <td className="px-4 py-3 hidden sm:table-cell">
+                      <span className="skeleton-block inline-block h-4 w-24 rounded-md" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="skeleton-block inline-block h-7 w-7 rounded-md" />
+                    </td>
+                  </tr>
+                ))
               ) : users.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-4 py-10 text-center text-muted-foreground">
@@ -239,7 +243,9 @@ export function UsersPageContent() {
         )}
       </div>
 
-      <ChangePasswordCard />
+      {initialLoadDone ? <ChangePasswordCard /> : (
+        <div className="skeleton-block h-40 w-full rounded-xl" aria-hidden />
+      )}
 
       <OverlayDialog
         open={showAdd}

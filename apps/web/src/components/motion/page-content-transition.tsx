@@ -2,9 +2,8 @@
 
 import { motion } from "framer-motion";
 import { usePathname } from "next/navigation";
-import { useNavigation } from "@/contexts/navigation-context";
 import { useSafeMotion } from "@/hooks/use-safe-motion";
-import { getPageMotion, pageTransitionTween, type PageMotionVariant } from "@/lib/motion";
+import { pageTransitionTween, type PageMotionVariant } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 interface PageContentTransitionProps {
@@ -14,8 +13,7 @@ interface PageContentTransitionProps {
 }
 
 /**
- * Enter-only page motion. Exit / mode="wait" left a blank gap that felt like a
- * skeleton jump on CloudFront (slower chunk fetch than localhost).
+ * Opacity-only enter. Translate/scale caused the small content “jump” on route change.
  */
 export function PageContentTransition({
   children,
@@ -23,9 +21,7 @@ export function PageContentTransition({
   variant = "workspace",
 }: PageContentTransitionProps) {
   const pathname = usePathname();
-  const { direction } = useNavigation();
   const safeMotion = useSafeMotion();
-  const pageMotion = getPageMotion(variant, direction);
 
   if (!safeMotion) {
     return (
@@ -39,8 +35,8 @@ export function PageContentTransition({
     <div className={cn("relative isolate overflow-x-clip", className)}>
       <motion.div
         key={pathname}
-        initial={pageMotion.initial}
-        animate={pageMotion.animate}
+        initial={{ opacity: variant === "auth" ? 0.92 : 0.98 }}
+        animate={{ opacity: 1 }}
         transition={pageTransitionTween}
         className="w-full overflow-x-clip"
       >

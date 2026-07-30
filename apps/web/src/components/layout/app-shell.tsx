@@ -212,7 +212,7 @@ export function AppShell({ children, user }: AppShellProps) {
         </div>
       </header>
 
-      <main className={cn("transition-[padding] duration-300", collapsed ? "lg:pl-[88px]" : "lg:pl-[300px]")}>
+      <main className={cn(collapsed ? "lg:pl-[88px]" : "lg:pl-[300px]")}>
         <div className="mx-auto max-w-6xl px-6 py-10 sm:px-8 sm:py-12">{children}</div>
       </main>
     </div>

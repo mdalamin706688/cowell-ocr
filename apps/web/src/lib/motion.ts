@@ -56,10 +56,9 @@ export const staggerContainer = {
 };
 
 export const staggerItem = {
-  hidden: { opacity: 0, y: 8 },
+  hidden: { opacity: 1 },
   show: {
     opacity: 1,
-    y: 0,
     transition: springSoft,
   },
 };
@@ -68,20 +67,16 @@ export type PageMotionVariant = "workspace" | "auth";
 
 export function getPageMotion(
   variant: PageMotionVariant,
-  direction: number
+  _direction: number
 ): {
   initial: { opacity: number; x: number; scale: number };
   animate: { opacity: number; x: number; scale: number };
   exit: { opacity: number; x: number; scale: number };
 } {
-  const forward = direction >= 0;
-  const distance = variant === "workspace" ? 18 : 12;
-  const enterX = forward ? distance : -distance;
-  const exitX = forward ? -distance * 0.5 : distance * 0.5;
-
+  const auth = variant === "auth";
   return {
-    initial: { opacity: 0.94, x: enterX, scale: 0.996 },
+    initial: { opacity: auth ? 0.92 : 0.98, x: 0, scale: 1 },
     animate: { opacity: 1, x: 0, scale: 1 },
-    exit: { opacity: 1, x: exitX, scale: 1 },
+    exit: { opacity: 1, x: 0, scale: 1 },
   };
 }
