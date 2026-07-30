@@ -2,30 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-const RESET_KEY = "cowell_soft_error_resets";
-
-function readResetCount(key: string): number {
-  try {
-    const map = JSON.parse(sessionStorage.getItem(RESET_KEY) || "{}") as Record<string, number>;
-    return map[key] || 0;
-  } catch {
-    return 0;
-  }
-}
-
-function bumpResetCount(key: string): number {
-  try {
-    const map = JSON.parse(sessionStorage.getItem(RESET_KEY) || "{}") as Record<string, number>;
-    const next = (map[key] || 0) + 1;
-    map[key] = next;
-    sessionStorage.setItem(RESET_KEY, JSON.stringify(map));
-    return next;
-  } catch {
-    return 1;
-  }
-}
-
-/** Root-level fallback — only used when the root layout itself fails. */
+/** Root fallback — soft recover without trapping on 表示エラー. */
 export default function GlobalError({
   error,
   reset,
@@ -33,25 +10,34 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  const key = String(error.digest || error.message || error.name || "unknown");
-  const [giveUp, setGiveUp] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return readResetCount(key) >= 2;
-  });
+  const [giveUp, setGiveUp] = useState(false);
 
   useEffect(() => {
-    console.error(error);
-    const count = readResetCount(key);
-    if (count >= 2) {
+    console.error("[cowell:global]", error);
+    const soft = window.setTimeout(() => {
+      try {
+        reset();
+      } catch {
+        // ignore
+      }
+    }, 40);
+    const hard = window.setTimeout(() => {
       setGiveUp(true);
-      return;
-    }
-    bumpResetCount(key);
-    reset();
-  }, [error, key, reset]);
+    }, 2000);
+    return () => {
+      window.clearTimeout(soft);
+      window.clearTimeout(hard);
+    };
+  }, [error, reset]);
 
   if (!giveUp) {
-    return null;
+    return (
+      <html lang="ja" suppressHydrationWarning>
+        <body suppressHydrationWarning>
+          <div style={{ minHeight: "100vh" }} />
+        </body>
+      </html>
+    );
   }
 
   return (
@@ -71,34 +57,11 @@ export default function GlobalError({
         >
           <h1 style={{ fontSize: "1.25rem", fontWeight: 600 }}>表示エラーが発生しました</h1>
           <p style={{ marginTop: "0.75rem", fontSize: "0.875rem", color: "#666" }}>
-            一時的な問題が発生しました。再読み込みをお試しください。
+            一時的な問題が発生しました。ホームに戻ってください。
           </p>
-          <div style={{ marginTop: "1.5rem", display: "flex", gap: "0.75rem" }}>
-            <button
-              type="button"
-              onClick={() => {
-                try {
-                  sessionStorage.removeItem(RESET_KEY);
-                } catch {
-                  // ignore
-                }
-                window.location.reload();
-              }}
-            >
-              再読み込み
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                try {
-                  sessionStorage.removeItem(RESET_KEY);
-                } catch {
-                  // ignore
-                }
-                reset();
-              }}
-            >
-              再試行
+          <div style={{ marginTop: "1.5rem" }}>
+            <button type="button" onClick={() => window.location.assign("/dashboard/")}>
+              ホームへ
             </button>
           </div>
         </div>

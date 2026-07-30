@@ -1,36 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
-const RESET_KEY = "cowell_soft_error_resets";
-
-function readResetCount(key: string): number {
-  try {
-    const map = JSON.parse(sessionStorage.getItem(RESET_KEY) || "{}") as Record<string, number>;
-    return map[key] || 0;
-  } catch {
-    return 0;
-  }
-}
-
-function bumpResetCount(key: string): number {
-  try {
-    const map = JSON.parse(sessionStorage.getItem(RESET_KEY) || "{}") as Record<string, number>;
-    const next = (map[key] || 0) + 1;
-    map[key] = next;
-    sessionStorage.setItem(RESET_KEY, JSON.stringify(map));
-    return next;
-  } catch {
-    return 1;
-  }
-}
-
-function errorKey(error: Error & { digest?: string }): string {
-  return String(error.digest || error.message || error.name || "unknown");
-}
-
-/** Soft-recover first — never trap the user on 表示エラー for transient soft-nav races. */
+/**
+ * Soft-nav must never trap users on 表示エラー.
+ * Prefer silent reset / safe-route escape over the Japanese error wall.
+ */
 export default function Error({
   error,
   reset,
@@ -38,61 +15,78 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  const key = errorKey(error);
-  const [giveUp, setGiveUp] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return readResetCount(key) >= 2;
-  });
+  const router = useRouter();
+  const pathname = usePathname();
+  const attempts = useRef(0);
+  const lastDigest = useRef<string>("");
+  const [giveUp, setGiveUp] = useState(false);
 
   useEffect(() => {
-    console.error(error);
+    console.error("[cowell]", error?.message || error, error?.digest);
   }, [error]);
 
   useEffect(() => {
-    const count = readResetCount(key);
-    if (count >= 2) {
-      setGiveUp(true);
-      return;
+    attempts.current = 0;
+    lastDigest.current = "";
+    setGiveUp(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (giveUp) return;
+
+    const digest = String(error?.digest || error?.message || "err");
+    if (digest !== lastDigest.current) {
+      lastDigest.current = digest;
+      attempts.current = 0;
     }
-    // Soft-reset any client error once/twice — CloudFront often strips messages.
-    bumpResetCount(key);
-    const t = window.setTimeout(() => reset(), 40);
-    return () => window.clearTimeout(t);
-  }, [error, key, reset]);
+    attempts.current += 1;
+
+    if (attempts.current <= 2) {
+      const t = window.setTimeout(() => reset(), 50);
+      return () => window.clearTimeout(t);
+    }
+
+    if (attempts.current === 3) {
+      const onLogin = Boolean(pathname?.startsWith("/login"));
+      const onDashboard = pathname === "/dashboard/" || pathname === "/dashboard";
+      const safe = onLogin ? "/login/" : onDashboard ? "/users/" : "/dashboard/";
+      const t = window.setTimeout(() => {
+        router.replace(safe);
+        window.setTimeout(() => reset(), 80);
+      }, 50);
+      return () => window.clearTimeout(t);
+    }
+
+    setGiveUp(true);
+  }, [error, giveUp, pathname, reset, router]);
 
   if (!giveUp) {
-    return null;
+    return (
+      <div className="mx-auto flex min-h-[40vh] max-w-md items-center justify-center px-6" aria-busy>
+        <div className="h-1.5 w-40 overflow-hidden rounded-full bg-muted">
+          <div className="h-full w-1/2 animate-pulse rounded-full bg-lumen/70" />
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="mx-auto flex min-h-[50vh] max-w-md flex-col items-center justify-center px-6 text-center">
       <h1 className="font-display text-xl font-semibold">表示エラーが発生しました</h1>
       <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
-        一時的な問題が発生しました。再読み込みをお試しください。
+        一時的な問題が発生しました。ホームに戻るか、再試行してください。
       </p>
       <div className="mt-6 flex flex-wrap justify-center gap-3">
-        <Button
-          type="button"
-          onClick={() => {
-            try {
-              sessionStorage.removeItem(RESET_KEY);
-            } catch {
-              // ignore
-            }
-            window.location.reload();
-          }}
-        >
-          再読み込み
+        <Button type="button" onClick={() => window.location.assign("/dashboard/")}>
+          ホームへ
         </Button>
         <Button
           type="button"
           variant="outline"
           onClick={() => {
-            try {
-              sessionStorage.removeItem(RESET_KEY);
-            } catch {
-              // ignore
-            }
+            attempts.current = 0;
+            lastDigest.current = "";
+            setGiveUp(false);
             reset();
           }}
         >

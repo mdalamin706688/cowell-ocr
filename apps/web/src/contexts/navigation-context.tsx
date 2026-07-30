@@ -66,6 +66,13 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     setDirection(to >= from ? 1 : -1);
     prevPath.current = pathname;
 
+    // Clear sticky soft-error debt so 表示エラー cannot lock the session.
+    try {
+      sessionStorage.removeItem("cowell_soft_error_resets");
+    } catch {
+      // ignore
+    }
+
     if (!isNavigating) {
       setIsNavigating(true);
       setProgress(58);

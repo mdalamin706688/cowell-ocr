@@ -54,6 +54,8 @@ export function AppProviders({ children }: { children: ReactNode }) {
       if ("scrollRestoration" in window.history) {
         window.history.scrollRestoration = "manual";
       }
+      // Clear sticky soft-error lock from older builds.
+      sessionStorage.removeItem("cowell_soft_error_resets");
     } catch {
       // ignore
     }
