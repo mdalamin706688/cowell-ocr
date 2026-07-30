@@ -6,9 +6,8 @@ import { normalizeRoutePath, useNavigation } from "@/contexts/navigation-context
 import { MIN_SKELETON_MS } from "@/lib/motion";
 
 /**
- * Unlock content when the destination is mounted and the skeleton beat
- * (measured from click) has elapsed — overlaps CloudFront chunk download
- * so total time matches localhost.
+ * Content unlocks when destination is up and the click→skeleton beat is done.
+ * Synced with WorkspacePendingSkeleton dismiss (one skeleton only).
  */
 export function usePageReady(): boolean {
   const pathname = usePathname();
@@ -22,24 +21,33 @@ export function usePageReady(): boolean {
   }, [pathname]);
 
   useEffect(() => {
-    const stillPending =
-      Boolean(pendingHref) &&
-      normalizeRoutePath(pendingHref!) !== normalizeRoutePath(pathname);
-
-    if (stillPending) {
+    // Still downloading destination chunk
+    if (
+      pendingHref &&
+      normalizeRoutePath(pendingHref) !== normalizeRoutePath(pathname)
+    ) {
       setReady(false);
       return;
     }
 
-    const started = navStartedAt || Date.now();
-    const reveal = () => {
-      if (pathRef.current !== pathname) return;
-      setReady(true);
-    };
+    // Overlay skeleton still up for the beat (pendingHref matches pathname)
+    if (pendingHref) {
+      setReady(false);
+      return;
+    }
 
-    const elapsed = Date.now() - started;
+    // Cold load / no soft-nav — show content immediately
+    if (!navStartedAt) {
+      setReady(true);
+      return;
+    }
+
+    const elapsed = Date.now() - navStartedAt;
     const wait = Math.max(0, MIN_SKELETON_MS - elapsed);
-    const timer = window.setTimeout(reveal, wait);
+    const timer = window.setTimeout(() => {
+      if (pathRef.current === pathname) setReady(true);
+    }, wait);
+
     return () => window.clearTimeout(timer);
   }, [pathname, pendingHref, navStartedAt]);
 

@@ -6,28 +6,39 @@ import {
   RouteContentSkeleton,
 } from "@/components/layout/content-skeleton";
 import { normalizeRoutePath, useNavigation } from "@/contexts/navigation-context";
+import { cn } from "@/lib/utils";
 
 /**
- * Instant destination skeleton on click (same as local StaggerReveal).
- * CloudFront chunk load happens underneath; handoff is seamless.
+ * Single route skeleton overlay. Children stay mounted underneath so there is
+ * no second skeleton remount when the destination page loads.
  */
 export function WorkspacePendingSkeleton({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { pendingHref } = useNavigation();
 
-  const pending =
+  const show =
     Boolean(pendingHref) &&
-    normalizeRoutePath(pendingHref!) !== normalizeRoutePath(pathname) &&
     !isLoginRoute(pathname) &&
     !isLoginRoute(pendingHref!);
 
-  if (pending && pendingHref) {
-    return (
-      <div className="min-h-[560px] w-full" aria-busy aria-live="polite">
-        <RouteContentSkeleton href={pendingHref} />
-      </div>
-    );
-  }
+  const skeletonHref =
+    pendingHref && normalizeRoutePath(pendingHref) !== normalizeRoutePath(pathname)
+      ? pendingHref
+      : pendingHref || pathname;
 
-  return <div className="min-h-[560px] w-full">{children}</div>;
+  return (
+    <div className="relative min-h-[560px] w-full">
+      <div
+        className={cn(show && "invisible pointer-events-none select-none")}
+        aria-hidden={show}
+      >
+        {children}
+      </div>
+      {show && skeletonHref ? (
+        <div className="absolute inset-x-0 top-0 z-10 w-full bg-background" aria-busy aria-live="polite">
+          <RouteContentSkeleton href={skeletonHref} />
+        </div>
+      ) : null}
+    </div>
+  );
 }

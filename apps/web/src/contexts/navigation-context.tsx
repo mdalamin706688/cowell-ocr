@@ -10,14 +10,13 @@ import {
   type ReactNode,
 } from "react";
 import { usePathname } from "next/navigation";
-import { PAGE_TRANSITION_MS } from "@/lib/motion";
+import { MIN_SKELETON_MS, PAGE_TRANSITION_MS } from "@/lib/motion";
 
 interface NavigationContextValue {
   isNavigating: boolean;
   progress: number;
   direction: number;
   pendingHref: string | null;
-  /** Epoch ms when the current soft-nav started (skeleton timing overlaps chunk load). */
   navStartedAt: number;
   startNavigation: (targetHref?: string) => void;
 }
@@ -71,9 +70,6 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     setDirection(to >= from ? 1 : -1);
     prevPath.current = pathname;
 
-    // Destination mounted — hand off to page StaggerReveal (same skeleton).
-    setPendingHref(null);
-
     if (!startedAt.current) {
       const now = Date.now();
       startedAt.current = now;
@@ -88,10 +84,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     const elapsed = Date.now() - (startedAt.current || Date.now());
     const remaining = Math.max(0, PAGE_TRANSITION_MS - elapsed);
 
-    const finishTimer = window.setTimeout(() => {
-      setProgress(100);
-    }, remaining);
-
+    const finishTimer = window.setTimeout(() => setProgress(100), remaining);
     const hideTimer = window.setTimeout(() => {
       setIsNavigating(false);
       setProgress(0);
@@ -103,6 +96,17 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       window.clearTimeout(hideTimer);
     };
   }, [pathname, isNavigating]);
+
+  // Keep a single route skeleton until the beat ends (no second page skeleton).
+  useEffect(() => {
+    if (!pendingHref) return;
+    if (normalizeRoutePath(pathname) !== normalizeRoutePath(pendingHref)) return;
+
+    const elapsed = Date.now() - (startedAt.current || Date.now());
+    const wait = Math.max(0, MIN_SKELETON_MS - elapsed);
+    const timer = window.setTimeout(() => setPendingHref(null), wait);
+    return () => window.clearTimeout(timer);
+  }, [pathname, pendingHref]);
 
   return (
     <NavigationContext.Provider
