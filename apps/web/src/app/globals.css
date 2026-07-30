@@ -321,10 +321,14 @@
       0 16px 40px hsl(28 12% 11% / 0.06);
   }
 
-  /* ── Skeleton shimmer ── */
+  /* ── Skeleton shimmer (premium) ── */
   .skeleton-block {
     @apply relative overflow-hidden rounded-lg;
-    background: hsl(var(--muted) / 0.66);
+    background: linear-gradient(
+      180deg,
+      hsl(var(--muted) / 0.78) 0%,
+      hsl(var(--muted) / 0.55) 100%
+    );
     will-change: transform, opacity;
   }
 
@@ -336,12 +340,12 @@
     background: linear-gradient(
       90deg,
       transparent 0%,
-      hsl(var(--card) / 0.18) 32%,
-      hsl(var(--card) / 0.78) 50%,
-      hsl(var(--card) / 0.18) 68%,
+      hsl(var(--card) / 0.15) 35%,
+      hsl(var(--card) / 0.72) 50%,
+      hsl(var(--card) / 0.15) 65%,
       transparent 100%
     );
-    animation: skeleton-shimmer 2.35s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    animation: skeleton-shimmer 1.65s cubic-bezier(0.4, 0, 0.2, 1) infinite;
   }
 
   @keyframes skeleton-shimmer {
@@ -371,17 +375,6 @@
     }
     50% {
       opacity: 0.9;
-    }
-  }
-
-  @keyframes routeSkeletonIn {
-    from {
-      opacity: 0.72;
-      transform: translateY(4px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
     }
   }
 

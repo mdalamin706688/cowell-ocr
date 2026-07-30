@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TransitionLink } from "@/components/ui/transition-link";
+import { ContentSkeleton } from "@/components/layout/content-skeleton";
 import { StaggerItem, StaggerReveal } from "@/components/motion/stagger-reveal";
 import { copy } from "@/lib/copy";
 import { formatUserDisplayName } from "@/lib/client-auth";
@@ -34,7 +35,7 @@ export function DashboardContent({ userName = "管理者", userEmail }: Dashboar
   });
 
   return (
-    <StaggerReveal>
+    <StaggerReveal placeholder={<ContentSkeleton />}>
       <StaggerItem>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>

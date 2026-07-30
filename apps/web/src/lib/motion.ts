@@ -1,23 +1,19 @@
-/** Shared motion tokens — premium easing, consistent across the app */
+/** Shared motion tokens — premium, stable (no layout jump) */
 export const easeOutExpo = [0.22, 1, 0.36, 1] as const;
 
-/** Top progress bar duration */
-export const PAGE_TRANSITION_MS = 360;
+/** Top progress bar — synced with route settle */
+export const PAGE_TRANSITION_MS = 420;
 
-/** Brief pause after slide before stagger reveal */
-export const PAGE_REVEAL_DELAY_MS = 40;
+export const PAGE_REVEAL_DELAY_MS = 48;
 
-/**
- * Tiny debounce before content skeleton (1 frame).
- * Long enough to skip aborted clicks; short enough to feel instant on CloudFront.
- */
-export const SKELETON_SHOW_DELAY_MS = 32;
+/** Skeleton stays long enough to feel intentional, short enough to stay snappy */
+export const MIN_SKELETON_MS = 320;
 
-/** Soft minimum shimmer once a skeleton is shown (avoids 1-frame flicker) */
-export const MIN_SKELETON_MS = 180;
+/** Crossfade skeleton → content */
+export const SKELETON_FADE_MS = 240;
 
-/** Skeleton fade-out when handing off to content */
-export const SKELETON_FADE_MS = 200;
+/** @deprecated — pending skeleton shows immediately */
+export const SKELETON_SHOW_DELAY_MS = 0;
 
 export const springSnappy = {
   type: "spring" as const,
@@ -28,20 +24,20 @@ export const springSnappy = {
 
 export const springPage = {
   type: "spring" as const,
-  stiffness: 220,
+  stiffness: 200,
   damping: 28,
   mass: 0.95,
 };
 
 export const springSoft = {
   type: "spring" as const,
-  stiffness: 260,
+  stiffness: 240,
   damping: 28,
   mass: 0.9,
 };
 
 export const pageTransitionTween = {
-  duration: 0.32,
+  duration: 0.36,
   ease: easeOutExpo,
 };
 
@@ -49,16 +45,18 @@ export const staggerContainer = {
   hidden: {},
   show: {
     transition: {
-      staggerChildren: 0.06,
-      delayChildren: 0.04,
+      staggerChildren: 0.07,
+      delayChildren: 0.06,
     },
   },
 };
 
+/** Opacity-first enter — tiny rise, not enough to feel like a jump */
 export const staggerItem = {
-  hidden: { opacity: 1 },
+  hidden: { opacity: 0, y: 5 },
   show: {
     opacity: 1,
+    y: 0,
     transition: springSoft,
   },
 };
@@ -73,9 +71,8 @@ export function getPageMotion(
   animate: { opacity: number; x: number; scale: number };
   exit: { opacity: number; x: number; scale: number };
 } {
-  const auth = variant === "auth";
   return {
-    initial: { opacity: auth ? 0.92 : 0.98, x: 0, scale: 1 },
+    initial: { opacity: variant === "auth" ? 0.9 : 1, x: 0, scale: 1 },
     animate: { opacity: 1, x: 0, scale: 1 },
     exit: { opacity: 1, x: 0, scale: 1 },
   };

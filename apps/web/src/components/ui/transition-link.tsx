@@ -32,7 +32,7 @@ export function TransitionLink({
       prefetch={prefetch}
       scroll={false}
       {...props}
-      className={cn("transition-opacity duration-150", className)}
+      className={cn("transition-opacity duration-150 active:opacity-80", className)}
       onClick={(event: MouseEvent<HTMLAnchorElement>) => {
         onClick?.(event);
         if (event.defaultPrevented) return;

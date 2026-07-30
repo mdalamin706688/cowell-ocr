@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { OverlayDialog } from "@/components/ui/overlay-dialog";
+import { UsersPageSkeleton } from "@/components/layout/content-skeleton";
+import { StaggerItem, StaggerReveal } from "@/components/motion/stagger-reveal";
 import { ChangePasswordCard } from "@/components/users/change-password-card";
 import { copy } from "@/lib/copy";
 import {
@@ -135,7 +137,8 @@ export function UsersPageContent() {
   const canDelete = isSessionSuperAdmin(session) || previewDemo;
 
   return (
-    <div className="space-y-8">
+    <StaggerReveal placeholder={<UsersPageSkeleton />} ready={initialLoadDone}>
+      <StaggerItem>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-4">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent/80 text-lumen shadow-sm">
@@ -150,25 +153,31 @@ export function UsersPageContent() {
           </div>
         </div>
         {(adminReady || previewDemo) && (
-          <Button onClick={() => setShowAdd(true)} disabled={!initialLoadDone || loading}>
+          <Button onClick={() => setShowAdd(true)} disabled={loading}>
             <Plus className="h-4 w-4" />
             {copy.users.addUser}
           </Button>
         )}
       </div>
+      </StaggerItem>
 
       {!adminReady && !previewDemo && cognito && (
+        <StaggerItem>
         <div className="rounded-xl border border-amber-300/50 bg-amber-50/60 px-4 py-3 text-sm text-amber-900">
           {copy.users.adminNotConfigured}
         </div>
+        </StaggerItem>
       )}
 
       {error && (
+        <StaggerItem>
         <div className="rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
           {error}
         </div>
+        </StaggerItem>
       )}
 
+      <StaggerItem>
       <div className="ui-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -181,23 +190,13 @@ export function UsersPageContent() {
               </tr>
             </thead>
             <tbody>
-              {!initialLoadDone || loading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={`sk-${i}`} className="border-b border-border/40 last:border-0">
-                    <td className="px-4 py-3">
-                      <span className="skeleton-block inline-block h-4 w-44 max-w-full rounded-md" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="skeleton-block inline-block h-4 w-20 rounded-md" />
-                    </td>
-                    <td className="px-4 py-3 hidden sm:table-cell">
-                      <span className="skeleton-block inline-block h-4 w-24 rounded-md" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="skeleton-block inline-block h-7 w-7 rounded-md" />
-                    </td>
-                  </tr>
-                ))
+              {loading ? (
+                <tr>
+                  <td colSpan={4} className="px-4 py-10 text-center text-muted-foreground">
+                    <Loader2 className="inline h-4 w-4 animate-spin mr-2" />
+                    {copy.users.loading}
+                  </td>
+                </tr>
               ) : users.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-4 py-10 text-center text-muted-foreground">
@@ -242,10 +241,11 @@ export function UsersPageContent() {
           </p>
         )}
       </div>
+      </StaggerItem>
 
-      {initialLoadDone ? <ChangePasswordCard /> : (
-        <div className="skeleton-block h-40 w-full rounded-xl" aria-hidden />
-      )}
+      <StaggerItem>
+      <ChangePasswordCard />
+      </StaggerItem>
 
       <OverlayDialog
         open={showAdd}
@@ -325,6 +325,6 @@ export function UsersPageContent() {
           </div>
         </div>
       </OverlayDialog>
-    </div>
+    </StaggerReveal>
   );
 }

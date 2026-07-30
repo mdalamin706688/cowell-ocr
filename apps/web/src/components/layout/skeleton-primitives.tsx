@@ -32,7 +32,11 @@ interface SkeletonPageProps {
 
 export function SkeletonPage({ children, label = "Loading", className }: SkeletonPageProps) {
   return (
-    <div className={cn("space-y-6 sm:space-y-8", className)} aria-busy="true" aria-label={label}>
+    <div
+      className={cn("flex w-full flex-col gap-8", className)}
+      aria-busy="true"
+      aria-label={label}
+    >
       {children}
     </div>
   );

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StepPanel } from "@/components/motion/step-panel";
+import { SurveyPageSkeleton } from "@/components/layout/content-skeleton";
 import { StaggerItem, StaggerReveal } from "@/components/motion/stagger-reveal";
 import {
   ArrowLeft, ArrowRight, CheckCircle2, Download,
@@ -472,7 +473,7 @@ function SurveyWorkflow() {
   );
 
   return (
-    <StaggerReveal>
+    <StaggerReveal placeholder={<SurveyPageSkeleton />}>
       <StaggerItem>
         <div className={cn("flex items-start gap-4", compactTop && "gap-3")}>
           <div
