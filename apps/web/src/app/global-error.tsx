@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
-import { isDomMutationError } from "@/lib/dom-mutation-error";
+import {
+  isChunkLoadError,
+  isDomMutationError,
+  recoverFromChunkLoadError,
+} from "@/lib/dom-mutation-error";
 
 /** Root-level fallback — only used when the root layout itself fails. */
 export default function GlobalError({
@@ -13,12 +17,13 @@ export default function GlobalError({
 }) {
   useEffect(() => {
     console.error(error);
+    if (recoverFromChunkLoadError(error)) return;
     if (isDomMutationError(error)) {
       reset();
     }
   }, [error, reset]);
 
-  if (isDomMutationError(error)) {
+  if (isChunkLoadError(error) || isDomMutationError(error)) {
     return null;
   }
 

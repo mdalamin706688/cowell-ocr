@@ -10,17 +10,14 @@ import { useNavigation } from "@/contexts/navigation-context";
 import { cn } from "@/lib/utils";
 
 /**
- * Zero-jump soft nav:
- * - Freeze exact pixel height while navigating (children remount underneath)
- * - One absolute skeleton overlay (same paper background)
- * - Keep a rising min-height floor so dismiss never collapses the box
+ * Soft-nav overlay with a one-shot height lock (no layout thrash / update loops).
  */
 export function WorkspacePendingSkeleton({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { pendingHref } = useNavigation();
   const wrapRef = useRef<HTMLDivElement>(null);
+  const lockedRef = useRef<number | null>(null);
   const [lockedHeight, setLockedHeight] = useState<number | null>(null);
-  const [floor, setFloor] = useState(560);
 
   const show =
     Boolean(pendingHref) &&
@@ -32,25 +29,29 @@ export function WorkspacePendingSkeleton({ children }: { children: React.ReactNo
     if (!node) return;
 
     if (show) {
-      const h = Math.max(node.getBoundingClientRect().height, 560);
-      setLockedHeight(h);
-      setFloor((prev) => Math.max(prev, h));
+      if (lockedRef.current == null) {
+        const h = Math.max(node.getBoundingClientRect().height, 560);
+        lockedRef.current = h;
+        setLockedHeight(h);
+      }
       return;
     }
 
-    setLockedHeight(null);
-    const h = Math.max(node.getBoundingClientRect().height, 560);
-    setFloor((prev) => Math.max(prev, h));
-  }, [show, pathname]);
+    if (lockedRef.current != null) {
+      lockedRef.current = null;
+      setLockedHeight(null);
+    }
+  }, [show]);
 
   return (
     <div
       ref={wrapRef}
-      className="relative w-full"
-      style={{
-        minHeight: floor,
-        ...(lockedHeight != null ? { height: lockedHeight, overflow: "hidden" } : null),
-      }}
+      className="relative w-full min-h-[560px]"
+      style={
+        lockedHeight != null
+          ? { height: lockedHeight, overflow: "hidden" }
+          : undefined
+      }
     >
       <div
         className={cn(show && "pointer-events-none select-none opacity-0")}

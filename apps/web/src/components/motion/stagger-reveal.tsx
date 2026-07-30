@@ -1,37 +1,20 @@
 "use client";
 
-import { usePageReady } from "@/hooks/use-page-ready";
 import { cn } from "@/lib/utils";
 
 interface StaggerRevealProps {
   children: React.ReactNode;
   className?: string;
   placeholder?: React.ReactNode;
-  /** Extra gate (e.g. async data). Combined with navigation page-ready. */
+  /** Kept for API compat — content always stays mounted (avoids CloudFront remount crashes). */
   ready?: boolean;
 }
 
 /**
- * No transform / no remount animation — soft-nav stability comes from
- * WorkspacePendingSkeleton height lock. This only gates async `ready`.
+ * Always keep children mounted. Soft-nav overlay handles loading UI;
+ * unmounting pages mid-nav caused intermittent CloudFront errors.
  */
-export function StaggerReveal({
-  children,
-  className,
-  placeholder,
-  ready: readyProp,
-}: StaggerRevealProps) {
-  const pageReady = usePageReady();
-  const ready = (readyProp ?? true) && pageReady;
-
-  if (!ready) {
-    return (
-      <div className={cn("w-full", className)} aria-busy>
-        {placeholder ?? null}
-      </div>
-    );
-  }
-
+export function StaggerReveal({ children, className }: StaggerRevealProps) {
   return <div className={cn("flex w-full flex-col gap-8", className)}>{children}</div>;
 }
 

@@ -76,10 +76,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       setNavStartedAt(now);
     }
 
-    if (!isNavigating) {
-      setIsNavigating(true);
-      setProgress(58);
-    }
+    setIsNavigating(true);
+    setProgress(58);
 
     const elapsed = Date.now() - (startedAt.current || Date.now());
     const remaining = Math.max(0, PAGE_TRANSITION_MS - elapsed);
@@ -95,7 +93,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       window.clearTimeout(finishTimer);
       window.clearTimeout(hideTimer);
     };
-  }, [pathname, isNavigating]);
+  }, [pathname]);
 
   // Keep a single route skeleton until the beat ends (no second page skeleton).
   useEffect(() => {

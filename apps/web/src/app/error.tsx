@@ -2,7 +2,11 @@
 
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { isDomMutationError } from "@/lib/dom-mutation-error";
+import {
+  isChunkLoadError,
+  isDomMutationError,
+  recoverFromChunkLoadError,
+} from "@/lib/dom-mutation-error";
 
 /** Route-level error UI — must not render <html>/<body> (nested inside root layout). */
 export default function Error({
@@ -17,13 +21,14 @@ export default function Error({
   }, [error]);
 
   useEffect(() => {
+    if (recoverFromChunkLoadError(error)) return;
     // Soft recover — full reload remounts the workspace shell on static hosts.
     if (isDomMutationError(error)) {
       reset();
     }
   }, [error, reset]);
 
-  if (isDomMutationError(error)) {
+  if (isChunkLoadError(error) || isDomMutationError(error)) {
     return null;
   }
 

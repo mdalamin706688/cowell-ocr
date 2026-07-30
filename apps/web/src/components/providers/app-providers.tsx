@@ -5,15 +5,25 @@ import { useEffect } from "react";
 import { NavigationProvider } from "@/contexts/navigation-context";
 import { NavigationProgress } from "@/components/motion/navigation-progress";
 import { NavigationRouteSkeleton } from "@/components/motion/navigation-route-skeleton";
-import { isDomMutationError, isDomMutationErrorEvent } from "@/lib/dom-mutation-error";
+import {
+  isChunkLoadError,
+  isDomMutationError,
+  isDomMutationErrorEvent,
+  recoverFromChunkLoadError,
+} from "@/lib/dom-mutation-error";
 
 /**
  * Swallow translate / Framer DOM races. Never hard-reload — that destroys SPA
  * state and remounts the sidebar on CloudFront static hosts.
+ * Chunk load failures auto-recover with a single guarded reload.
  */
 function DomMutationErrorGuard() {
   useEffect(() => {
     const handleError = (event: ErrorEvent) => {
+      if (recoverFromChunkLoadError(event.error ?? event.message)) {
+        event.preventDefault();
+        return;
+      }
       const msg = event.message ?? "";
       const name = (event.error as Error | null)?.name ?? "";
       if (isDomMutationErrorEvent(msg, name) || isDomMutationError(event.error)) {
@@ -22,7 +32,11 @@ function DomMutationErrorGuard() {
     };
 
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      if (isDomMutationError(event.reason)) {
+      if (recoverFromChunkLoadError(event.reason)) {
+        event.preventDefault();
+        return;
+      }
+      if (isDomMutationError(event.reason) || isChunkLoadError(event.reason)) {
         event.preventDefault();
       }
     };
