@@ -4,10 +4,6 @@ export const SIDEBAR_COLLAPSED_KEY = "cowell_sidebar_collapsed";
 
 type Listener = () => void;
 
-/** In-memory only during render — hydrate from localStorage after mount. */
-let memoryCollapsed = false;
-const listeners = new Set<Listener>();
-
 function readStorage(): boolean {
   try {
     return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1";
@@ -15,6 +11,11 @@ function readStorage(): boolean {
     return false;
   }
 }
+
+/** Eager client hydrate so first paint matches collapsed preference (no expand→collapse flash). */
+let memoryCollapsed =
+  typeof window !== "undefined" ? readStorage() : false;
+const listeners = new Set<Listener>();
 
 function writeStorage(collapsed: boolean): void {
   try {

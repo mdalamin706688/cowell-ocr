@@ -6,26 +6,32 @@ import { NavigationProvider } from "@/contexts/navigation-context";
 import { NavigationProgress } from "@/components/motion/navigation-progress";
 import { NavigationRouteSkeleton } from "@/components/motion/navigation-route-skeleton";
 import {
+  isChunkLoadError,
   isDomMutationError,
   isDomMutationErrorEvent,
 } from "@/lib/dom-mutation-error";
 
 /**
- * Swallow translate / Framer DOM races. Never hard-reload — that remounts the
- * workspace shell on CloudFront and looks like a full page refresh after skeleton.
+ * Swallow translate / Framer / chunk races. Never hard-reload — that remounts
+ * the workspace shell (ShellSkeleton flash) on CloudFront static hosts.
  */
 function DomMutationErrorGuard() {
   useEffect(() => {
     const handleError = (event: ErrorEvent) => {
       const msg = event.message ?? "";
       const name = (event.error as Error | null)?.name ?? "";
-      if (isDomMutationErrorEvent(msg, name) || isDomMutationError(event.error)) {
+      if (
+        isDomMutationErrorEvent(msg, name) ||
+        isDomMutationError(event.error) ||
+        isChunkLoadError(event.error) ||
+        isChunkLoadError({ name, message: msg })
+      ) {
         event.preventDefault();
       }
     };
 
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      if (isDomMutationError(event.reason)) {
+      if (isDomMutationError(event.reason) || isChunkLoadError(event.reason)) {
         event.preventDefault();
       }
     };

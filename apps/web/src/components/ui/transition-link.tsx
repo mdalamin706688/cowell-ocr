@@ -13,6 +13,11 @@ function normalizePath(path: string): string {
   return path.endsWith("/") ? path : `${path}/`;
 }
 
+/**
+ * Force client soft-nav. Letting the browser follow <a href> on static/CloudFront
+ * remounts AuthenticatedShell → ShellSkeleton + full page refresh (worse when
+ * the sidebar is collapsed).
+ */
 export function TransitionLink({
   href,
   onClick,
@@ -36,14 +41,17 @@ export function TransitionLink({
       onClick={(event: MouseEvent<HTMLAnchorElement>) => {
         onClick?.(event);
         if (event.defaultPrevented) return;
-        // Let the browser handle modified clicks (new tab, etc.) without SPA chrome.
         if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
           return;
         }
         if (!hrefString) return;
-        if (normalizePath(pathname) === normalizePath(hrefString)) return;
-        router.prefetch(hrefString);
+        if (normalizePath(pathname) === normalizePath(hrefString)) {
+          event.preventDefault();
+          return;
+        }
+        event.preventDefault();
         startNavigation(hrefString);
+        router.push(hrefString);
       }}
       onMouseEnter={(event) => {
         onMouseEnter?.(event);

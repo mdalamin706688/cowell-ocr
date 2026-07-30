@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { ShellSkeleton } from "@/components/layout/shell-skeleton";
@@ -20,14 +20,33 @@ interface AuthenticatedShellProps {
   children: React.ReactNode;
 }
 
+function readCachedSession(): SessionUser | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return peekClientSession();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Keep the real AppShell mounted across soft-nav. Flashing ShellSkeleton looks like
+ * a full CloudFront refresh (especially with collapsed sidebar).
+ */
 export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   const router = useRouter();
   const cognito = isCognitoConfigured();
   const preview = isPreviewEnvironment() && !cognito;
 
-  // Prefer cached session so soft navigations never flash the full shell skeleton.
-  const [user, setUser] = useState<SessionUser | null>(null);
-  const [ready, setReady] = useState(false);
+  const [user, setUser] = useState<SessionUser | null>(() => readCachedSession());
+  const [ready, setReady] = useState(() => Boolean(readCachedSession()));
+
+  useLayoutEffect(() => {
+    const cached = readCachedSession();
+    if (!cached) return;
+    setUser(cached);
+    setReady(true);
+  }, []);
 
   useEffect(() => {
     prefetchWorkspaceRoutes(router);
@@ -101,7 +120,16 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
     };
   }, [cognito, preview, router]);
 
+  // Never replace a live shell with ShellSkeleton once we have a cached user.
   if (!ready || !user) {
+    const cached = readCachedSession();
+    if (cached) {
+      return (
+        <WorkspaceSessionProvider user={cached}>
+          <AppShell user={cached}>{children}</AppShell>
+        </WorkspaceSessionProvider>
+      );
+    }
     return <ShellSkeleton />;
   }
 
