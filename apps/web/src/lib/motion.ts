@@ -9,8 +9,8 @@ export const PAGE_REVEAL_DELAY_MS = 40;
 /** Skeleton beat from click — overlaps CloudFront chunk fetch */
 export const MIN_SKELETON_MS = 280;
 
-/** Crossfade skeleton → content */
-export const SKELETON_FADE_MS = 200;
+/** Crossfade skeleton → content (keep in sync with WorkspacePendingSkeleton) */
+export const SKELETON_FADE_MS = 280;
 
 /** @deprecated — pending skeleton shows immediately */
 export const SKELETON_SHOW_DELAY_MS = 0;
@@ -45,18 +45,18 @@ export const staggerContainer = {
   hidden: {},
   show: {
     transition: {
-      staggerChildren: 0.07,
-      delayChildren: 0.06,
+      staggerChildren: 0.05,
+      delayChildren: 0.04,
     },
   },
 };
 
+/** Opacity-only — no y/x so soft-nav stays jump-free */
 export const staggerItem = {
-  hidden: { opacity: 1, y: 0 },
+  hidden: { opacity: 0.92 },
   show: {
     opacity: 1,
-    y: 0,
-    transition: springSoft,
+    transition: { duration: 0.28, ease: easeOutExpo },
   },
 };
 
