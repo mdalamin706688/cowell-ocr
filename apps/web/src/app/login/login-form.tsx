@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/brand/logo";
-import { LoginSkeleton } from "@/components/layout/content-skeleton";
 import { StaggerItem, StaggerReveal } from "@/components/motion/stagger-reveal";
 import { copy } from "@/lib/copy";
 import { useNavigation } from "@/contexts/navigation-context";
@@ -239,7 +238,7 @@ export function LoginForm() {
   const heroLines = copy.login.heroTitle.split("\n");
 
   return (
-    <StaggerReveal placeholder={<LoginSkeleton />}>
+    <StaggerReveal>
       <StaggerItem>
     <div className="min-h-screen flex paper-canvas">
       <div className="hidden lg:flex lg:w-[48%] forest-hero flex-col justify-between p-10 sm:p-12">

@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { OverlayDialog } from "@/components/ui/overlay-dialog";
-import { UsersPageSkeleton } from "@/components/layout/content-skeleton";
 import { ChangePasswordCard } from "@/components/users/change-password-card";
 import { copy } from "@/lib/copy";
 import {
@@ -135,10 +134,6 @@ export function UsersPageContent() {
 
   const canDelete = isSessionSuperAdmin(session) || previewDemo;
 
-  if (!initialLoadDone && loading) {
-    return <UsersPageSkeleton />;
-  }
-
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -155,7 +150,7 @@ export function UsersPageContent() {
           </div>
         </div>
         {(adminReady || previewDemo) && (
-          <Button onClick={() => setShowAdd(true)}>
+          <Button onClick={() => setShowAdd(true)} disabled={loading && !initialLoadDone}>
             <Plus className="h-4 w-4" />
             {copy.users.addUser}
           </Button>

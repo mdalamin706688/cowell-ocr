@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { useNavigation } from "@/contexts/navigation-context";
 import { useSafeMotion } from "@/hooks/use-safe-motion";
@@ -13,6 +13,10 @@ interface PageContentTransitionProps {
   variant?: PageMotionVariant;
 }
 
+/**
+ * Enter-only page motion. Exit / mode="wait" left a blank gap that felt like a
+ * skeleton jump on CloudFront (slower chunk fetch than localhost).
+ */
 export function PageContentTransition({
   children,
   className,
@@ -33,18 +37,15 @@ export function PageContentTransition({
 
   return (
     <div className={cn("relative isolate overflow-x-clip", className)}>
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.div
-          key={pathname}
-          initial={pageMotion.initial}
-          animate={pageMotion.animate}
-          exit={pageMotion.exit}
-          transition={pageTransitionTween}
-          className="w-full overflow-x-clip"
-        >
-          {children}
-        </motion.div>
-      </AnimatePresence>
+      <motion.div
+        key={pathname}
+        initial={pageMotion.initial}
+        animate={pageMotion.animate}
+        transition={pageTransitionTween}
+        className="w-full overflow-x-clip"
+      >
+        {children}
+      </motion.div>
     </div>
   );
 }

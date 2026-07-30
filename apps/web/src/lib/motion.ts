@@ -1,17 +1,17 @@
 /** Shared motion tokens — premium easing, consistent across the app */
 export const easeOutExpo = [0.22, 1, 0.36, 1] as const;
 
-/** Route slide duration — synced with progress bar */
-export const PAGE_TRANSITION_MS = 620;
+/** Top progress bar duration — short so nav feels instant on static hosts */
+export const PAGE_TRANSITION_MS = 280;
 
-/** Brief pause after slide before stagger reveal */
-export const PAGE_REVEAL_DELAY_MS = 72;
+/** @deprecated No longer gates content reveal */
+export const PAGE_REVEAL_DELAY_MS = 0;
 
-/** Minimum time skeleton stays visible */
-export const MIN_SKELETON_MS = 520;
+/** @deprecated Skeletons no longer force a minimum display time on soft nav */
+export const MIN_SKELETON_MS = 0;
 
 /** Skeleton fade-out when handing off to content */
-export const SKELETON_FADE_MS = 320;
+export const SKELETON_FADE_MS = 180;
 
 export const springSnappy = {
   type: "spring" as const,
@@ -20,23 +20,23 @@ export const springSnappy = {
   mass: 0.85,
 };
 
-/** Softer spring — more visible, premium page slide */
+/** Softer spring — subtle page enter */
 export const springPage = {
   type: "spring" as const,
-  stiffness: 165,
-  damping: 24,
-  mass: 1.05,
+  stiffness: 220,
+  damping: 28,
+  mass: 0.95,
 };
 
 export const springSoft = {
   type: "spring" as const,
-  stiffness: 200,
-  damping: 26,
-  mass: 1,
+  stiffness: 260,
+  damping: 28,
+  mass: 0.9,
 };
 
 export const pageTransitionTween = {
-  duration: 0.58,
+  duration: 0.28,
   ease: easeOutExpo,
 };
 
@@ -44,14 +44,14 @@ export const staggerContainer = {
   hidden: {},
   show: {
     transition: {
-      staggerChildren: 0.09,
-      delayChildren: 0.1,
+      staggerChildren: 0.05,
+      delayChildren: 0.02,
     },
   },
 };
 
 export const staggerItem = {
-  hidden: { opacity: 0, y: 8 },
+  hidden: { opacity: 0, y: 6 },
   show: {
     opacity: 1,
     y: 0,
@@ -70,13 +70,14 @@ export function getPageMotion(
   exit: { opacity: number; x: number; scale: number };
 } {
   const forward = direction >= 0;
-  const distance = variant === "workspace" ? 40 : 24;
+  const distance = variant === "workspace" ? 16 : 12;
   const enterX = forward ? distance : -distance;
-  const exitX = forward ? -distance * 0.7 : distance * 0.7;
+  const exitX = forward ? -distance * 0.5 : distance * 0.5;
 
   return {
-    initial: { opacity: 0.92, x: enterX, scale: 0.992 },
+    initial: { opacity: 0.96, x: enterX, scale: 0.997 },
     animate: { opacity: 1, x: 0, scale: 1 },
-    exit: { opacity: 0, x: exitX, scale: 0.996 },
+    // Kept for API compat — page transitions are enter-only.
+    exit: { opacity: 1, x: exitX, scale: 1 },
   };
 }

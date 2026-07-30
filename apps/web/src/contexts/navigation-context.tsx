@@ -79,7 +79,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       setIsNavigating(false);
       setProgress(0);
       setPendingHref(null);
-    }, remaining + 280);
+    }, remaining + 120);
 
     return () => {
       window.clearTimeout(finishTimer);
