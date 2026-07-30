@@ -271,13 +271,37 @@
     html.sidebar-collapsed .shell-main {
       padding-left: 88px !important;
     }
-    html.sidebar-collapsed .shell-aside .nav-link.shell-collapsed-nav {
+    html.sidebar-collapsed .shell-aside .shell-rail-column {
+      align-items: center;
+    }
+    html.sidebar-collapsed .shell-aside .shell-rail-item {
       width: 2.75rem;
       height: 2.75rem;
-      margin-left: auto;
-      margin-right: auto;
-      padding: 0;
+      min-width: 2.75rem;
+      min-height: 2.75rem;
+      margin-inline: auto;
+      padding: 0 !important;
+      display: grid !important;
+      place-items: center;
+      flex: none;
+      line-height: 0;
       border-radius: 0.75rem;
+    }
+    html.sidebar-collapsed .shell-aside .shell-rail-item > * {
+      grid-area: 1 / 1;
+    }
+    html.sidebar-collapsed .shell-aside .shell-rail-control {
+      width: 2.25rem;
+      height: 2.25rem;
+      min-width: 2.25rem;
+      min-height: 2.25rem;
+      margin-inline: auto;
+      padding: 0;
+      display: grid;
+      place-items: center;
+      flex: none;
+    }
+    html.sidebar-collapsed .shell-aside .nav-link.shell-collapsed-nav {
       border: 1px solid hsl(var(--border) / 0.7);
       background: hsl(var(--card) / 0.7);
     }
@@ -290,28 +314,28 @@
     html.sidebar-collapsed .shell-aside .shell-nav-icon {
       width: 1.25rem;
       height: 1.25rem;
+      display: block;
+      flex: none;
     }
     html.sidebar-collapsed .shell-aside .shell-new-survey {
-      width: 2.75rem;
-      height: 2.75rem;
-      margin-left: auto;
-      margin-right: auto;
-      padding: 0;
-      border-radius: 0.75rem;
       border-color: transparent;
     }
     html.sidebar-collapsed .shell-aside .shell-account {
-      width: 2.75rem;
-      height: 2.75rem;
-      margin-left: auto;
-      margin-right: auto;
-      padding: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      padding: 0 !important;
     }
     html.sidebar-collapsed .shell-aside .shell-account-row {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      place-items: center;
       justify-content: center;
+    }
+    html.sidebar-collapsed .shell-aside .shell-rail-item > svg,
+    html.sidebar-collapsed .shell-aside .shell-account-row > svg {
+      width: 1.25rem;
+      height: 1.25rem;
+      display: block;
+      margin: 0;
     }
   }
 

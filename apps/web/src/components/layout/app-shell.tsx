@@ -51,12 +51,12 @@ export function AppShell({ children, user }: AppShellProps) {
         suppressHydrationWarning
       >
         <div className="shell-aside-inner relative flex h-full flex-col" suppressHydrationWarning>
-          <div className="shell-collapsed-only absolute left-1/2 top-4 z-10 flex -translate-x-1/2 flex-col items-center gap-7">
+          <div className="shell-collapsed-only shell-rail-column absolute inset-x-0 top-4 z-10 flex flex-col gap-7">
             <SoftNavButton
               href="/dashboard/"
               title="Cowell OCR"
               aria-label="Cowell OCR"
-              className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-[12px] forest-panel p-0"
+              className="shell-rail-item relative rounded-[12px] forest-panel"
             >
               <div className="absolute inset-0 rounded-[12px] ring-1 ring-lumen-glow/25 ring-inset" />
               <svg viewBox="0 0 24 24" fill="none" className="relative h-5 w-5 text-lumen-glow" aria-hidden>
@@ -71,7 +71,7 @@ export function AppShell({ children, user }: AppShellProps) {
               aria-label="サイドバーを展開"
               aria-pressed={!collapsed}
               onClick={() => setCollapsed(false)}
-              className="h-9 w-9 shrink-0 border-border/70 bg-card/70 hover:bg-muted/40"
+              className="shell-rail-control border-border/70 bg-card/70 hover:bg-muted/40"
               title="展開"
             >
               <PanelLeftOpen className="h-4 w-4" />
@@ -102,7 +102,7 @@ export function AppShell({ children, user }: AppShellProps) {
           <div className="shell-collapsed-only h-40" aria-hidden />
 
           <p className="shell-expanded-only text-eyebrow mb-3 px-3">{copy.nav.menu}</p>
-          <nav className="flex flex-col gap-1" aria-label={copy.nav.menu}>
+          <nav className="shell-rail-column flex flex-col gap-1" aria-label={copy.nav.menu}>
             {nav.map(({ href, label, icon: Icon }) => {
               const active = isNavActive(pathname, href);
               return (
@@ -111,7 +111,7 @@ export function AppShell({ children, user }: AppShellProps) {
                   href={href}
                   title={label}
                   className={cn(
-                    "nav-link shell-collapsed-nav relative w-full overflow-hidden",
+                    "nav-link shell-collapsed-nav shell-rail-item relative w-full overflow-hidden",
                     active
                       ? "nav-link-active text-foreground border-lumen/60 bg-accent/80 ring-1 ring-lumen/35"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
@@ -121,7 +121,7 @@ export function AppShell({ children, user }: AppShellProps) {
                     <span className="absolute inset-0 rounded-lg bg-accent/70 shadow-sm" aria-hidden />
                   ) : null}
                   <span className="shell-nav-item relative flex items-center gap-2.5">
-                    <Icon className="shell-nav-icon shrink-0 h-4 w-4" />
+                    <Icon className="shell-nav-icon h-4 w-4 shrink-0" />
                     <span className="shell-expanded-only">{label}</span>
                     <span className="shell-collapsed-only sr-only">{label}</span>
                   </span>
@@ -130,11 +130,11 @@ export function AppShell({ children, user }: AppShellProps) {
             })}
           </nav>
 
-          <div className="mt-auto space-y-3 border-t border-border/50 pt-5">
+          <div className="shell-rail-column mt-auto space-y-3 border-t border-border/50 pt-5">
             <SoftNavButton
               href="/survey/new/"
               title={copy.nav.newSurvey}
-              className="shell-new-survey inline-flex w-full items-center justify-center gap-2 whitespace-nowrap text-sm font-semibold btn-lumen text-white shadow-none h-9 rounded-xl px-4"
+              className="shell-new-survey shell-rail-item inline-flex w-full items-center justify-center gap-2 whitespace-nowrap text-sm font-semibold btn-lumen text-white shadow-none h-9 rounded-xl px-4"
             >
               <Plus className="shell-nav-icon h-3.5 w-3.5" />
               <span className="shell-expanded-only">{copy.nav.newSurvey}</span>
@@ -143,7 +143,7 @@ export function AppShell({ children, user }: AppShellProps) {
 
             {user && (
               <div
-                className="shell-account rounded-xl border border-border/60 bg-muted/20 px-3.5 py-3"
+                className="shell-account shell-rail-item rounded-xl border border-border/60 bg-muted/20 px-3.5 py-3"
                 title={`${copy.nav.account}: ${user.email} (${roleLabel})`}
               >
                 <div className="shell-account-row flex items-center justify-between gap-2">
@@ -172,10 +172,10 @@ export function AppShell({ children, user }: AppShellProps) {
               </div>
             )}
 
-            <div className="shell-collapsed-only flex justify-center">
+            <div className="shell-collapsed-only shell-rail-column">
               <LogoutButton
                 variant="mobile"
-                className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl border border-border/70 bg-card/70 [&_svg]:h-5 [&_svg]:w-5"
+                className="shell-rail-item rounded-xl border border-border/70 bg-card/70"
               />
             </div>
             <div className="shell-expanded-only">
