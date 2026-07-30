@@ -1,4 +1,5 @@
-/** Intentionally empty — avoid skeleton flash on soft nav (static / CloudFront). */
+import { ContentSkeleton } from "@/components/layout/content-skeleton";
+
 export default function DashboardLoading() {
-  return null;
+  return <ContentSkeleton />;
 }

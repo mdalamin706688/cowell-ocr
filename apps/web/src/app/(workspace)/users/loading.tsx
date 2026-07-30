@@ -1,4 +1,5 @@
-/** Intentionally empty — avoid skeleton flash on soft nav (static / CloudFront). */
+import { UsersPageSkeleton } from "@/components/layout/content-skeleton";
+
 export default function UsersLoading() {
-  return null;
+  return <UsersPageSkeleton />;
 }

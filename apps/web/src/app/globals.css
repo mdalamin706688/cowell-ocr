@@ -374,6 +374,17 @@
     }
   }
 
+  @keyframes routeSkeletonIn {
+    from {
+      opacity: 0.72;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
   @keyframes export-indeterminate {
     0% {
       transform: translateX(-120%);

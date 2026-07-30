@@ -8,14 +8,11 @@ import { cn } from "@/lib/utils";
 interface StaggerRevealProps {
   children: React.ReactNode;
   className?: string;
-  /** @deprecated Kept for call-site compatibility — never blocks content behind a skeleton. */
+  /** Unused — route skeletons are owned by loading.tsx / WorkspacePendingSkeleton. */
   placeholder?: React.ReactNode;
 }
 
-/**
- * Premium enter stagger — content renders immediately.
- * Never swaps to a skeleton on soft navigations (that causes CloudFront “jump”).
- */
+/** Premium enter stagger after the route (or its skeleton) has settled. */
 export function StaggerReveal({ children, className }: StaggerRevealProps) {
   const safeMotion = useSafeMotion();
 

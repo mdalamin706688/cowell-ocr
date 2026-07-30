@@ -1,10 +1,12 @@
 "use client";
 
-/**
- * Soft navigations should keep the previous view until the next page is ready.
- * A Suspense loading UI here caused a skeleton “jump” on CloudFront (chunk latency)
- * that localhost rarely shows.
- */
+import { usePathname } from "next/navigation";
+import { RouteContentSkeleton } from "@/components/layout/content-skeleton";
+import { useNavigation } from "@/contexts/navigation-context";
+
+/** Suspense fallback — content-area only; sidebar stays via layout. */
 export default function WorkspaceLoading() {
-  return null;
+  const pathname = usePathname();
+  const { pendingHref } = useNavigation();
+  return <RouteContentSkeleton href={pendingHref ?? pathname} />;
 }

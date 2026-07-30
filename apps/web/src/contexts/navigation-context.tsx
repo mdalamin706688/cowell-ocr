@@ -24,9 +24,13 @@ const NavigationContext = createContext<NavigationContextValue | null>(null);
 
 const ROUTE_ORDER = ["/login/", "/dashboard/", "/users/", "/survey/new/"];
 
+export function normalizeRoutePath(path: string): string {
+  if (!path) return "/";
+  return path.endsWith("/") ? path : `${path}/`;
+}
+
 function routeIndex(path: string): number {
-  const normalized = path.endsWith("/") ? path : `${path}/`;
-  const idx = ROUTE_ORDER.indexOf(normalized);
+  const idx = ROUTE_ORDER.indexOf(normalizeRoutePath(path));
   return idx === -1 ? ROUTE_ORDER.length : idx;
 }
 
@@ -42,10 +46,9 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const startNavigation = useCallback(
     (targetHref?: string) => {
       if (targetHref) {
+        if (normalizeRoutePath(targetHref) === normalizeRoutePath(pathname)) return;
         setPendingHref(targetHref);
-        const from = routeIndex(pathname);
-        const to = routeIndex(targetHref);
-        setDirection(to >= from ? 1 : -1);
+        setDirection(routeIndex(targetHref) >= routeIndex(pathname) ? 1 : -1);
       }
       startedAt.current = Date.now();
       setIsNavigating(true);
@@ -63,6 +66,9 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     setDirection(to >= from ? 1 : -1);
     prevPath.current = pathname;
 
+    // Drop content skeleton as soon as the destination route mounts.
+    setPendingHref(null);
+
     if (!isNavigating) {
       setIsNavigating(true);
       setProgress(58);
@@ -78,8 +84,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     const hideTimer = window.setTimeout(() => {
       setIsNavigating(false);
       setProgress(0);
-      setPendingHref(null);
-    }, remaining + 120);
+    }, remaining + 140);
 
     return () => {
       window.clearTimeout(finishTimer);
