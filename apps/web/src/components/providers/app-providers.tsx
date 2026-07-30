@@ -39,6 +39,17 @@ function DomMutationErrorGuard() {
 }
 
 export function AppProviders({ children }: { children: ReactNode }) {
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      if ("scrollRestoration" in window.history) {
+        window.history.scrollRestoration = "manual";
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
   return (
     <NavigationProvider>
       <DomMutationErrorGuard />

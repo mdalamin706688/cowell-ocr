@@ -136,7 +136,7 @@ export function UsersPageContent() {
   const canDelete = isSessionSuperAdmin(session) || previewDemo;
 
   return (
-    <StaggerReveal ready={initialLoadDone}>
+    <StaggerReveal>
       <StaggerItem>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-4">

@@ -51,9 +51,8 @@ export const staggerContainer = {
   },
 };
 
-/** Opacity-first enter — tiny rise, not enough to feel like a jump */
 export const staggerItem = {
-  hidden: { opacity: 0, y: 5 },
+  hidden: { opacity: 1, y: 0 },
   show: {
     opacity: 1,
     y: 0,
