@@ -44,9 +44,16 @@ export default function RootLayout({
   return (
     <html lang="ja" suppressHydrationWarning>
       <head>
-        {/* Prevent Chrome translate DOM mutations from crashing React */}
-        <script dangerouslySetInnerHTML={{ __html: `
+        {/* Pre-paint sidebar + translate-safe DOM — must run before first paint */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
 (function(){
+  try {
+    if (localStorage.getItem('cowell_sidebar_collapsed') === '1') {
+      document.documentElement.classList.add('sidebar-collapsed');
+    }
+  } catch (e) {}
   var rc=Node.prototype.removeChild;
   Node.prototype.removeChild=function(child){
     if(!this.contains(child))return child;
@@ -58,7 +65,9 @@ export default function RootLayout({
     return ib.call(this,node,ref);
   };
 })();
-        `}} />
+`,
+          }}
+        />
         <link rel="icon" href={iconHref} type="image/svg+xml" sizes="any" />
         <link rel="icon" href={iconHref} />
         <link rel="shortcut icon" href={iconHref} />

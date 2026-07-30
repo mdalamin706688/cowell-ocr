@@ -15,6 +15,7 @@ import {
   isPreviewEnvironment,
   setFlash,
 } from "@/lib/client-auth";
+import { clearShellSessionUser } from "@/lib/shell-session";
 
 interface LogoutButtonProps {
   variant?: "sidebar" | "mobile";
@@ -31,6 +32,8 @@ export function LogoutButton({ variant = "sidebar", className }: LogoutButtonPro
     try {
       if (isCognitoConfigured()) {
         await cognitoSignOut();
+        clearClientSession();
+        clearShellSessionUser();
         setFlash(FLASH_LOGGED_OUT);
         startNavigation("/login/");
         router.replace("/login/");
@@ -39,6 +42,7 @@ export function LogoutButton({ variant = "sidebar", className }: LogoutButtonPro
 
       if (isPreviewEnvironment()) {
         clearClientSession();
+        clearShellSessionUser();
         setFlash(FLASH_LOGGED_OUT);
         startNavigation("/login/");
         router.replace("/login/");
@@ -49,6 +53,8 @@ export function LogoutButton({ variant = "sidebar", className }: LogoutButtonPro
         method: "POST",
         headers: { Accept: "application/json" },
       });
+      clearClientSession();
+      clearShellSessionUser();
       setFlash(FLASH_LOGGED_OUT);
       startNavigation("/login/");
       router.replace("/login/");

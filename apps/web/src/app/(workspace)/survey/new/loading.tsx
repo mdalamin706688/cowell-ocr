@@ -1,5 +1,4 @@
-import { SurveyPageSkeleton } from "@/components/layout/content-skeleton";
-
+/** Keep previous route visible — page StaggerReveal owns the skeleton beat. */
 export default function SurveyLoading() {
-  return <SurveyPageSkeleton />;
+  return null;
 }

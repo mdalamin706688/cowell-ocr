@@ -229,6 +229,46 @@
     @apply font-display font-bold tracking-tight leading-[1.15];
   }
 
+  /*
+   * Sidebar collapsed preference (set on <html> before paint).
+   * Prevents expanded ShellSkeleton flash on static/CloudFront navigations.
+   */
+  html:not(.sidebar-collapsed) .shell-collapsed-only {
+    display: none !important;
+  }
+  html.sidebar-collapsed .shell-expanded-only {
+    display: none !important;
+  }
+  @media (min-width: 1024px) {
+    html.sidebar-collapsed .shell-aside {
+      width: 88px !important;
+    }
+    html.sidebar-collapsed .shell-aside .shell-aside-inner {
+      padding: 0 0.75rem 1rem !important;
+    }
+    html.sidebar-collapsed .shell-main {
+      padding-left: 88px !important;
+    }
+    html:not(.sidebar-collapsed) .shell-aside {
+      width: 300px !important;
+    }
+    html:not(.sidebar-collapsed) .shell-aside .shell-aside-inner {
+      padding: 1.5rem !important;
+    }
+    html:not(.sidebar-collapsed) .shell-main {
+      padding-left: 300px !important;
+    }
+    html.sidebar-collapsed .shell-aside .nav-link.shell-collapsed-nav {
+      width: 2.75rem;
+      height: 2.75rem;
+      margin-left: auto;
+      margin-right: auto;
+      padding: 0;
+      border-radius: 0.75rem;
+      border-width: 1px;
+    }
+  }
+
   /* ── Nav ── */
   .nav-link {
     @apply relative flex items-center rounded-lg px-3 py-2.5 text-sm transition-colors;

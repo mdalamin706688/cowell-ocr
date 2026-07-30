@@ -14,9 +14,8 @@ function normalizePath(path: string): string {
 }
 
 /**
- * Force client soft-nav. Letting the browser follow <a href> on static/CloudFront
- * remounts AuthenticatedShell → ShellSkeleton + full page refresh (worse when
- * the sidebar is collapsed).
+ * Soft SPA navigation. Capture-phase preventDefault so Next/browser never
+ * follows the href on static hosts (full document load → shell skeleton flash).
  */
 export function TransitionLink({
   href,
@@ -31,6 +30,19 @@ export function TransitionLink({
   const { startNavigation } = useNavigation();
   const hrefString = typeof href === "string" ? href : href.pathname ?? "";
 
+  const softNavigate = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
+      return false;
+    }
+    if (!hrefString) return false;
+    event.preventDefault();
+    event.stopPropagation();
+    if (normalizePath(pathname) === normalizePath(hrefString)) return true;
+    startNavigation(hrefString);
+    router.push(hrefString);
+    return true;
+  };
+
   return (
     <Link
       href={href}
@@ -38,20 +50,13 @@ export function TransitionLink({
       scroll={false}
       {...props}
       className={cn("transition-opacity duration-150 active:opacity-80", className)}
-      onClick={(event: MouseEvent<HTMLAnchorElement>) => {
+      onClickCapture={(event) => {
+        softNavigate(event);
+      }}
+      onClick={(event) => {
         onClick?.(event);
         if (event.defaultPrevented) return;
-        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
-          return;
-        }
-        if (!hrefString) return;
-        if (normalizePath(pathname) === normalizePath(hrefString)) {
-          event.preventDefault();
-          return;
-        }
-        event.preventDefault();
-        startNavigation(hrefString);
-        router.push(hrefString);
+        softNavigate(event);
       }}
       onMouseEnter={(event) => {
         onMouseEnter?.(event);

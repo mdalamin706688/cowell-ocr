@@ -1,13 +1,4 @@
-"use client";
-
-import { usePathname } from "next/navigation";
-import { RouteContentSkeleton } from "@/components/layout/content-skeleton";
-import { useNavigation } from "@/contexts/navigation-context";
-
+/** Keep previous route visible — page StaggerReveal owns the skeleton beat. */
 export default function WorkspaceLoading() {
-  const pathname = usePathname();
-  const { pendingHref } = useNavigation();
-  const target = pendingHref ?? pathname;
-
-  return <RouteContentSkeleton href={target} />;
+  return null;
 }

@@ -15,37 +15,32 @@ import {
   type SessionUser,
 } from "@/lib/client-auth";
 import { prefetchWorkspaceRoutes } from "@/lib/prefetch-workspace";
+import {
+  clearShellSessionUser,
+  getShellSessionUser,
+  setShellSessionUser,
+} from "@/lib/shell-session";
 
 interface AuthenticatedShellProps {
   children: React.ReactNode;
 }
 
-function readCachedSession(): SessionUser | null {
-  if (typeof window === "undefined") return null;
-  try {
-    return peekClientSession();
-  } catch {
-    return null;
-  }
-}
-
 /**
- * Keep the real AppShell mounted across soft-nav. Flashing ShellSkeleton looks like
- * a full CloudFront refresh (especially with collapsed sidebar).
+ * AppShell stays mounted for the tab lifetime. ShellSkeleton only on first
+ * unauthenticated paint — never mid soft-nav (that felt like a full reload).
  */
 export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   const router = useRouter();
   const cognito = isCognitoConfigured();
   const preview = isPreviewEnvironment() && !cognito;
 
-  const [user, setUser] = useState<SessionUser | null>(() => readCachedSession());
-  const [ready, setReady] = useState(() => Boolean(readCachedSession()));
+  const [user, setUser] = useState<SessionUser | null>(() => getShellSessionUser());
 
   useLayoutEffect(() => {
-    const cached = readCachedSession();
+    const cached = getShellSessionUser();
     if (!cached) return;
+    setShellSessionUser(cached);
     setUser(cached);
-    setReady(true);
   }, []);
 
   useEffect(() => {
@@ -60,8 +55,8 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
     async function loadSession() {
       const cached = peekClientSession();
       if (cached && !cancelled) {
+        setShellSessionUser(cached);
         setUser(cached);
-        setReady(true);
       }
 
       try {
@@ -69,13 +64,14 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
           const session = await getCognitoSessionUser();
           if (!session) {
             clearClientSession();
+            clearShellSessionUser();
             if (!cancelled) router.replace("/login/");
             return;
           }
           if (!cancelled) {
             setClientSession(session);
+            setShellSessionUser(session);
             setUser(session);
-            setReady(true);
           }
           return;
         }
@@ -87,8 +83,8 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
             return;
           }
           if (!cancelled) {
+            setShellSessionUser(session);
             setUser(session);
-            setReady(true);
           }
           return;
         }
@@ -104,8 +100,8 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
         const session = (await res.json()) as SessionUser;
         if (!cancelled) {
           setClientSession(session);
+          setShellSessionUser(session);
           setUser(session);
-          setReady(true);
         }
       } catch {
         if (!cancelled && !peekClientSession()) {
@@ -120,22 +116,14 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
     };
   }, [cognito, preview, router]);
 
-  // Never replace a live shell with ShellSkeleton once we have a cached user.
-  if (!ready || !user) {
-    const cached = readCachedSession();
-    if (cached) {
-      return (
-        <WorkspaceSessionProvider user={cached}>
-          <AppShell user={cached}>{children}</AppShell>
-        </WorkspaceSessionProvider>
-      );
-    }
+  const sessionUser = user ?? getShellSessionUser();
+  if (!sessionUser) {
     return <ShellSkeleton />;
   }
 
   return (
-    <WorkspaceSessionProvider user={user}>
-      <AppShell user={user}>{children}</AppShell>
+    <WorkspaceSessionProvider user={sessionUser}>
+      <AppShell user={sessionUser}>{children}</AppShell>
     </WorkspaceSessionProvider>
   );
 }
