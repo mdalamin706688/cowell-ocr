@@ -1,8 +1,10 @@
 import { GEMINI_PRICING, type OcrResult, type OcrRow } from "@cowell/shared";
+import { getCognitoAccessToken } from "./cognito-auth";
+import { isCognitoConfigured } from "./cognito-config";
 import { copy } from "./copy";
 import { generateId } from "./utils";
 
-/** Backend OCR API (Lambda). No Cognito auth yet — add Bearer when BE enables it. */
+/** Backend OCR API (Lambda). Sends Cognito `Authorization: Bearer <accessToken>` when Cognito is configured. */
 export function getOcrApiBaseUrl(): string {
   return (process.env.NEXT_PUBLIC_OCR_API_BASE_URL || "").replace(/\/$/, "").trim();
 }
@@ -108,6 +110,7 @@ function postOcrForm(
   form: FormData,
   options: {
     timeoutMs: number;
+    accessToken?: string;
     onUploadProgress?: (loaded: number, total: number) => void;
     onUploadComplete?: () => void;
   }
@@ -117,6 +120,9 @@ function postOcrForm(
     xhr.open("POST", url);
     xhr.timeout = options.timeoutMs;
     xhr.responseType = "text";
+    if (options.accessToken) {
+      xhr.setRequestHeader("Authorization", `Bearer ${options.accessToken}`);
+    }
 
     let uploadCompleted = false;
     const markUploadComplete = () => {
@@ -202,6 +208,9 @@ function buildRawText(rows: OcrRow[], warnings: string[], fileErrors: ApiFileErr
 /** Map Gemini / gateway overload messages into a clear Japanese UI error. */
 function friendlyOcrError(raw: string, status?: number): string {
   const text = raw.toLowerCase();
+  if (status === 401 || status === 403) {
+    return "セッションが切れています。再度ログインしてください。";
+  }
   if (
     status === 503 ||
     text.includes("503") ||
@@ -213,6 +222,15 @@ function friendlyOcrError(raw: string, status?: number): string {
     return copy.errors.ocrBusy;
   }
   return raw || copy.errors.ocrFailed;
+}
+
+async function resolveOcrAccessToken(): Promise<string | undefined> {
+  if (!isCognitoConfigured()) return undefined;
+  const accessToken = await getCognitoAccessToken();
+  if (!accessToken) {
+    throw new Error("セッションが切れています。再度ログインしてください。");
+  }
+  return accessToken;
 }
 
 /**
@@ -235,6 +253,8 @@ export async function runRemoteOcr(
   }
 
   emitProgress(onProgress, 1, "preparing");
+
+  const accessToken = await resolveOcrAccessToken();
 
   const form = new FormData();
   let totalBytes = 0;
@@ -282,6 +302,7 @@ export async function runRemoteOcr(
   try {
     const result = await postOcrForm(`${baseUrl}/api/ocr`, form, {
       timeoutMs: 180_000,
+      accessToken,
       onUploadProgress: (loaded, total) => {
         const absoluteTotal = total > 0 ? total : totalBytes || 1;
         const absoluteLoaded =

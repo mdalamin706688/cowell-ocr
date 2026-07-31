@@ -25,9 +25,13 @@ Usage fields mapped into `OcrResult.usage`:
 
 If `NEXT_PUBLIC_OCR_API_ENABLED` is `false`, static FE uses **demo OCR**.
 
-Auth is **not** required yet. When the backend enables Cognito, FE will send:
+Auth: when Cognito is configured on the FE, requests send:
 
 `Authorization: Bearer <accessToken>`
+
+(Cognito **access** token from the signed-in session — not the Google Drive token, not the ID token.)
+
+Backend OpenAPI: `/api/ocr` uses `HTTPBearer`. Production requires a valid Cognito Bearer token when Cognito is configured; local BE without Cognito may skip auth.
 
 ## Env
 
