@@ -6,9 +6,12 @@ import { StaggerItem, StaggerReveal } from "@/components/motion/stagger-reveal";
 import { SurveyPageSkeleton } from "@/components/layout/content-skeleton";
 import {
   ArrowRight, CheckCircle2, Download,
-  ExternalLink, Loader2, Maximize2, Minimize2, ScanLine, Sparkles, Square,
+  ExternalLink, Loader2, Maximize2, Minimize2, ScanLine, Sparkles,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { SurveyProvider, useSurvey } from "@/contexts/survey-context";
+import { useNavigation } from "@/contexts/navigation-context";
+import { versionedAppRoute } from "@/lib/route-version";
 import { StepIndicator } from "@/components/workflow/step-indicator";
 import { FileUploadZone } from "@/components/upload/file-upload-zone";
 import { ReviewTable } from "@/components/review/review-table";
@@ -42,7 +45,7 @@ import { cn, formatCurrencyUsd, formatDuration } from "@/lib/utils";
 
 function SurveyWorkflow() {
   const {
-    step, files, quality, prompt, ocrResult, rows, exportUrl, error,
+    step, files, quality, prompt, ocrResult, rows, exportUrl, error, hydrated,
     setStep, setFiles, setQuality, setOcrResult, setRows, setExportUrl, setError, reset,
   } = useSurvey();
   const [processing, setProcessing] = useState(false);
@@ -72,6 +75,8 @@ function SurveyWorkflow() {
   });
   const exportLock = useRef(false);
   const reviewSectionRef = useRef<HTMLDivElement | null>(null);
+  const router = useRouter();
+  const { startNavigation } = useNavigation();
   const { setCollapsedOverride } = useSidebarCollapsed();
   const compactTop = step === "review" || step === "export" || step === "complete";
   const uploadedImageByName = useMemo(() => {
@@ -130,6 +135,26 @@ function SurveyWorkflow() {
     return () => setCollapsedOverride(null);
   }, [setCollapsedOverride]);
 
+  useEffect(() => {
+    const shell = document.querySelector(".workspace-shell");
+    if (!shell) return;
+    if (reviewFocusMode) shell.setAttribute("data-table-focus", "on");
+    else shell.removeAttribute("data-table-focus");
+    return () => shell.removeAttribute("data-table-focus");
+  }, [reviewFocusMode]);
+
+  useEffect(() => {
+    if (!reviewFocusMode) return;
+    const prevHtml = document.documentElement.style.overflow;
+    const prevBody = document.body.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.documentElement.style.overflow = prevHtml;
+      document.body.style.overflow = prevBody;
+    };
+  }, [reviewFocusMode]);
+
   const setFocusMode = useCallback(
     (on: boolean) => {
       if (on) {
@@ -156,8 +181,9 @@ function SurveyWorkflow() {
       googleAccountEmail: destination.googleAccountEmail,
       isValid: false,
     });
-    setStep("upload");
-  }, [destination.googleAccountEmail, reset, setFocusMode, setStep]);
+    startNavigation("/dashboard/");
+    router.push(versionedAppRoute("/dashboard/"));
+  }, [destination.googleAccountEmail, reset, router, setFocusMode, startNavigation]);
   const runOcr = useCallback(async () => {
     if (!files.length) return;
     setProcessing(true);
@@ -278,6 +304,10 @@ function SurveyWorkflow() {
     }
   }, [rows, destination, files, setStep, setError, setExportUrl]);
 
+  if (!hydrated) {
+    return <SurveyPageSkeleton />;
+  }
+
   const stepContent = (
     <>
       {step === "upload" && (
@@ -312,42 +342,44 @@ function SurveyWorkflow() {
       )}
 
       {step === "review" && ocrResult && (
-        <StepPanel className="space-y-3">
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            {[
-              {
-                label: copy.survey.usage.duration,
-                value: formatDuration(ocrResult.usage.elapsedMs),
-                tone: "border-sky-300/70 bg-sky-50/60 text-sky-800",
-              },
-              {
-                label: copy.survey.usage.tokens,
-                value: ocrResult.usage.totalTokens.toLocaleString("ja-JP"),
-                tone: "border-violet-300/70 bg-violet-50/60 text-violet-800",
-              },
-              {
-                label: copy.survey.usage.cost,
-                value: formatCurrencyUsd(ocrResult.usage.costUsd),
-                tone: "border-amber-300/70 bg-amber-50/60 text-amber-800",
-              },
-            ].map((stat) => (
-              <span
-                key={stat.label}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs leading-tight",
-                  stat.tone
-                )}
-              >
-                <span className="font-medium opacity-80">{stat.label}:</span>
-                <span className="font-semibold tabular-nums">{stat.value}</span>
-              </span>
-            ))}
-          </div>
+        <StepPanel className={cn("space-y-3", reviewFocusMode && "review-focus-panel space-y-0")}>
+          {!reviewFocusMode && (
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {[
+                {
+                  label: copy.survey.usage.duration,
+                  value: formatDuration(ocrResult.usage.elapsedMs),
+                  tone: "border-sky-300/70 bg-sky-50/60 text-sky-800",
+                },
+                {
+                  label: copy.survey.usage.tokens,
+                  value: ocrResult.usage.totalTokens.toLocaleString("ja-JP"),
+                  tone: "border-violet-300/70 bg-violet-50/60 text-violet-800",
+                },
+                {
+                  label: copy.survey.usage.cost,
+                  value: formatCurrencyUsd(ocrResult.usage.costUsd),
+                  tone: "border-amber-300/70 bg-amber-50/60 text-amber-800",
+                },
+              ].map((stat) => (
+                <span
+                  key={stat.label}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs leading-tight",
+                    stat.tone
+                  )}
+                >
+                  <span className="font-medium opacity-80">{stat.label}:</span>
+                  <span className="font-semibold tabular-nums">{stat.value}</span>
+                </span>
+              ))}
+            </div>
+          )}
           {!reviewFocusMode && (
             <DriveDestinationPanel value={destination} onChange={setDestination} />
           )}
 
-          <div className="ui-card">
+          <div className={cn("ui-card", reviewFocusMode && "review-focus-card")}>
             <div className="ui-card-header">
               <p className="text-base font-medium">{copy.survey.reviewTitle}</p>
               <div className="flex items-center gap-2">
@@ -366,8 +398,12 @@ function SurveyWorkflow() {
               </div>
             </div>
             <div className="ui-card-body pt-3">
-              <Tabs value={reviewTab} onValueChange={(v) => handleReviewTabChange(v as "table" | "raw")}>
-                <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <Tabs
+                value={reviewTab}
+                onValueChange={(v) => handleReviewTabChange(v as "table" | "raw")}
+                className={cn(reviewFocusMode && "review-focus-tabs")}
+              >
+                <div className="review-focus-toolbar mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <TabsList>
                     <TabsTrigger value="table">{copy.survey.tabTable}</TabsTrigger>
                     <TabsTrigger value="raw">{copy.survey.tabRaw}</TabsTrigger>
@@ -381,17 +417,23 @@ function SurveyWorkflow() {
                     />
                   )}
                 </div>
-                <TabsContent value="table" className="mt-0">
+                <TabsContent value="table" className="mt-0 flex min-h-0 flex-1 flex-col">
                   <ReviewTable
                     rows={rows}
                     onRowsChange={setRows}
                     query={tableQuery}
+                    expanded={reviewFocusMode}
                   />
                 </TabsContent>
-                <TabsContent value="raw" className="mt-0">
-                  <p className="mb-2 text-xs text-muted-foreground">{copy.survey.rawHint}</p>
+                <TabsContent value="raw" className="mt-0 flex min-h-0 flex-1 flex-col">
+                  <p className="mb-2 shrink-0 text-xs text-muted-foreground">{copy.survey.rawHint}</p>
                   {rawPreview ? (
-                    <div className="max-h-72 overflow-auto rounded-lg border border-border bg-muted/20">
+                    <div
+                      className={cn(
+                        "overflow-auto rounded-lg border border-border bg-muted/20",
+                        reviewFocusMode ? "review-raw-scroll" : "max-h-72"
+                      )}
+                    >
                       <table className="min-w-full border-collapse text-xs">
                         <thead>
                           <tr className="border-b border-border bg-muted/40">
@@ -422,15 +464,21 @@ function SurveyWorkflow() {
                       </table>
                     </div>
                   ) : (
-                    <pre className="rounded-lg border border-border bg-muted/20 p-3.5 text-xs font-mono text-muted-foreground overflow-x-auto whitespace-pre-wrap max-h-72">{ocrResult.rawText}</pre>
+                    <pre
+                      className={cn(
+                        "rounded-lg border border-border bg-muted/20 p-3.5 text-xs font-mono text-muted-foreground overflow-x-auto whitespace-pre-wrap",
+                        reviewFocusMode ? "review-raw-scroll" : "max-h-72"
+                      )}
+                    >
+                      {ocrResult.rawText}
+                    </pre>
                   )}
                 </TabsContent>
               </Tabs>
             </div>
           </div>
-          <div className="flex justify-between pt-1">
-            <Button variant="outline" size="sm" onClick={() => setAbortOpen(true)}>
-              <Square className="h-3.5 w-3.5" />
+          <div className={cn("flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:items-center sm:justify-between", reviewFocusMode && "review-focus-actions")}>
+            <Button className="w-full sm:w-auto" variant="outline" size="sm" onClick={() => setAbortOpen(true)}>
               {copy.survey.abort}
             </Button>
             <Button
@@ -441,6 +489,7 @@ function SurveyWorkflow() {
                 (isGoogleClientConfigured() && !destination.isValid)
               }
               size="lg"
+              className="w-full sm:w-auto"
             >
               {exporting ? (
                 <><Loader2 className="h-4 w-4 animate-spin" />{copy.survey.exporting}</>
@@ -465,11 +514,11 @@ function SurveyWorkflow() {
               <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
                 {copy.survey.abortBody}
               </p>
-              <div className="mt-6 flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setAbortOpen(false)}>
+              <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button className="w-full sm:w-auto" type="button" variant="outline" onClick={() => setAbortOpen(false)}>
                   {copy.survey.abortCancel}
                 </Button>
-                <Button type="button" variant="destructive" onClick={abortSurvey}>
+                <Button className="w-full sm:w-auto" type="button" variant="destructive" onClick={abortSurvey}>
                   {copy.survey.abortConfirm}
                 </Button>
               </div>
@@ -491,39 +540,46 @@ function SurveyWorkflow() {
 
       {step === "complete" && (
         <StepPanel className="ui-card">
-          <div className="ui-card-body flex flex-col items-center gap-4 py-16 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-lumen/10">
-              <CheckCircle2 className="h-8 w-8 text-lumen" />
+          <div className="ui-card-body flex flex-col items-center gap-4 px-4 py-9 text-center sm:px-6 sm:py-12 lg:py-16">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-lumen/10 sm:h-14 sm:w-14">
+              <CheckCircle2 className="h-7 w-7 text-lumen sm:h-8 sm:w-8" />
             </div>
-            <div>
-              <p className="font-display text-lg font-semibold">{copy.survey.completeTitle}</p>
-              <p className="text-sm text-muted-foreground mt-1.5">
+            <div className="min-w-0">
+              <p className="font-display text-lg font-semibold leading-snug">{copy.survey.completeTitle}</p>
+              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
                 {csvExport ? copy.survey.completeBodyCsv(rows.length) : copy.survey.completeBody(rows.length)}
               </p>
             </div>
-            <div className="flex gap-2 pt-2">
+            <div className="flex w-full max-w-sm flex-col gap-2 pt-2 sm:w-auto sm:max-w-none sm:flex-row sm:flex-wrap sm:justify-center">
               {csvExport ? (
-                <Button onClick={() => triggerCsvDownload(rows, exportTitle || "現調")}>
+                <Button
+                  className="w-full sm:w-auto"
+                  onClick={() => triggerCsvDownload(rows, exportTitle || "現調")}
+                >
                   <Download className="h-4 w-4" />{copy.survey.downloadCsv}
                 </Button>
               ) : exportUrl ? (
-                <Button asChild>
+                <Button asChild className="w-full sm:w-auto">
                   <a href={exportUrl} target="_blank" rel="noopener noreferrer">
                     <ExternalLink className="h-4 w-4" />{copy.survey.openSheet}
                   </a>
                 </Button>
               ) : null}
-              <Button variant="outline" onClick={() => {
-                reset();
-                setCsvExport(false);
-                setDestination({
-                  rootFolderName: "",
-                  projectName: "",
-                  googleAccountEmail: destination.googleAccountEmail,
-                  isValid: false,
-                });
-                setStep("upload");
-              }}>
+              <Button
+                className="w-full sm:w-auto"
+                variant="outline"
+                onClick={() => {
+                  reset();
+                  setCsvExport(false);
+                  setDestination({
+                    rootFolderName: "",
+                    projectName: "",
+                    googleAccountEmail: destination.googleAccountEmail,
+                    isValid: false,
+                  });
+                  setStep("upload");
+                }}
+              >
                 {copy.survey.newSurvey}
               </Button>
             </div>
@@ -534,34 +590,39 @@ function SurveyWorkflow() {
   );
 
   return (
-    <StaggerReveal placeholder={<SurveyPageSkeleton />}>
-      <StaggerItem>
-        <div className={cn("flex items-start gap-4", compactTop && "gap-3")}>
-          <div
-            className={cn(
-              "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent/80 text-lumen shadow-sm",
-              compactTop && "h-9 w-9 rounded-lg"
-            )}
-          >
-            <Sparkles className="h-5 w-5" />
-          </div>
-          <div>
-            <h1 className={cn("text-title text-xl sm:text-2xl", compactTop && "text-lg sm:text-xl")}>
-              {copy.survey.title}
-            </h1>
-            <p
+    <StaggerReveal
+      placeholder={<SurveyPageSkeleton />}
+      className={cn(reviewFocusMode && "h-full min-h-0 gap-0")}
+    >
+      {!reviewFocusMode && (
+        <StaggerItem>
+          <div className={cn("flex items-start gap-4", compactTop && "gap-3")}>
+            <div
               className={cn(
-                "text-muted-foreground leading-snug",
-                compactTop ? "mt-0.5 text-xs" : "mt-1.5 text-sm leading-relaxed"
+                "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent/80 text-lumen shadow-sm",
+                compactTop && "h-9 w-9 rounded-lg"
               )}
             >
-              {copy.survey.subtitle}
-            </p>
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div>
+              <h1 className={cn("text-title text-xl sm:text-2xl", compactTop && "text-lg sm:text-xl")}>
+                {copy.survey.title}
+              </h1>
+              <p
+                className={cn(
+                  "text-muted-foreground leading-snug",
+                  compactTop ? "mt-0.5 text-xs" : "mt-1.5 text-sm leading-relaxed"
+                )}
+              >
+                {copy.survey.subtitle}
+              </p>
+            </div>
           </div>
-        </div>
-      </StaggerItem>
+        </StaggerItem>
+      )}
 
-      {!compactTop && (
+      {!compactTop && !reviewFocusMode && (
         <StaggerItem>
           <div className="copper-rule" />
         </StaggerItem>
@@ -581,7 +642,14 @@ function SurveyWorkflow() {
         </StaggerItem>
       )}
 
-      <StaggerItem className={cn(compactTop && "-mt-2")}>{stepContent}</StaggerItem>
+      <StaggerItem
+        className={cn(
+          compactTop && !reviewFocusMode && "-mt-2",
+          reviewFocusMode && "min-h-0 flex-1"
+        )}
+      >
+        {stepContent}
+      </StaggerItem>
     </StaggerReveal>
   );
 }

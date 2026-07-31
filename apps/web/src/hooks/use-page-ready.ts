@@ -16,6 +16,7 @@ export function usePageReady(): boolean {
   const pathRef = useRef(pathname);
 
   useEffect(() => {
+    if (pathRef.current === pathname) return;
     pathRef.current = pathname;
     setReady(false);
   }, [pathname]);

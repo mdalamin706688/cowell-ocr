@@ -251,6 +251,139 @@
     transition: padding-left 280ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
+  /* Survey review maximize: fit viewport — only the table body scrolls */
+  .workspace-shell[data-table-focus="on"] {
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+  }
+  .workspace-shell[data-table-focus="on"] .shell-main {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+  }
+  @media (max-width: 1023px) {
+    .workspace-shell[data-table-focus="on"] .shell-main {
+      height: calc(100dvh - 3.5rem);
+      max-height: calc(100dvh - 3.5rem);
+    }
+  }
+  .workspace-shell[data-table-focus="on"] .shell-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-width: none;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0.7rem 1.75rem 0.5rem;
+  }
+  @media (min-width: 640px) {
+    .workspace-shell[data-table-focus="on"] .shell-content {
+      padding: 0.85rem 2.5rem 0.625rem;
+    }
+  }
+  @media (min-width: 1024px) {
+    .workspace-shell[data-table-focus="on"] .shell-content {
+      padding: 1rem 3rem 0.75rem;
+    }
+  }
+  .workspace-shell[data-table-focus="on"] .shell-content > * {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0 !important;
+  }
+  .workspace-shell[data-table-focus="on"] .shell-content .page-enter-item {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .workspace-shell[data-table-focus="on"] .review-focus-panel {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .workspace-shell[data-table-focus="on"] .review-focus-card {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .workspace-shell[data-table-focus="on"] .ui-card-header {
+    flex-shrink: 0;
+    padding: 0.625rem 1.5rem;
+  }
+  .workspace-shell[data-table-focus="on"] .ui-card-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0.625rem 1.5rem 0.875rem;
+  }
+  @media (min-width: 640px) {
+    .workspace-shell[data-table-focus="on"] .ui-card-header {
+      padding: 0.75rem 1.75rem;
+    }
+    .workspace-shell[data-table-focus="on"] .ui-card-body {
+      padding: 0.75rem 1.75rem 1rem;
+    }
+  }
+  .workspace-shell[data-table-focus="on"] .review-focus-tabs {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .workspace-shell[data-table-focus="on"] .review-focus-toolbar {
+    flex-shrink: 0;
+  }
+  .workspace-shell[data-table-focus="on"] .review-focus-tabs [role="tabpanel"] {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    margin-top: 0;
+    overflow: hidden;
+  }
+  .workspace-shell[data-table-focus="on"] .review-focus-actions {
+    flex-shrink: 0;
+  }
+  .workspace-shell[data-table-focus="on"] .review-table-root {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .workspace-shell[data-table-focus="on"] .review-table-frame {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .workspace-shell[data-table-focus="on"] .review-table-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    max-height: none !important;
+  }
+  .workspace-shell[data-table-focus="on"] .review-raw-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    max-height: none !important;
+  }
+
   @media (min-width: 1024px) {
     .shell-main {
       padding-left: 300px;
@@ -423,7 +556,7 @@
 
   /* ── Upload ── */
   .ui-upload {
-    @apply relative rounded-xl border border-dashed border-border/90 bg-muted/20 p-12 text-center;
+    @apply relative rounded-xl border border-dashed border-border/90 bg-muted/20 p-8 text-center sm:p-12;
     @apply transition-all duration-200 hover:border-lumen/40 hover:bg-accent/25;
   }
 

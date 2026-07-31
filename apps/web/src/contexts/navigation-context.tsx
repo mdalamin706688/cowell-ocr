@@ -42,6 +42,22 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   const startedAt = useRef(0);
   const prevPath = useRef(pathname);
+  const navigatingRef = useRef(false);
+  const timersRef = useRef<number[]>([]);
+
+  const clearTimers = useCallback(() => {
+    for (const timer of timersRef.current) window.clearTimeout(timer);
+    timersRef.current = [];
+  }, []);
+
+  const finishNavigation = useCallback(() => {
+    clearTimers();
+    navigatingRef.current = false;
+    setIsNavigating(false);
+    setProgress(0);
+    setPendingHref(null);
+    startedAt.current = 0;
+  }, [clearTimers]);
 
   const startNavigation = useCallback(
     (targetHref?: string) => {
@@ -50,17 +66,25 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
         setPendingHref(targetHref);
         setDirection(routeIndex(targetHref) >= routeIndex(pathname) ? 1 : -1);
       }
+      clearTimers();
       startedAt.current = Date.now();
+      navigatingRef.current = true;
       setIsNavigating(true);
       setProgress(12);
       requestAnimationFrame(() => setProgress(58));
+
+      // Router failures must never strand all page content behind a skeleton.
+      timersRef.current = [
+        window.setTimeout(finishNavigation, 5_000),
+      ];
     },
-    [pathname]
+    [clearTimers, finishNavigation, pathname]
   );
 
   useEffect(() => {
     if (prevPath.current === pathname) return;
 
+    clearTimers();
     const from = routeIndex(prevPath.current);
     const to = routeIndex(pathname);
     setDirection(to >= from ? 1 : -1);
@@ -73,7 +97,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       // ignore
     }
 
-    if (!isNavigating) {
+    if (!navigatingRef.current) {
+      navigatingRef.current = true;
       setIsNavigating(true);
       setProgress(58);
     }
@@ -86,17 +111,13 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     }, remaining);
 
     const hideTimer = window.setTimeout(() => {
-      setIsNavigating(false);
-      setProgress(0);
-      setPendingHref(null);
-      startedAt.current = 0;
+      finishNavigation();
     }, remaining + 280);
 
-    return () => {
-      window.clearTimeout(finishTimer);
-      window.clearTimeout(hideTimer);
-    };
-  }, [pathname, isNavigating]);
+    timersRef.current = [finishTimer, hideTimer];
+  }, [clearTimers, finishNavigation, pathname]);
+
+  useEffect(() => () => clearTimers(), [clearTimers]);
 
   return (
     <NavigationContext.Provider

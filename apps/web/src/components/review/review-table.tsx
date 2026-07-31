@@ -23,6 +23,8 @@ interface ReviewTableProps {
   rows: OcrRow[];
   onRowsChange: (rows: OcrRow[]) => void;
   query: string;
+  /** Taller scroll area when review focus/maximize is on */
+  expanded?: boolean;
 }
 
 const TEXT_FIELDS = [
@@ -46,7 +48,7 @@ function rowDisplayName(row: OcrRow, rowNumber: number): string {
   return copy.table.rowFallback(rowNumber);
 }
 
-export function ReviewTable({ rows, onRowsChange, query }: ReviewTableProps) {
+export function ReviewTable({ rows, onRowsChange, query, expanded = false }: ReviewTableProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
   const [uploadingRowId, setUploadingRowId] = useState<string | null>(null);
@@ -150,9 +152,19 @@ export function ReviewTable({ rows, onRowsChange, query }: ReviewTableProps) {
         onChange={(e) => void handlePhotoSelected(e.target.files?.[0])}
       />
 
-      <div className="space-y-3">
-        <div className="rounded-lg border border-border/80 overflow-hidden bg-card">
-          <div className="max-h-[min(28rem,60vh)] overflow-auto">
+      <div className={cn(expanded ? "review-table-root" : "space-y-3")}>
+        <div
+          className={cn(
+            "rounded-lg border border-border/80 overflow-hidden bg-card",
+            expanded && "review-table-frame"
+          )}
+        >
+          <div
+            className={cn(
+              "overflow-auto",
+              expanded ? "review-table-scroll" : "max-h-[min(28rem,60vh)]"
+            )}
+          >
             <table className="w-full text-sm">
               <thead className="bg-muted/80 sticky top-0 z-10 backdrop-blur-sm">
                 <tr className="border-b border-border">
@@ -291,7 +303,7 @@ export function ReviewTable({ rows, onRowsChange, query }: ReviewTableProps) {
             </table>
           </div>
 
-          <div className="border-t border-border px-4 py-2.5">
+          <div className="shrink-0 border-t border-border px-4 py-2.5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex min-h-8 flex-wrap items-center gap-2 text-xs text-muted-foreground">
                 <span className="text-xs leading-none text-muted-foreground">

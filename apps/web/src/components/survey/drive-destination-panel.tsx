@@ -771,9 +771,9 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
                 </div>
               </div>
 
-              <p className="text-xs text-muted-foreground font-mono flex items-center gap-1.5">
+              <p className="flex min-w-0 items-start gap-1.5 text-xs text-muted-foreground font-mono">
                 <FolderOpen className="h-3.5 w-3.5 shrink-0" />
-                {pathPreview}
+                <span className="min-w-0 break-all">{pathPreview}</span>
               </p>
             </>
           ) : (

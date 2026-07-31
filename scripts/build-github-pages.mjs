@@ -92,6 +92,8 @@ export default function HomePage() {
         "https://4gzkbzzubqjzwcx7mf3xcjpb7i0rdssf.lambda-url.ap-northeast-1.on.aws",
       NEXT_PUBLIC_OCR_API_ENABLED:
         process.env.NEXT_PUBLIC_OCR_API_ENABLED === "false" ? "false" : "true",
+      NEXT_PUBLIC_APP_BUILD_ID:
+        process.env.GITHUB_SHA ?? process.env.NEXT_PUBLIC_APP_BUILD_ID ?? "local",
     },
   });
 

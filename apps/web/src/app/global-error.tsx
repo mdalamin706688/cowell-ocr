@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { versionedAppRoute } from "@/lib/route-version";
 
 /** Root fallback — soft recover without trapping on 表示エラー. */
 export default function GlobalError({
@@ -60,7 +61,13 @@ export default function GlobalError({
             一時的な問題が発生しました。ホームに戻ってください。
           </p>
           <div style={{ marginTop: "1.5rem" }}>
-            <button type="button" onClick={() => window.location.assign("/dashboard/")}>
+            <button
+              type="button"
+              onClick={() => {
+                const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+                window.location.assign(versionedAppRoute(`${basePath}/dashboard/`));
+              }}
+            >
               ホームへ
             </button>
           </div>

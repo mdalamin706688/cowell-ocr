@@ -10,26 +10,50 @@ import {
   isDomMutationErrorEvent,
 } from "@/lib/dom-mutation-error";
 
+const CHUNK_RELOAD_KEY = "cowell_chunk_reload_path";
+
+function recoverInitialChunkLoad(): void {
+  try {
+    const path = window.location.href;
+    if (sessionStorage.getItem(CHUNK_RELOAD_KEY) === path) return;
+    sessionStorage.setItem(CHUNK_RELOAD_KEY, path);
+    window.location.reload();
+  } catch {
+    // Storage can be blocked; leave the global error boundary available.
+  }
+}
+
 /**
- * Swallow translate / chunk races. Never hard-reload — remounts shell on CloudFront.
+ * Ignore browser-translation DOM races. A missing/stale chunk on a static host
+ * gets one controlled reload so server-rendered skeleton HTML cannot persist.
  */
 function DomMutationErrorGuard() {
   useEffect(() => {
     const handleError = (event: ErrorEvent) => {
       const msg = event.message ?? "";
       const name = (event.error as Error | null)?.name ?? "";
+      const chunkError =
+        isChunkLoadError(event.error) || isChunkLoadError({ name, message: msg });
+      if (chunkError) {
+        event.preventDefault();
+        recoverInitialChunkLoad();
+        return;
+      }
       if (
         isDomMutationErrorEvent(msg, name) ||
-        isDomMutationError(event.error) ||
-        isChunkLoadError(event.error) ||
-        isChunkLoadError({ name, message: msg })
+        isDomMutationError(event.error)
       ) {
         event.preventDefault();
       }
     };
 
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      if (isDomMutationError(event.reason) || isChunkLoadError(event.reason)) {
+      if (isChunkLoadError(event.reason)) {
+        event.preventDefault();
+        recoverInitialChunkLoad();
+        return;
+      }
+      if (isDomMutationError(event.reason)) {
         event.preventDefault();
       }
     };
@@ -53,6 +77,10 @@ export function AppProviders({ children }: { children: ReactNode }) {
         window.history.scrollRestoration = "manual";
       }
       sessionStorage.removeItem("cowell_soft_error_resets");
+      const clearChunkDebt = window.setTimeout(() => {
+        sessionStorage.removeItem(CHUNK_RELOAD_KEY);
+      }, 10_000);
+      return () => window.clearTimeout(clearChunkDebt);
     } catch {
       // ignore
     }

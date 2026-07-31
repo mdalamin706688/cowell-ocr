@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { ShellSkeleton } from "@/components/layout/shell-skeleton";
 import { WorkspaceSessionProvider } from "@/contexts/workspace-session";
-import { getCognitoSessionUser } from "@/lib/cognito-auth";
+import { getCognitoSessionUser, peekCognitoSessionUser } from "@/lib/cognito-auth";
 import { isCognitoConfigured } from "@/lib/cognito-config";
 import {
   clearClientSession,
@@ -44,12 +44,12 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
   const [user, setUser] = useState<SessionUser | null>(null);
 
   useLayoutEffect(() => {
-    const cached = getShellSessionUser();
+    const cached = getShellSessionUser() ?? (cognito ? peekCognitoSessionUser() : null);
     if (!cached) return;
     setShellSessionUser(cached);
     lastUser.current = cached;
     setUser(cached);
-  }, []);
+  }, [cognito]);
 
   useEffect(() => {
     prefetchWorkspaceRoutes(router);
@@ -65,7 +65,7 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
     let cancelled = false;
 
     async function loadSession() {
-      const cached = peekClientSession();
+      const cached = peekClientSession() ?? (cognito ? peekCognitoSessionUser() : null);
       if (cached && !cancelled) {
         setShellSessionUser(cached);
         lastUser.current = cached;
@@ -132,6 +132,19 @@ export function AuthenticatedShell({ children }: AuthenticatedShellProps) {
       cancelled = true;
     };
   }, [cognito, preview, router]);
+
+  // Never leave a direct static-host visit on an indefinite skeleton. A valid
+  // cookie or stored Cognito ID token paints synchronously above; if neither
+  // produces a user, continue to login after a bounded bootstrap window.
+  useEffect(() => {
+    if (user ?? lastUser.current) return;
+    const timeout = window.setTimeout(() => {
+      if (!lastUser.current) {
+        router.replace(versionedAppRoute("/login/"));
+      }
+    }, 8_000);
+    return () => window.clearTimeout(timeout);
+  }, [router, user]);
 
   // Once locked, keep painting the live shell even if React state flickers.
   const sessionUser = user ?? lastUser.current;

@@ -122,6 +122,23 @@ function userFromIdToken(idToken: string): SessionUser {
   };
 }
 
+/**
+ * Synchronous startup identity for static hosts.
+ *
+ * A fresh tab can read localStorage immediately, while a refresh-token network
+ * request may be slow or temporarily unavailable. This is only used to paint
+ * the authenticated shell; API calls still obtain/refresh the access token.
+ */
+export function peekCognitoSessionUser(): SessionUser | null {
+  const tokens = readCognitoTokens();
+  if (!tokens?.idToken) return null;
+  try {
+    return userFromIdToken(tokens.idToken);
+  } catch {
+    return null;
+  }
+}
+
 function persistTokens(result: CognitoAuthResult, previousRefresh?: string): CognitoTokens {
   const refreshToken = result.RefreshToken || previousRefresh || "";
   const tokens: CognitoTokens = {

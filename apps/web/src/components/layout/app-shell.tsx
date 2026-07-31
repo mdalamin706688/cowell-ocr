@@ -188,14 +188,31 @@ export function AppShell({ children, user }: AppShellProps) {
         </div>
       </aside>
 
-      <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border/60 bg-card/90 px-4 backdrop-blur-md shadow-sm lg:hidden">
-        <SoftNavButton href="/dashboard/" className="p-0">
+      <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-2 border-b border-border/60 bg-card/90 px-3 backdrop-blur-md shadow-sm sm:px-4 lg:hidden">
+        <SoftNavButton href="/dashboard/" className="min-w-0 shrink p-0">
           <Logo size="sm" />
         </SoftNavButton>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          {user && (
+            <div className="hidden max-w-[10rem] min-w-0 text-right md:block">
+              <p className="truncate text-[10px] font-medium text-foreground/85">{user.email}</p>
+              <p className="text-[10px] text-muted-foreground">{roleLabel}</p>
+            </div>
+          )}
+          <SoftNavButton
+            href="/users/"
+            title={copy.nav.users}
+            aria-label={copy.nav.users}
+            className={cn(
+              "grid h-8 w-8 shrink-0 place-items-center rounded-md border border-border/70 bg-card text-muted-foreground",
+              isNavActive(pathname, "/users/") && "border-lumen/50 bg-accent text-foreground"
+            )}
+          >
+            <UsersRound className="h-4 w-4" />
+          </SoftNavButton>
           <SoftNavButton
             href="/survey/new/"
-            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground shadow-none"
+            className="inline-flex h-8 items-center justify-center gap-1 rounded-md bg-primary px-2.5 text-xs font-medium text-primary-foreground shadow-none sm:gap-1.5 sm:px-3 sm:text-sm"
           >
             <Plus className="h-3.5 w-3.5" />
             {copy.nav.newShort}
@@ -205,7 +222,7 @@ export function AppShell({ children, user }: AppShellProps) {
       </header>
 
       <main className="shell-main" suppressHydrationWarning>
-        <div className="mx-auto max-w-6xl px-6 py-10 sm:px-8 sm:py-12">{children}</div>
+        <div className="shell-content mx-auto max-w-6xl px-4 py-7 sm:px-6 sm:py-9 lg:px-8 lg:py-12">{children}</div>
       </main>
     </div>
   );

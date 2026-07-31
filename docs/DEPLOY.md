@@ -24,12 +24,20 @@ Live URL (after deploy): `https://d1xs8fe440jh05.cloudfront.net`
 
 Push to `main` runs **Deploy AWS (S3 + CloudFront)**.
 
-> Static only (same as GitHub Pages): mock OCR demo, FE Google Sheets OAuth. No server Gemini API.
+> Static frontend: Cognito auth, remote Lambda OCR, and FE Google Sheets OAuth.
 
 ### CloudFront checklist
 
 1. **Default root object** = `index.html` (Settings → Edit)
-2. Google OAuth **Authorized JavaScript origins** add:
+2. Cache policy must forward query strings (the app uses `?v=<build-id>` for
+   route payload cache busting).
+3. HTML, `index.txt`, and other route payloads must honor the origin
+   `Cache-Control: no-cache,no-store,must-revalidate`. Only hashed
+   `/_next/static/*` assets should use immutable one-year caching.
+4. Configure custom error responses for static routes only if they preserve
+   the requested directory's `index.html`; do not rewrite missing JS chunks to
+   HTML.
+5. Google OAuth **Authorized JavaScript origins** add:
    `https://d1xs8fe440jh05.cloudfront.net`
 
 ## GitHub Pages (UI preview)

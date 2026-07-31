@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   ArrowRight,
   FileImage,
@@ -27,25 +28,31 @@ const capabilityIcons = [FileImage, ScanLine, Sheet];
 
 export function DashboardContent({ userName = "管理者", userEmail }: DashboardContentProps) {
   const displayName = formatUserDisplayName({ email: userEmail ?? "", name: userName });
-  const today = new Date().toLocaleDateString("ja-JP", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    weekday: "short",
-  });
+  const [today, setToday] = useState("");
+
+  useEffect(() => {
+    setToday(
+      new Date().toLocaleDateString("ja-JP", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        weekday: "short",
+      })
+    );
+  }, []);
 
   return (
     <StaggerReveal placeholder={<ContentSkeleton />}>
       <StaggerItem>
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-label">{today}</p>
+      <div className="flex flex-col items-stretch gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <p className="min-h-4 text-label">{today || "\u00a0"}</p>
           <h1 className="text-title mt-1 text-2xl sm:text-[1.65rem]">
             {copy.dashboard.greetingTitle}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">{copy.dashboard.greetingUser(displayName)}</p>
         </div>
-        <Button asChild size="lg" className="shadow-none">
+        <Button asChild size="lg" className="w-full shadow-none sm:w-auto">
           <TransitionLink href="/survey/new/">
             {copy.dashboard.cta}
             <ArrowRight className="h-4 w-4" />
@@ -56,7 +63,7 @@ export function DashboardContent({ userName = "管理者", userEmail }: Dashboar
 
       <StaggerItem>
       <section className="forest-hero overflow-hidden">
-        <div className="relative z-10 grid lg:grid-cols-[1fr,280px] gap-8 p-7 sm:p-9">
+        <div className="relative z-10 grid gap-8 p-5 sm:p-7 lg:grid-cols-[1fr,280px] lg:p-9">
           <div className="max-w-lg">
             <p className="text-eyebrow text-lumen-glow/90">{copy.dashboard.eyebrow}</p>
             <h2 className="text-display mt-3 text-[1.65rem] sm:text-[1.85rem] text-white leading-snug">
@@ -141,7 +148,8 @@ export function DashboardContent({ userName = "管理者", userEmail }: Dashboar
           </div>
         </div>
         <div className="ui-card">
-          <div className="ui-card-body pt-6 pb-7">
+          <div className="ui-card-body overflow-x-auto px-3 pb-6 pt-5 sm:px-6 sm:pb-7 sm:pt-6">
+            <div className="min-w-[32rem] sm:min-w-0">
             <div className="timeline-track">
               {copy.dashboard.steps.map((s, i) => {
                 const Icon = workflowIcons[i] ?? Zap;
@@ -161,6 +169,7 @@ export function DashboardContent({ userName = "管理者", userEmail }: Dashboar
                   </div>
                 );
               })}
+            </div>
             </div>
           </div>
         </div>

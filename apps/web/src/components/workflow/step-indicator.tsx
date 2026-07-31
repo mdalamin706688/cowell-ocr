@@ -24,7 +24,7 @@ export function StepIndicator({
   const idx = order.indexOf(current);
 
   return (
-    <div className={compact ? "mb-3" : "mb-8"}>
+    <div className={compact ? "mb-2 sm:mb-3" : "mb-5 sm:mb-8"}>
       <div className="timeline-track">
         {steps.map((s, i) => {
           const done = i < idx;
@@ -46,7 +46,7 @@ export function StepIndicator({
               </div>
               <span
                 className={cn(
-                  "mt-2 text-xs font-medium hidden sm:block",
+                  "mt-1.5 px-0.5 text-[9px] font-medium leading-tight sm:mt-2 sm:px-1 sm:text-xs",
                   active && "text-lumen font-semibold",
                   done && !active && "text-foreground",
                   !active && !done && "text-muted-foreground"

@@ -151,7 +151,7 @@ export function UsersPageContent() {
           </div>
         </div>
         {(adminReady || previewDemo) && (
-          <Button onClick={() => setShowAdd(true)} disabled={loading}>
+          <Button className="w-full sm:w-auto" onClick={() => setShowAdd(true)} disabled={loading}>
             <Plus className="h-4 w-4" />
             {copy.users.addUser}
           </Button>
@@ -181,10 +181,10 @@ export function UsersPageContent() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border/60 bg-muted/30 text-left text-xs text-muted-foreground">
-                <th className="px-4 py-3 font-medium">{copy.users.email}</th>
-                <th className="px-4 py-3 font-medium">{copy.users.status}</th>
+                <th className="px-3 py-3 font-medium sm:px-4">{copy.users.email}</th>
+                <th className="px-3 py-3 font-medium sm:px-4">{copy.users.status}</th>
                 <th className="px-4 py-3 font-medium hidden sm:table-cell">{copy.users.created}</th>
-                <th className="px-4 py-3 font-medium w-24">{copy.users.actions}</th>
+                <th className="w-16 px-2 py-3 font-medium sm:w-24 sm:px-4">{copy.users.actions}</th>
               </tr>
             </thead>
             <tbody>
@@ -204,14 +204,14 @@ export function UsersPageContent() {
               ) : (
                 users.map((user) => (
                   <tr key={user.username} className="border-b border-border/40 last:border-0">
-                    <td className="px-4 py-3 font-medium">{user.email}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{formatUserStatus(user.status)}</td>
+                    <td className="max-w-[11rem] break-all px-3 py-3 font-medium sm:max-w-none sm:px-4">{user.email}</td>
+                    <td className="px-3 py-3 text-xs text-muted-foreground sm:px-4 sm:text-sm">{formatUserStatus(user.status)}</td>
                     <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">
                       {user.createdAt
                         ? user.createdAt.toLocaleDateString("ja-JP")
                         : "—"}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-2 py-3 sm:px-4">
                       {canDelete && user.email !== session.email ? (
                         <Button
                           type="button"
@@ -250,7 +250,7 @@ export function UsersPageContent() {
         onClose={() => !creating && setShowAdd(false)}
         label={copy.users.addUser}
       >
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           <h2 className="text-lg font-semibold tracking-tight">{copy.users.addUser}</h2>
           <form onSubmit={(e) => void handleCreate(e)} className="mt-4 space-y-4">
           <div className="space-y-1.5">
@@ -283,11 +283,11 @@ export function UsersPageContent() {
             />
             <p className="text-xs text-muted-foreground">{copy.users.tempPasswordHint}</p>
           </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => setShowAdd(false)} disabled={creating}>
+          <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+            <Button className="w-full sm:w-auto" type="button" variant="outline" onClick={() => setShowAdd(false)} disabled={creating}>
               {copy.users.deleteCancel}
             </Button>
-            <Button type="submit" disabled={creating}>
+            <Button className="w-full sm:w-auto" type="submit" disabled={creating}>
               {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               {creating ? copy.users.creating : copy.users.createSubmit}
             </Button>
@@ -301,19 +301,19 @@ export function UsersPageContent() {
         onClose={() => !deleting && setDeleteTarget(null)}
         label={copy.users.deleteTitle}
       >
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           <h2 className="text-lg font-semibold tracking-tight">{copy.users.deleteTitle}</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             {deleteTarget ? copy.users.deleteBody(deleteTarget.email) : ""}
           </p>
-          <div className="flex justify-end gap-2 pt-6">
-          <Button type="button" variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>
+          <div className="flex flex-col-reverse gap-2 pt-6 sm:flex-row sm:justify-end">
+          <Button className="w-full sm:w-auto" type="button" variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>
             {copy.users.deleteCancel}
           </Button>
           <Button
             type="button"
             variant="destructive"
-            className={cn(deleting && "opacity-80")}
+            className={cn("w-full sm:w-auto", deleting && "opacity-80")}
             disabled={deleting}
             onClick={() => void handleDelete()}
           >

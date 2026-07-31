@@ -95,7 +95,7 @@ export function ChangePasswordCard() {
         {error && <p className="text-sm text-destructive">{error}</p>}
         {success && <p className="text-sm text-lumen">{copy.auth.changePasswordSuccess}</p>}
         <div className="flex justify-end">
-          <Button type="submit" disabled={busy}>
+          <Button className="w-full sm:w-auto" type="submit" disabled={busy}>
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             {copy.auth.changePasswordSubmit}
           </Button>
