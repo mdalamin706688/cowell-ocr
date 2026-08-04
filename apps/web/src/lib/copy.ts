@@ -1,7 +1,7 @@
 /** Production UI copy — Japanese, user-facing only */
 export const copy = {
   app: {
-    name: "Cowell OCR",
+    name: "COWELL OCR",
     tagline: "現地調査 → スプレッドシート",
     description:
       "手書きのLED調査シートをOCRで読み取り、Googleスプレッドシートへ登録します。",
@@ -34,6 +34,9 @@ export const copy = {
     forgotNewPassword: "新しいパスワード",
     forgotConfirmSubmit: "パスワードを再設定",
     forgotSent: "確認コードを送信しました。メールをご確認ください。",
+    forgotSpamHint:
+      "届かない場合は迷惑メール（スパム）フォルダもご確認ください。会社メールでは送信元ドメインの許可が必要なことがあります。",
+    forgotResetSuccess: "パスワードを再設定しました。新しいパスワードでサインインしてください。",
     backToSignIn: "ログインに戻る",
     newPassword: "新しいパスワード",
     newPasswordSubtitle: "初回ログインです。新しいパスワードを設定してください。",
@@ -43,7 +46,7 @@ export const copy = {
     heroTitle: "現地調査を、\nデジタルに。",
     heroBody:
       "手書きのLED調査シートをOCRで読み取り、Googleスプレッドシートへ。調査記録のデジタル化と、発注業務の効率化を支援します。",
-    footer: "Cowell · 現地調査デジタル化",
+    footer: "COWELL · 現地調査デジタル化",
   },
   dashboard: {
     eyebrow: "ダッシュボード",

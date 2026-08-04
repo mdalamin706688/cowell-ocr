@@ -36,7 +36,7 @@ const TEXT_FIELDS = [
   "notes",
 ] as const;
 
-const PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
+const PAGE_SIZE_OPTIONS = [20, 50, 100, 200] as const;
 
 function rowDisplayName(row: OcrRow, rowNumber: number): string {
   const product = row.existingProduct?.trim();
@@ -55,7 +55,7 @@ export function ReviewTable({ rows, onRowsChange, query, expanded = false }: Rev
   const [previewPhoto, setPreviewPhoto] = useState<{ src: string; label: string } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
   const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(20);
+  const [pageSize, setPageSize] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(100);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -389,7 +389,7 @@ export function ReviewTable({ rows, onRowsChange, query, expanded = false }: Rev
           }}
         >
           {previewPhoto ? (
-            <div className="relative rounded-xl border border-border/70 bg-card p-2 shadow-[0_12px_40px_-16px_rgba(40,28,12,0.35)] sm:p-2.5">
+            <div className="relative rounded-xl border border-border/70 bg-card p-2 shadow-[0_12px_40px_-16px_rgba(21,26,74,0.35)] sm:p-2.5">
               <img
                 src={previewPhoto.src}
                 alt={previewPhoto.label}

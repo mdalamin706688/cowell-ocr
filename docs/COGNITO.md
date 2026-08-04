@@ -93,6 +93,34 @@ Add repository secrets:
 - `NEXT_PUBLIC_COGNITO_CLIENT_ID`
 - `NEXT_PUBLIC_COGNITO_IDENTITY_POOL_ID`
 
+## Email deliverability (confirmation codes → inbox, not spam)
+
+The app calls Cognito **`ForgotPassword`**; Cognito sends the verification code email.  
+The frontend cannot change SMTP headers or sending domain — that is **User Pool + SES** configuration.
+
+### Why mail goes to spam today
+
+- User pool still on **Cognito default email** (shared Amazon sender, weak reputation)
+- No **SPF / DKIM / DMARC** on a Cowell-owned domain
+- SES still in **sandbox** (only verified recipients receive mail reliably)
+
+### Required production setup
+
+1. **Amazon SES** (`ap-northeast-1`): verify domain (e.g. `cowell.co.jp` or `mail.cowell.co.jp`), add DKIM/SPF/DMARC, exit sandbox if needed.
+2. **Cognito → Messaging → Email**: switch to **Send email with Amazon SES**, set FROM e.g. `noreply@mail.cowell.co.jp`, display name `COWELL OCR`.
+3. **Optional**: attach the **Custom message** Lambda in [`infra/cognito-custom-message/`](../infra/cognito-custom-message/) for branded Japanese subjects/bodies.
+
+Step-by-step: [`infra/cognito-custom-message/README.md`](../infra/cognito-custom-message/README.md).
+
+### App-side behaviour
+
+| Flow | Email sent? |
+|------|-------------|
+| Forgot password | Yes — Cognito code email |
+| Admin “Add user” | **No** — `MessageAction: SUPPRESS`; temp password is shown only in the admin UI |
+
+The login UI shows a **spam-folder hint** after the code is sent. That does not replace SES setup.
+
 ## Behaviour
 
 - If Cognito env is set → real email/password login (CloudFront included)

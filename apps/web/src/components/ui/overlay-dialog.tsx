@@ -76,7 +76,7 @@ export function OverlayDialog({
         aria-labelledby={labelledBy}
         className={cn(
           "relative z-10 w-full overflow-hidden rounded-2xl border border-border/70 bg-card",
-          "shadow-[0_24px_64px_-18px_rgba(40,28,12,0.35)]",
+          "shadow-[0_24px_64px_-18px_rgba(21,26,74,0.35)]",
           tone === "media" ? "max-w-[min(94vw,56rem)]" : "max-w-md",
           panelClassName
         )}

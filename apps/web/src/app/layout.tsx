@@ -18,7 +18,7 @@ const noto = Noto_Sans_JP({
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
 export const metadata: Metadata = {
-  title: "Cowell OCR — 現地調査デジタル化",
+  title: "COWELL OCR — 現地調査デジタル化",
   description: "LED現地調査シートをOCRでGoogleスプレッドシートに自動変換",
   ...(basePath
     ? { metadataBase: new URL(`https://mdalamin706688.github.io${basePath}`) }

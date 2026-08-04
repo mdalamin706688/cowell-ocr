@@ -234,7 +234,7 @@ async function resolveOcrAccessToken(): Promise<string | undefined> {
 }
 
 /**
- * Call remote Cowell OCR API with multipart upload.
+ * Call remote COWELL OCR API with multipart upload.
  * Reports real upload % then eases through reading until the response arrives.
  * Docs: https://4gzkbzzubqjzwcx7mf3xcjpb7i0rdssf.lambda-url.ap-northeast-1.on.aws/docs
  */

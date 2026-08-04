@@ -57,8 +57,8 @@ export function AppShell({ children, user }: AppShellProps) {
           <div className="shell-collapsed-only shell-rail-column absolute inset-x-0 top-4 z-10 flex flex-col gap-7">
             <SoftNavButton
               href="/dashboard/"
-              title="Cowell OCR"
-              aria-label="Cowell OCR"
+              title="COWELL OCR"
+              aria-label="COWELL OCR"
               className="shell-rail-item relative rounded-[12px] forest-panel"
             >
               <div className="absolute inset-0 rounded-[12px] ring-1 ring-lumen-glow/25 ring-inset" />

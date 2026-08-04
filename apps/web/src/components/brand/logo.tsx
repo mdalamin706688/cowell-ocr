@@ -29,14 +29,14 @@ export function Logo({ size = "md", variant = "dark", className }: LogoProps) {
       </div>
       <div>
         <p className={cn("font-display font-bold leading-none tracking-tight", s.title, isLight ? "text-white" : "text-foreground")}>
-          Cowell<span className={isLight ? "text-lumen-glow" : "text-lumen"}> OCR</span>
+          COWELL<span className={isLight ? "text-[#9EC0FA]" : "text-lumen"}> OCR</span>
         </p>
         {s.sub !== "hidden" && (
           <p
             className={cn(
-              "mt-1 font-medium tracking-wide whitespace-nowrap",
+              "mt-1.5 font-medium tracking-[0.04em] whitespace-nowrap",
               s.sub,
-              isLight ? "text-white/45" : "text-muted-foreground"
+              isLight ? "text-white/55" : "text-muted-foreground"
             )}
           >
             {copy.app.tagline}

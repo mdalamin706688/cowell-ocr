@@ -10,6 +10,7 @@ import { copy } from "@/lib/copy";
 import {
   findLiveRootFolder,
   normalizeFolderNameInput,
+  readLastRootFolder,
   syncRootFolderHistoryWithLive,
   type DriveRootFolderPref,
   writeLastRootFolder,
@@ -239,7 +240,17 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
   const reconcileSelectionWithLive = useCallback(
     (live: DriveRootFolderPref[], email: string) => {
       const current = valueRef.current;
-      const name = normalizeFolderNameInput(current.rootFolderName);
+      let name = normalizeFolderNameInput(current.rootFolderName);
+      let rootId = current.rootFolderId;
+
+      if (!name) {
+        const last = readLastRootFolder(email);
+        if (last.name) {
+          name = last.name;
+          rootId = last.id;
+        }
+      }
+
       if (!name) {
         onChange({
           ...current,
@@ -250,7 +261,7 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
         return;
       }
 
-      const match = findLiveRootFolder(live, name, current.rootFolderId);
+      const match = findLiveRootFolder(live, name, rootId);
       if (match) {
         onChange((prev) => {
           const next = {
@@ -276,6 +287,7 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
       onChange((prev) => {
         const next = {
           ...prev,
+          rootFolderName: name,
           rootFolderId: undefined,
           googleAccountEmail: email,
         };
@@ -283,7 +295,7 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
           ...next,
           isValid: computeIsValid(next, {
             options: live,
-            childrenByRootId: {},
+            childrenByRootId,
             rootsLoaded: true,
             rootsLoading: false,
             accountEmail: email,
@@ -510,10 +522,11 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
       childrenFetchSeq.current += 1;
       setChildrenByRootId({});
       setLoadingChildrenRootId(null);
+      const last = readLastRootFolder(email);
       onChange({
         projectName: project,
-        rootFolderName: "",
-        rootFolderId: undefined,
+        rootFolderName: last.name,
+        rootFolderId: last.id,
         googleAccountEmail: email,
         isValid: false,
       });

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Loader2, Plus, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { OverlayDialog } from "@/components/ui/overlay-dialog";
 import { UsersPageSkeleton } from "@/components/layout/content-skeleton";
@@ -273,9 +274,8 @@ export function UsersPageContent() {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="new-user-password">{copy.users.tempPassword}</Label>
-            <Input
+            <PasswordInput
               id="new-user-password"
-              type="password"
               minLength={8}
               value={tempPassword}
               onChange={(e) => setTempPassword(e.target.value)}

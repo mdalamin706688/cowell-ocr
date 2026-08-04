@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/brand/logo";
 import { LoginSkeleton } from "@/components/layout/content-skeleton";
@@ -49,6 +50,7 @@ export function LoginForm() {
     "signin"
   );
   const [forgotEmail, setForgotEmail] = useState("");
+  const [passwordResetSuccess, setPasswordResetSuccess] = useState(false);
   const forgotCodeRef = useRef<HTMLInputElement>(null);
   const forgotPasswordRef = useRef<HTMLInputElement>(null);
   const autoLoginAttempted = useRef(false);
@@ -161,6 +163,7 @@ export function LoginForm() {
     try {
       await cognitoForgotPassword(email);
       setForgotEmail(email);
+      setPasswordResetSuccess(false);
       setLoginMode("forgot_confirm");
     } catch (err) {
       setError(err instanceof Error ? err.message : copy.errors.loginFailed);
@@ -183,7 +186,7 @@ export function LoginForm() {
       setLoginMode("signin");
       setError(null);
       setLoggedOutMessage(false);
-      // Show success via inline message - reuse loggedOut style with success text
+      setPasswordResetSuccess(true);
       setForgotEmail("");
     } catch (err) {
       setError(err instanceof Error ? err.message : copy.errors.loginFailed);
@@ -245,23 +248,28 @@ export function LoginForm() {
     <StaggerReveal placeholder={<LoginSkeleton />}>
       <StaggerItem>
     <div className="min-h-screen flex paper-canvas">
-      <div className="hidden lg:flex lg:w-[48%] forest-hero flex-col justify-between p-10 sm:p-12">
-        <Logo size="lg" variant="light" />
-
-        <div className="relative z-10 max-w-md">
-          <p className="text-eyebrow text-lumen-glow/80">{copy.login.heroEyebrow}</p>
-          <h1 className="text-display mt-4 text-[1.85rem] text-white leading-snug">
-            {heroLines.map((line, i) => (
-              <span key={i}>{line}{i < heroLines.length - 1 && <br />}</span>
-            ))}
-          </h1>
-          <p className="mt-5 text-[15px] leading-relaxed text-white/55">
-            {copy.login.heroBody}
-          </p>
-          <div className="copper-rule mt-8" />
+      <div className="login-hero hidden lg:flex lg:w-[48%] p-10 sm:p-12 lg:p-14">
+        <div className="relative z-10">
+          <Logo size="lg" variant="light" />
         </div>
 
-        <p className="relative z-10 text-xs text-white/25 tracking-wide">
+        <div className="relative z-10 max-w-md">
+          <p className="login-hero-eyebrow">{copy.login.heroEyebrow}</p>
+          <h1 className="login-hero-title">
+            {heroLines.map((line, i) => (
+              <span key={i}>
+                {line}
+                {i < heroLines.length - 1 && <br />}
+              </span>
+            ))}
+          </h1>
+          <p className="login-hero-body">
+            {copy.login.heroBody}
+          </p>
+          <div className="login-hero-rule mt-9" />
+        </div>
+
+        <p className="login-hero-footer">
           {copy.login.footer}
         </p>
       </div>
@@ -278,7 +286,13 @@ export function LoginForm() {
               {formSubtitle}
             </p>
 
-            {loggedOutMessage && loginMode === "signin" && !newPasswordChallenge && (
+            {passwordResetSuccess && loginMode === "signin" && !newPasswordChallenge && (
+              <p className="mt-4 rounded-lg border border-lumen/25 bg-accent/60 px-3 py-2 text-sm text-foreground">
+                {copy.login.forgotResetSuccess}
+              </p>
+            )}
+
+            {loggedOutMessage && loginMode === "signin" && !newPasswordChallenge && !passwordResetSuccess && (
               <p className="mt-4 rounded-lg border border-lumen/20 bg-accent/50 px-3 py-2 text-sm text-muted-foreground">
                 {copy.login.loggedOut}
               </p>
@@ -301,10 +315,9 @@ export function LoginForm() {
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="password" className="text-label">{copy.login.password}</Label>
-                    <Input
+                    <PasswordInput
                       ref={passwordRef}
                       id="password"
-                      type="password"
                       name="password"
                       defaultValue={prefilled ? getDemoPassword() : ""}
                       required={!previewDemo}
@@ -343,6 +356,12 @@ export function LoginForm() {
 
               {!newPasswordChallenge && loginMode === "forgot_confirm" && (
                 <>
+                  <p className="rounded-lg border border-lumen/20 bg-accent/50 px-3 py-2 text-sm text-muted-foreground">
+                    {copy.login.forgotSent}
+                  </p>
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    {copy.login.forgotSpamHint}
+                  </p>
                   <div className="space-y-1.5">
                     <Label htmlFor="forgot-code" className="text-label">{copy.login.forgotCode}</Label>
                     <Input
@@ -357,10 +376,9 @@ export function LoginForm() {
                     <Label htmlFor="forgot-new-password" className="text-label">
                       {copy.login.forgotNewPassword}
                     </Label>
-                    <Input
+                    <PasswordInput
                       ref={forgotPasswordRef}
                       id="forgot-new-password"
-                      type="password"
                       minLength={8}
                       autoComplete="new-password"
                       required
@@ -373,10 +391,9 @@ export function LoginForm() {
               {newPasswordChallenge && (
                 <div className="space-y-1.5">
                   <Label htmlFor="newPassword" className="text-label">{copy.login.newPassword}</Label>
-                  <Input
+                  <PasswordInput
                     ref={newPasswordRef}
                     id="newPassword"
-                    type="password"
                     name="newPassword"
                     required
                     autoComplete="new-password"

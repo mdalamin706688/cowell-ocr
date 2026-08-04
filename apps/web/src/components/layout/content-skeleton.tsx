@@ -158,15 +158,15 @@ export function isLoginRoute(path: string): boolean {
 export function LoginSkeleton() {
   return (
     <div className="flex min-h-screen paper-canvas" aria-busy="true" aria-label="Loading login">
-      <div className="hidden w-[48%] flex-col justify-between p-10 sm:p-12 lg:flex">
-        <SkeletonBlock className="h-10 w-36" />
-        <div className="max-w-md space-y-4">
-          <SkeletonBlock className="h-3 w-24 rounded-md" />
-          <SkeletonBlock className="h-8 w-64" />
-          <SkeletonBlock className="h-8 w-56" />
-          <SkeletonBlock className="h-14 w-full" />
+      <div className="login-hero hidden w-[48%] flex-col justify-between p-10 sm:p-12 lg:flex lg:p-14">
+        <SkeletonBlock className="relative z-10 h-10 w-44 rounded-lg bg-white/10" />
+        <div className="relative z-10 max-w-[26rem] space-y-4">
+          <SkeletonBlock className="h-3 w-28 rounded-md bg-white/15" />
+          <SkeletonBlock className="h-9 w-72 max-w-full rounded-md bg-white/15" />
+          <SkeletonBlock className="h-9 w-56 max-w-full rounded-md bg-white/12" />
+          <SkeletonBlock className="h-16 w-full rounded-md bg-white/10" />
         </div>
-        <SkeletonBlock className="h-3 w-32 rounded-md" />
+        <SkeletonBlock className="relative z-10 h-3 w-40 rounded-md bg-white/10" />
       </div>
 
       <div className="flex flex-1 flex-col items-center justify-center px-6 py-12">

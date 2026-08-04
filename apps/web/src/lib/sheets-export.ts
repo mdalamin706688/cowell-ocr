@@ -1330,7 +1330,7 @@ async function touchSpreadsheetFile(
       method: "PATCH",
       headers: authHeaders(accessToken),
       body: JSON.stringify({
-        description: "Cowell OCR",
+        description: "COWELL OCR",
       }),
     }
   );

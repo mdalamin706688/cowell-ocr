@@ -4,32 +4,33 @@
 
 @layer base {
   :root {
-    --background: 38 28% 97%;
-    --foreground: 28 12% 11%;
-    --card: 40 35% 99%;
-    --card-foreground: 28 12% 11%;
-    --popover: 40 35% 99%;
-    --popover-foreground: 28 12% 11%;
-    --primary: 26 58% 44%;
-    --primary-foreground: 40 40% 98%;
-    --secondary: 38 18% 94%;
-    --secondary-foreground: 28 10% 28%;
-    --muted: 36 16% 93%;
-    --muted-foreground: 28 6% 46%;
-    --accent: 28 48% 94%;
-    --accent-foreground: 26 55% 30%;
+    /* COWELL brand blue — from cowell.co.jp / ous.png (#1F2677) */
+    --background: 220 24% 97%;
+    --foreground: 230 28% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 230 28% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 230 28% 12%;
+    --primary: 235 59% 29%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 18% 94%;
+    --secondary-foreground: 230 20% 28%;
+    --muted: 220 16% 94%;
+    --muted-foreground: 225 10% 42%;
+    --accent: 228 42% 95%;
+    --accent-foreground: 235 50% 28%;
     --destructive: 0 65% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 32 14% 87%;
-    --input: 32 14% 87%;
-    --ring: 26 58% 44%;
+    --border: 220 14% 88%;
+    --input: 220 14% 88%;
+    --ring: 235 59% 29%;
     --radius: 0.75rem;
-    --lumen: 28 68% 50%;
-    --lumen-glow: 34 88% 62%;
-    --forest: 158 32% 14%;
-    --forest-muted: 158 20% 26%;
-    --paper: 38 28% 97%;
-    --ink: 28 12% 11%;
+    --lumen: 235 59% 36%;
+    --lumen-glow: 214 72% 58%;
+    --forest: 235 42% 14%;
+    --forest-muted: 230 28% 24%;
+    --paper: 220 24% 97%;
+    --ink: 230 28% 12%;
   }
 
   * { @apply border-border; }
@@ -74,9 +75,9 @@
   .ui-card {
     @apply rounded-xl border border-border/80 bg-card;
     box-shadow:
-      0 0 0 1px hsl(40 40% 99% / 0.7) inset,
-      0 1px 2px hsl(28 12% 11% / 0.04),
-      0 8px 28px hsl(28 12% 11% / 0.05);
+      0 0 0 1px hsl(0 0% 100% / 0.7) inset,
+      0 1px 2px hsl(230 28% 12% / 0.04),
+      0 8px 28px hsl(230 28% 12% / 0.05);
   }
 
   .ui-card-header {
@@ -85,13 +86,16 @@
 
   .ui-card-body { @apply p-6; }
 
-  /* ── Hero (forest) ── */
+  /* ── Hero panels ── */
   .forest-hero {
     @apply relative overflow-hidden rounded-xl;
-    background: linear-gradient(148deg, hsl(var(--forest)) 0%, hsl(158 36% 10%) 100%);
+    background:
+      radial-gradient(ellipse 70% 55% at 85% -10%, hsl(214 72% 48% / 0.22) 0%, transparent 55%),
+      radial-gradient(ellipse 50% 40% at 0% 100%, hsl(235 59% 40% / 0.18) 0%, transparent 50%),
+      linear-gradient(155deg, hsl(235 48% 18%) 0%, hsl(235 52% 12%) 42%, hsl(235 55% 8%) 100%);
     box-shadow:
-      0 0 0 1px hsl(var(--lumen-glow) / 0.1) inset,
-      0 20px 48px hsl(158 32% 8% / 0.22);
+      0 0 0 1px hsl(214 72% 70% / 0.08) inset,
+      0 24px 56px hsl(235 50% 6% / 0.28);
   }
 
   .forest-hero::before {
@@ -99,22 +103,100 @@
     position: absolute;
     inset: 0;
     background:
-      radial-gradient(ellipse 60% 80% at 100% 0%, hsl(var(--lumen) / 0.16) 0%, transparent 55%),
+      linear-gradient(180deg, hsl(0 0% 100% / 0.04) 0%, transparent 28%),
+      radial-gradient(ellipse 55% 70% at 100% 0%, hsl(214 72% 58% / 0.14) 0%, transparent 58%),
       repeating-linear-gradient(
-        -12deg,
+        -18deg,
         transparent,
-        transparent 40px,
-        hsl(0 0% 100% / 0.015) 40px,
-        hsl(0 0% 100% / 0.015) 41px
+        transparent 48px,
+        hsl(0 0% 100% / 0.012) 48px,
+        hsl(0 0% 100% / 0.012) 49px
       );
     pointer-events: none;
   }
 
-  .forest-panel {
-    background: linear-gradient(160deg, hsl(var(--forest)) 0%, hsl(158 36% 10%) 100%);
+  /* Login split — full-bleed premium brand panel */
+  .login-hero {
+    @apply relative flex flex-col justify-between overflow-hidden;
+    background:
+      radial-gradient(ellipse 90% 70% at 110% -20%, hsl(214 80% 55% / 0.28) 0%, transparent 52%),
+      radial-gradient(ellipse 60% 50% at -15% 90%, hsl(235 59% 35% / 0.35) 0%, transparent 55%),
+      linear-gradient(165deg, hsl(235 55% 22%) 0%, hsl(235 58% 14%) 38%, hsl(235 62% 8%) 100%);
+    box-shadow: inset -1px 0 0 hsl(0 0% 100% / 0.06);
   }
 
-  /* ── Signature copper rule ── */
+  .login-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(115deg, transparent 40%, hsl(214 72% 65% / 0.07) 58%, transparent 72%),
+      linear-gradient(180deg, hsl(0 0% 100% / 0.055) 0%, transparent 32%),
+      radial-gradient(circle at 20% 30%, hsl(214 72% 60% / 0.08) 0%, transparent 42%);
+    pointer-events: none;
+  }
+
+  .login-hero::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 40%;
+    background: linear-gradient(0deg, hsl(235 70% 4% / 0.45) 0%, transparent 100%);
+    pointer-events: none;
+  }
+
+  .login-hero-rule {
+    width: 3rem;
+    height: 2px;
+    border-radius: 999px;
+    background: linear-gradient(
+      90deg,
+      hsl(214 72% 68%) 0%,
+      hsl(235 59% 42%) 55%,
+      transparent 100%
+    );
+    box-shadow: 0 0 12px hsl(214 72% 58% / 0.35);
+  }
+
+  .login-hero-eyebrow {
+    @apply relative z-10 text-[11px] font-semibold;
+    letter-spacing: 0.18em;
+    color: #8eb6f8;
+  }
+
+  .login-hero-title {
+    @apply relative z-10 mt-5 font-display font-bold text-white;
+    font-size: 2.15rem;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+
+  @media (min-width: 640px) {
+    .login-hero-title {
+      font-size: 2.35rem;
+    }
+  }
+
+  .login-hero-body {
+    @apply relative z-10 mt-6;
+    font-size: 15px;
+    line-height: 1.75;
+    color: hsl(0 0% 100% / 0.68);
+  }
+
+  .login-hero-footer {
+    @apply relative z-10;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: hsl(0 0% 100% / 0.35);
+  }
+
+  .forest-panel {
+    background: linear-gradient(160deg, hsl(235 55% 22%) 0%, hsl(235 58% 12%) 100%);
+    box-shadow: 0 0 0 1px hsl(214 72% 70% / 0.12) inset;
+  }
+
+  /* ── Signature brand rule ── */
   .copper-rule {
     width: 2.5rem;
     height: 2px;
@@ -125,20 +207,20 @@
   /* ── Buttons ── */
   .btn-lumen {
     @apply font-semibold text-white rounded-xl;
-    background: linear-gradient(165deg, hsl(var(--lumen-glow)) 0%, hsl(var(--lumen)) 48%, hsl(26 58% 38%) 100%);
+    background: linear-gradient(165deg, hsl(228 48% 42%) 0%, hsl(var(--lumen)) 48%, hsl(235 59% 24%) 100%);
     box-shadow:
-      0 0 0 1px hsl(34 88% 72% / 0.15) inset,
-      0 1px 2px hsl(26 58% 28% / 0.2),
+      0 0 0 1px hsl(214 72% 72% / 0.15) inset,
+      0 1px 2px hsl(235 59% 18% / 0.22),
       0 6px 18px hsl(var(--lumen) / 0.28);
     transition: box-shadow 0.2s ease, transform 0.15s ease, filter 0.2s ease;
   }
 
   .btn-lumen:hover {
-    filter: brightness(1.03);
+    filter: brightness(1.05);
     box-shadow:
-      0 0 0 1px hsl(34 88% 72% / 0.22) inset,
-      0 2px 4px hsl(26 58% 28% / 0.22),
-      0 10px 28px hsl(var(--lumen) / 0.32);
+      0 0 0 1px hsl(214 72% 72% / 0.22) inset,
+      0 2px 4px hsl(235 59% 18% / 0.24),
+      0 10px 28px hsl(var(--lumen) / 0.34);
   }
 
   .btn-lumen:active { transform: scale(0.985); }
@@ -162,19 +244,19 @@
 
   .btn-elevated {
     @apply font-semibold text-foreground rounded-xl border-0;
-    background: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(38 20% 96%) 100%);
+    background: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 18% 96%) 100%);
     box-shadow:
       0 0 0 1px hsl(0 0% 100% / 0.9) inset,
-      0 1px 2px hsl(28 12% 11% / 0.08),
-      0 8px 24px hsl(28 12% 11% / 0.12);
+      0 1px 2px hsl(230 28% 12% / 0.08),
+      0 8px 24px hsl(230 28% 12% / 0.12);
     transition: box-shadow 0.2s ease, transform 0.15s ease;
   }
 
   .btn-elevated:hover {
     box-shadow:
       0 0 0 1px hsl(0 0% 100%) inset,
-      0 2px 4px hsl(28 12% 11% / 0.1),
-      0 12px 32px hsl(28 12% 11% / 0.14);
+      0 2px 4px hsl(230 28% 12% / 0.1),
+      0 12px 32px hsl(230 28% 12% / 0.14);
   }
 
   .btn-elevated:active { transform: scale(0.985); }

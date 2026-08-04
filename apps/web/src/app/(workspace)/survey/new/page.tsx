@@ -27,9 +27,10 @@ import { isPreviewEnvironment } from "@/lib/client-auth";
 import { useSidebarCollapsed } from "@/hooks/use-sidebar-collapsed";
 import {
   normalizeFolderNameInput,
+  readLastRootFolder,
   writeLastRootFolder,
 } from "@/lib/drive-root-folder";
-import { isGoogleClientConfigured } from "@/lib/google-auth-client";
+import { getConnectedGoogleDrive, isGoogleClientConfigured } from "@/lib/google-auth-client";
 import type { ExportProgressPhase } from "@/lib/sheets-export";
 import {
   surveyExport,
@@ -68,10 +69,16 @@ function SurveyWorkflow() {
     projectName: string;
     googleAccountEmail?: string;
     isValid: boolean;
-  }>({
-    rootFolderName: "",
-    projectName: "",
-    isValid: false,
+  }>(() => {
+    const session = getConnectedGoogleDrive();
+    const last = readLastRootFolder(session?.email);
+    return {
+      rootFolderName: last.name,
+      rootFolderId: last.id,
+      projectName: "",
+      googleAccountEmail: session?.email,
+      isValid: false,
+    };
   });
   const exportLock = useRef(false);
   const reviewSectionRef = useRef<HTMLDivElement | null>(null);
@@ -571,8 +578,10 @@ function SurveyWorkflow() {
                 onClick={() => {
                   reset();
                   setCsvExport(false);
+                  const last = readLastRootFolder(destination.googleAccountEmail);
                   setDestination({
-                    rootFolderName: "",
+                    rootFolderName: last.name,
+                    rootFolderId: last.id,
                     projectName: "",
                     googleAccountEmail: destination.googleAccountEmail,
                     isValid: false,

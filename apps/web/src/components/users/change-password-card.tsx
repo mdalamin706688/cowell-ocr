@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { copy } from "@/lib/copy";
 import { cognitoChangePassword } from "@/lib/cognito-auth";
@@ -58,9 +58,8 @@ export function ChangePasswordCard() {
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-1.5">
             <Label htmlFor="current-password">{copy.auth.currentPassword}</Label>
-            <Input
+            <PasswordInput
               id="current-password"
-              type="password"
               autoComplete="current-password"
               value={current}
               onChange={(e) => setCurrent(e.target.value)}
@@ -69,9 +68,8 @@ export function ChangePasswordCard() {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="new-password">{copy.auth.newPassword}</Label>
-            <Input
+            <PasswordInput
               id="new-password"
-              type="password"
               autoComplete="new-password"
               minLength={8}
               value={next}
@@ -81,9 +79,8 @@ export function ChangePasswordCard() {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="confirm-password">{copy.auth.confirmNewPassword}</Label>
-            <Input
+            <PasswordInput
               id="confirm-password"
-              type="password"
               autoComplete="new-password"
               minLength={8}
               value={confirm}
