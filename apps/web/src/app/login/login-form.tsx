@@ -266,7 +266,7 @@ export function LoginForm() {
         </p>
       </div>
 
-      <div className="flex flex-1 flex-col items-center justify-center px-4 py-10 sm:px-6 sm:py-12">
+      <div className="flex flex-1 flex-col items-center justify-center px-6 py-12">
         <div className="w-full max-w-[360px]">
           <div className="mb-8 lg:hidden">
             <Logo size="md" />

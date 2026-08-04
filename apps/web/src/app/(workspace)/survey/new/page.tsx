@@ -321,8 +321,8 @@ function SurveyWorkflow() {
 
           {/* AI prompt editor intentionally hidden */}
 
-          <div className="flex justify-stretch pt-1 sm:justify-end">
-            <Button className="w-full sm:w-auto" disabled={!files.length} onClick={runOcr} size="lg">
+          <div className="flex justify-end pt-1">
+            <Button disabled={!files.length} onClick={runOcr} size="lg">
               <ScanLine className="h-4 w-4" />{copy.survey.runOcr}<ArrowRight className="h-4 w-4" />
             </Button>
           </div>
@@ -381,8 +381,8 @@ function SurveyWorkflow() {
 
           <div className={cn("ui-card", reviewFocusMode && "review-focus-card")}>
             <div className="ui-card-header">
-              <p className="min-w-0 flex-1 text-sm font-medium sm:text-base">{copy.survey.reviewTitle}</p>
-              <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+              <p className="text-base font-medium">{copy.survey.reviewTitle}</p>
+              <div className="flex items-center gap-2">
                 <Button
                   type="button"
                   variant="outline"
@@ -394,7 +394,7 @@ function SurveyWorkflow() {
                 >
                   {reviewFocusMode ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
                 </Button>
-                <span className="text-label whitespace-nowrap">{copy.survey.reviewRows(rows.length)}</span>
+                <span className="text-label">{copy.survey.reviewRows(rows.length)}</span>
               </div>
             </div>
             <div className="ui-card-body pt-3">
@@ -596,16 +596,16 @@ function SurveyWorkflow() {
     >
       {!reviewFocusMode && (
         <StaggerItem>
-          <div className={cn("flex min-w-0 items-start gap-3 sm:gap-4", compactTop && "gap-2.5 sm:gap-3")}>
+          <div className={cn("flex items-start gap-4", compactTop && "gap-3")}>
             <div
               className={cn(
-                "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/80 text-lumen shadow-sm sm:h-12 sm:w-12",
-                compactTop && "h-9 w-9 rounded-lg sm:h-9 sm:w-9"
+                "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent/80 text-lumen shadow-sm",
+                compactTop && "h-9 w-9 rounded-lg"
               )}
             >
               <Sparkles className="h-5 w-5" />
             </div>
-            <div className="min-w-0">
+            <div>
               <h1 className={cn("text-title text-xl sm:text-2xl", compactTop && "text-lg sm:text-xl")}>
                 {copy.survey.title}
               </h1>
