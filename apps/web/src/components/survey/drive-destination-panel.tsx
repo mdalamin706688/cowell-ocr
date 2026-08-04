@@ -655,10 +655,10 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
 
       <CollapsiblePanel open={open}>
         <div className="ui-card-body border-t border-border/60 space-y-4 pt-4">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <p className="text-sm font-medium">{copy.survey.driveAccount}</p>
-              <p className="text-xs text-muted-foreground truncate mt-0.5">
+              <p className="mt-0.5 truncate text-xs text-muted-foreground">
                 {accountEmail || copy.survey.driveAccountNone}
               </p>
             </div>
@@ -667,6 +667,7 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
                 type="button"
                 variant={connected ? "outline" : "default"}
                 size="sm"
+                className="w-full shrink-0 sm:w-auto"
                 disabled={busy}
                 onClick={() => void handleConnect()}
               >

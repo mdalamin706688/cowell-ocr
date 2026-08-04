@@ -9,6 +9,11 @@ import {
 
 const TOKEN_KEY = "cowell_cognito_tokens";
 
+/** Access/ID token local TTL — refresh before this elapses (Cognito app client should match). */
+const ACCESS_TOKEN_TTL_MS = 15 * 60 * 1000;
+/** Refresh slightly before expiry to avoid edge races on API calls. */
+const ACCESS_TOKEN_REFRESH_SKEW_MS = 60_000;
+
 export interface CognitoTokens {
   idToken: string;
   accessToken: string;
@@ -145,7 +150,10 @@ function persistTokens(result: CognitoAuthResult, previousRefresh?: string): Cog
     idToken: result.IdToken || "",
     accessToken: result.AccessToken || "",
     refreshToken,
-    expiresAt: Date.now() + (result.ExpiresIn || 3600) * 1000,
+    // Cap at 15m so FE refreshes on that cadence even if pool ExpiresIn is longer.
+    expiresAt:
+      Date.now() +
+      Math.min((result.ExpiresIn || ACCESS_TOKEN_TTL_MS / 1000) * 1000, ACCESS_TOKEN_TTL_MS),
   };
   try {
     localStorage.setItem(TOKEN_KEY, JSON.stringify(tokens));
@@ -262,7 +270,7 @@ export async function getCognitoSessionUser(): Promise<SessionUser | null> {
   let tokens = readCognitoTokens();
   if (!tokens?.idToken) return null;
 
-  if (tokens.expiresAt < Date.now() + 60_000) {
+  if (tokens.expiresAt < Date.now() + ACCESS_TOKEN_REFRESH_SKEW_MS) {
     tokens = (await cognitoRefreshSession()) || tokens;
   }
   if (!tokens?.idToken) return null;
@@ -273,7 +281,7 @@ export async function getCognitoSessionUser(): Promise<SessionUser | null> {
 export async function getCognitoAccessToken(): Promise<string | null> {
   let tokens = readCognitoTokens();
   if (!tokens?.accessToken) return null;
-  if (tokens.expiresAt < Date.now() + 60_000) {
+  if (tokens.expiresAt < Date.now() + ACCESS_TOKEN_REFRESH_SKEW_MS) {
     tokens = (await cognitoRefreshSession()) || null;
   }
   return tokens?.accessToken ?? null;
@@ -333,7 +341,7 @@ export async function cognitoChangePassword(
   if (!tokens?.accessToken) {
     throw new Error("セッションが切れています。再度ログインしてください。");
   }
-  if (tokens.expiresAt < Date.now() + 60_000) {
+  if (tokens.expiresAt < Date.now() + ACCESS_TOKEN_REFRESH_SKEW_MS) {
     tokens = (await cognitoRefreshSession()) || tokens;
   }
   if (!tokens?.accessToken) {
@@ -350,7 +358,7 @@ export async function cognitoChangePassword(
 export async function getCognitoIdToken(): Promise<string | null> {
   let tokens = readCognitoTokens();
   if (!tokens?.idToken) return null;
-  if (tokens.expiresAt < Date.now() + 60_000) {
+  if (tokens.expiresAt < Date.now() + ACCESS_TOKEN_REFRESH_SKEW_MS) {
     tokens = (await cognitoRefreshSession()) || null;
   }
   return tokens?.idToken ?? null;

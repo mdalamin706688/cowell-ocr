@@ -98,6 +98,8 @@ Add repository secrets:
 - If Cognito env is set → real email/password login (CloudFront included)
 - If Cognito env is empty on static preview → demo login fallback
 - Tokens stored in `localStorage`; session cookie kept for routing
+- Access/ID token refresh cadence: **15 minutes** (FE refreshes when &lt;60s left)
+- Cognito app client should set **Access token** and **ID token** validity to **15 minutes** (User pool → App client → App client information). Refresh token stays longer (AWS minimum 1 hour; typically days).
 - `getCognitoAccessToken()` used by remote OCR (`Authorization: Bearer <accessToken>`)
 - **Users page** (`/users/`) — list, add, change password; delete for super admin
 

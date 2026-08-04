@@ -165,19 +165,19 @@ export function ReviewTable({ rows, onRowsChange, query, expanded = false }: Rev
               expanded ? "review-table-scroll" : "max-h-[min(28rem,60vh)]"
             )}
           >
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[48rem] text-sm">
               <thead className="bg-muted/80 sticky top-0 z-10 backdrop-blur-sm">
                 <tr className="border-b border-border">
-                  <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground w-10">
+                  <th className="px-2 py-2.5 text-left text-xs font-medium text-muted-foreground w-8 sm:w-10 sm:px-3">
                     #
                   </th>
                   {SURVEY_COLUMNS.map((col) => (
                     <th
                       key={col}
                       className={cn(
-                        "px-2 py-2.5 text-left text-xs font-medium text-muted-foreground whitespace-nowrap",
-                        col === "写真" && "w-36",
-                        col === "数量" && "w-16"
+                        "px-1.5 py-2.5 text-left text-xs font-medium text-muted-foreground whitespace-nowrap sm:px-2",
+                        col === "写真" && "w-28 sm:w-36",
+                        col === "数量" && "w-14 sm:w-16"
                       )}
                     >
                       {col}
@@ -202,22 +202,22 @@ export function ReviewTable({ rows, onRowsChange, query, expanded = false }: Rev
                         key={row.id}
                         className="table-row-hover border-b border-border/50 last:border-0"
                       >
-                        <td className="px-3 py-1.5 text-xs text-muted-foreground tabular-nums">
+                        <td className="px-1.5 py-1.5 text-xs text-muted-foreground tabular-nums sm:px-3">
                           {absoluteIndex + 1}
                         </td>
 
                         {TEXT_FIELDS.slice(0, 4).map((field) => (
-                          <td key={field} className="px-1 py-1">
+                          <td key={field} className="px-0.5 py-1 sm:px-1">
                             <Input
                               value={row[field]}
                               onChange={(e) => updateRow(row.id, field, e.target.value)}
-                              className="h-9 text-sm border-transparent bg-transparent shadow-none focus-visible:bg-background focus-visible:border-border"
+                              className="h-9 min-w-[4.5rem] text-sm border-transparent bg-transparent shadow-none focus-visible:bg-background focus-visible:border-border"
                             />
                           </td>
                         ))}
 
-                        <td className="px-1 py-1 align-middle">
-                          <div className="flex items-center gap-1 min-w-[8.5rem]">
+                        <td className="px-0.5 py-1 align-middle sm:px-1">
+                          <div className="flex min-w-[5.75rem] items-center gap-1 sm:min-w-[8.5rem]">
                             {row.photoUrl ? (
                               <button
                                 type="button"
@@ -259,7 +259,7 @@ export function ReviewTable({ rows, onRowsChange, query, expanded = false }: Rev
                                 type="button"
                                 variant="ghost"
                                 size="icon"
-                                className="h-9 w-9 shrink-0 text-muted-foreground/50 hover:text-destructive"
+                                className="h-8 w-8 shrink-0 text-muted-foreground/50 hover:text-destructive sm:h-9 sm:w-9"
                                 onClick={() => clearRowPhoto(row.id)}
                                 aria-label={copy.table.removePhoto}
                               >
@@ -303,8 +303,8 @@ export function ReviewTable({ rows, onRowsChange, query, expanded = false }: Rev
             </table>
           </div>
 
-          <div className="shrink-0 border-t border-border px-4 py-2.5">
-            <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="shrink-0 border-t border-border px-2.5 py-2 sm:px-4 sm:py-2.5">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
               <div className="flex min-h-8 flex-wrap items-center gap-2 text-xs text-muted-foreground">
                 <span className="text-xs leading-none text-muted-foreground">
                   {copy.table.range(from, to, filtered.length)}
@@ -325,26 +325,26 @@ export function ReviewTable({ rows, onRowsChange, query, expanded = false }: Rev
                   ))}
                 </select>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex w-full items-center justify-between gap-1.5 sm:w-auto sm:justify-end">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-8 px-2"
+                  className="h-8 flex-1 px-2 sm:flex-none"
                   disabled={safePage <= 0}
                   onClick={() => setPage((p) => Math.max(0, p - 1))}
                 >
                   <ChevronLeft className="h-3.5 w-3.5" />
                   {copy.table.prev}
                 </Button>
-                <span className="min-w-[4.5rem] text-center text-xs tabular-nums text-muted-foreground">
+                <span className="min-w-[4.5rem] shrink-0 text-center text-xs tabular-nums text-muted-foreground">
                   {safePage + 1} / {pageCount}
                 </span>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-8 px-2"
+                  className="h-8 flex-1 px-2 sm:flex-none"
                   disabled={safePage >= pageCount - 1}
                   onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
                 >

@@ -162,8 +162,10 @@ export function DashboardContent({ userName = "管理者", userEmail }: Dashboar
                     <div className="timeline-dot timeline-dot-done flex items-center justify-center">
                       <Icon className="h-3 w-3" />
                     </div>
-                    <p className="mt-3 text-sm font-medium text-foreground">{s.label}</p>
-                    <p className="mt-0.5 text-[11px] text-muted-foreground max-w-[88px]">
+                    <p className="mt-3 line-clamp-2 px-0.5 text-xs font-medium text-foreground sm:text-sm">
+                      {s.label}
+                    </p>
+                    <p className="mt-0.5 line-clamp-2 max-w-[5.5rem] text-[10px] text-muted-foreground sm:max-w-[88px] sm:text-[11px]">
                       {s.desc}
                     </p>
                   </div>
@@ -178,17 +180,19 @@ export function DashboardContent({ userName = "管理者", userEmail }: Dashboar
 
       <StaggerItem>
       <section className="ui-card">
-        <div className="ui-card-body flex flex-wrap items-center justify-between gap-6 py-5">
-          {copy.dashboard.specs.map((item, i) => (
-            <div key={item.label} className="flex items-center gap-6">
-              {i > 0 && <span className="hidden sm:block h-8 w-px bg-border/80" />}
-              <div>
-                <p className="text-label">{item.label}</p>
-                <p className="text-sm font-semibold mt-0.5">{item.value}</p>
+        <div className="ui-card-body flex flex-col gap-4 py-5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-6">
+            {copy.dashboard.specs.map((item, i) => (
+              <div key={item.label} className="flex min-w-0 items-center gap-6">
+                {i > 0 && <span className="hidden h-8 w-px bg-border/80 sm:block" />}
+                <div className="min-w-0">
+                  <p className="text-label">{item.label}</p>
+                  <p className="mt-0.5 break-words text-sm font-semibold">{item.value}</p>
+                </div>
               </div>
-            </div>
-          ))}
-          <div className="flex items-center gap-2 rounded-full border border-emerald-200/80 bg-emerald-50/80 px-3 py-1.5">
+            ))}
+          </div>
+          <div className="flex w-fit items-center gap-2 rounded-full border border-emerald-200/80 bg-emerald-50/80 px-3 py-1.5">
             <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-xs font-medium text-emerald-800">{copy.dashboard.statusOnline}</span>
           </div>

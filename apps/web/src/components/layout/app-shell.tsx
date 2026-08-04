@@ -46,7 +46,7 @@ export function AppShell({ children, user }: AppShellProps) {
 
   return (
     <div
-      className="workspace-shell min-h-screen overflow-x-clip paper-canvas"
+      className="workspace-shell min-h-dvh overflow-x-clip paper-canvas"
       data-sidebar-state={collapsed ? "collapsed" : "expanded"}
     >
       <aside
@@ -188,13 +188,13 @@ export function AppShell({ children, user }: AppShellProps) {
         </div>
       </aside>
 
-      <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-2 border-b border-border/60 bg-card/90 px-3 backdrop-blur-md shadow-sm sm:px-4 lg:hidden">
+      <header className="sticky top-0 z-40 flex min-h-14 items-center justify-between gap-2 border-b border-border/60 bg-card/90 px-3 backdrop-blur-md shadow-sm sm:px-4 lg:hidden pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))]">
         <SoftNavButton href="/dashboard/" className="min-w-0 shrink p-0">
-          <Logo size="sm" />
+          <Logo size="sm" className="gap-2 [&>div:last-child]:max-[390px]:hidden" />
         </SoftNavButton>
-        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+        <div className="flex shrink-0 items-center gap-1 sm:gap-1.5 md:gap-2">
           {user && (
-            <div className="hidden max-w-[10rem] min-w-0 text-right md:block">
+            <div className="hidden max-w-[9rem] min-w-0 text-right md:block lg:max-w-[10rem]">
               <p className="truncate text-[10px] font-medium text-foreground/85">{user.email}</p>
               <p className="text-[10px] text-muted-foreground">{roleLabel}</p>
             </div>
@@ -212,17 +212,19 @@ export function AppShell({ children, user }: AppShellProps) {
           </SoftNavButton>
           <SoftNavButton
             href="/survey/new/"
-            className="inline-flex h-8 items-center justify-center gap-1 rounded-md bg-primary px-2.5 text-xs font-medium text-primary-foreground shadow-none sm:gap-1.5 sm:px-3 sm:text-sm"
+            className="inline-flex h-8 items-center justify-center gap-1 rounded-md bg-primary px-2 text-xs font-medium text-primary-foreground shadow-none sm:gap-1.5 sm:px-3 sm:text-sm"
           >
             <Plus className="h-3.5 w-3.5" />
-            {copy.nav.newShort}
+            <span className="max-[360px]:sr-only">{copy.nav.newShort}</span>
           </SoftNavButton>
           <LogoutButton variant="mobile" />
         </div>
       </header>
 
       <main className="shell-main" suppressHydrationWarning>
-        <div className="shell-content mx-auto max-w-6xl px-4 py-7 sm:px-6 sm:py-9 lg:px-8 lg:py-12">{children}</div>
+        <div className="shell-content mx-auto w-full max-w-6xl px-3 py-5 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-5 sm:py-7 sm:pb-7 md:px-6 md:py-9 lg:px-8 lg:py-12">
+          {children}
+        </div>
       </main>
     </div>
   );

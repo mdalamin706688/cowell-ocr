@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Noto_Sans_JP } from "next/font/google";
 import { AppProviders } from "@/components/providers/app-providers";
 import "./globals.css";
@@ -31,6 +31,13 @@ export const metadata: Metadata = {
     apple: [{ url: `${basePath}/apple-touch-icon.svg`, sizes: "180x180", type: "image/svg+xml" }],
     shortcut: [`${basePath}/favicon.svg`],
   },
+};
+
+/** Phone/tablet viewport — desktop layout unchanged; enables notch safe-area. */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

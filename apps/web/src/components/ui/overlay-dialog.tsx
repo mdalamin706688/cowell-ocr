@@ -55,7 +55,8 @@ export function OverlayDialog({
   return createPortal(
     <div
       className={cn(
-        "fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6",
+        "fixed inset-0 z-50 flex items-center justify-center",
+        "pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] sm:pl-[max(1.5rem,env(safe-area-inset-left))] sm:pr-[max(1.5rem,env(safe-area-inset-right))] sm:pt-[max(1.5rem,env(safe-area-inset-top))] sm:pb-[max(1.5rem,env(safe-area-inset-bottom))]",
         className
       )}
       role="presentation"
