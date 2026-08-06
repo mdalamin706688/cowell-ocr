@@ -60,7 +60,7 @@
 @layer components {
   /* ── Canvas ── */
   .paper-canvas {
-    background-color: hsl(var(--card));
+    background-color: hsl(var(--main-surface));
   }
 
   .grain {
