@@ -37,7 +37,7 @@ export function CMonogram({
       aria-label="COWELL"
       role="img"
     >
-      <rect width="64" height="64" rx="14" fill="#FDF7F0" />
+      <rect width="64" height="64" rx="14" fill="#FFFBF8" />
       <path
         d="M44 20a16 16 0 1 0 0 24"
         fill="none"
