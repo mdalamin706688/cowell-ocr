@@ -12,7 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import { copy } from "@/lib/copy";
 import { Button } from "@/components/ui/button";
-import { Logo } from "@/components/brand/logo";
+import { Logo, LogoMark } from "@/components/brand/logo";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { SoftNavButton } from "@/components/ui/soft-nav-button";
 import { useSidebarCollapsed } from "@/hooks/use-sidebar-collapsed";
@@ -50,7 +50,7 @@ export function AppShell({ children, user }: AppShellProps) {
       data-sidebar-state={collapsed ? "collapsed" : "expanded"}
     >
       <aside
-        className="shell-aside fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-border/60 bg-card/95 backdrop-blur-md lg:flex shadow-[1px_0_24px_hsl(28_12%_11%/0.03)]"
+        className="shell-aside fixed inset-y-0 left-0 z-40 hidden flex-col bg-card lg:flex"
         suppressHydrationWarning
       >
         <div className="shell-aside-inner relative flex h-full flex-col" suppressHydrationWarning>
@@ -59,13 +59,9 @@ export function AppShell({ children, user }: AppShellProps) {
               href="/dashboard/"
               title="COWELL OCR"
               aria-label="COWELL OCR"
-              className="shell-rail-item relative rounded-[12px] forest-panel"
+              className="shell-rail-item flex items-center justify-center p-0"
             >
-              <div className="absolute inset-0 rounded-[12px] ring-1 ring-lumen-glow/25 ring-inset" />
-              <svg viewBox="0 0 24 24" fill="none" className="relative h-5 w-5 text-lumen-glow" aria-hidden>
-                <path d="M12 2.5L7.5 10.5H11v9h2v-9h3.5L12 2.5z" fill="currentColor" />
-                <ellipse cx="12" cy="20.5" rx="4.5" ry="1.2" fill="currentColor" opacity="0.35" />
-              </svg>
+              <LogoMark height={20} />
             </SoftNavButton>
             <Button
               type="button"
@@ -146,23 +142,16 @@ export function AppShell({ children, user }: AppShellProps) {
 
             {user && (
               <div
-                className="shell-account shell-rail-item rounded-xl border border-border/60 bg-muted/20 px-3.5 py-3"
+                className="shell-account shell-rail-item content-outline rounded-xl bg-background px-3.5 py-3"
                 title={`${copy.nav.account}: ${user.email} (${roleLabel})`}
               >
                 <div className="shell-account-row flex items-center justify-between gap-2">
                   <p className="shell-expanded-only text-label">{copy.nav.account}</p>
-                  <span
-                    className={cn(
-                      "shell-expanded-only shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold tracking-wide",
-                      isSuperAdmin ? "bg-lumen/15 text-lumen" : "bg-muted text-muted-foreground"
-                    )}
-                  >
-                    {roleLabel}
-                  </span>
+                  <span className="shell-expanded-only role-badge">{roleLabel}</span>
                   <CircleUserRound
                     className={cn(
                       "shell-collapsed-only h-5 w-5",
-                      isSuperAdmin ? "text-lumen" : "text-muted-foreground"
+                      isSuperAdmin ? "text-primary" : "text-primary/80"
                     )}
                   />
                 </div>
@@ -188,7 +177,13 @@ export function AppShell({ children, user }: AppShellProps) {
         </div>
       </aside>
 
-      <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-2 border-b border-border/60 bg-card/90 px-3 backdrop-blur-md shadow-sm sm:px-4 lg:hidden">
+      <header
+        className="sticky top-0 z-40 flex h-14 items-center justify-between gap-2 bg-card px-3 sm:px-4 lg:hidden"
+        style={{
+          borderBottom: "1px solid hsl(var(--primary) / 0.22)",
+          boxShadow: "0 1px 0 hsl(var(--primary) / 0.07)",
+        }}
+      >
         <SoftNavButton href="/dashboard/" className="min-w-0 shrink p-0">
           <Logo size="sm" />
         </SoftNavButton>

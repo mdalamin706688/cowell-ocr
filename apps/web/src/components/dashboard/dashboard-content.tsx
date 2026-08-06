@@ -52,7 +52,7 @@ export function DashboardContent({ userName = "管理者", userEmail }: Dashboar
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">{copy.dashboard.greetingUser(displayName)}</p>
         </div>
-        <Button asChild size="lg" className="w-full shadow-none sm:w-auto">
+        <Button asChild size="lg" className="w-full sm:w-auto">
           <TransitionLink href="/survey/new/">
             {copy.dashboard.cta}
             <ArrowRight className="h-4 w-4" />
@@ -65,18 +65,18 @@ export function DashboardContent({ userName = "管理者", userEmail }: Dashboar
       <section className="forest-hero overflow-hidden">
         <div className="relative z-10 grid gap-8 p-5 sm:p-7 lg:grid-cols-[1fr,280px] lg:p-9">
           <div className="max-w-lg">
-            <p className="text-eyebrow text-lumen-glow/90">{copy.dashboard.eyebrow}</p>
-            <h2 className="text-display mt-3 text-[1.65rem] sm:text-[1.85rem] text-white leading-snug">
+            <p className="text-eyebrow">{copy.dashboard.eyebrow}</p>
+            <h2 className="text-display mt-3 text-[1.65rem] sm:text-[1.85rem] text-foreground leading-snug">
               {copy.dashboard.titleBefore}
-              <span className="font-bold text-lumen-glow">{copy.dashboard.titleHighlight}</span>
+              <span className="text-primary font-bold">{copy.dashboard.titleHighlight}</span>
               {copy.dashboard.titleAfter}
             </h2>
-            <p className="mt-4 text-sm leading-relaxed text-white/55">
+            <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
               {copy.dashboard.body}
             </p>
             <div className="copper-rule mt-6" />
             <div className="mt-6 flex flex-wrap gap-3">
-              <Button asChild variant="elevated" size="lg">
+              <Button asChild size="lg">
                 <TransitionLink href="/survey/new/">
                   <Upload className="h-4 w-4" />
                   {copy.dashboard.cta}
@@ -87,8 +87,8 @@ export function DashboardContent({ userName = "管理者", userEmail }: Dashboar
 
           {/* Decorative workflow preview */}
           <div className="hidden lg:flex flex-col justify-center">
-            <div className="rounded-xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur-sm">
-              <p className="text-[10px] font-semibold tracking-wider text-lumen-glow/70 uppercase">
+            <div className="inset-well p-5">
+              <p className="text-[10px] font-bold tracking-wider text-primary uppercase">
                 {copy.dashboard.workflowTitle}
               </p>
               <div className="mt-4 space-y-3">
@@ -97,14 +97,14 @@ export function DashboardContent({ userName = "管理者", userEmail }: Dashboar
                   return (
                     <div
                       key={step.label}
-                      className="flex items-center gap-3 rounded-lg border border-white/8 bg-white/[0.03] px-3 py-2.5"
+                      className="flex items-center gap-3 rounded-lg border border-border/70 bg-card px-3 py-2.5"
                     >
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-lumen/15 text-lumen-glow">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                         <Icon className="h-4 w-4" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-white/90">{step.label}</p>
-                        <p className="text-[11px] text-white/40 truncate">{step.desc}</p>
+                        <p className="text-sm font-semibold text-foreground">{step.label}</p>
+                        <p className="text-[11px] text-muted-foreground truncate">{step.desc}</p>
                       </div>
                     </div>
                   );
@@ -123,11 +123,11 @@ export function DashboardContent({ userName = "管理者", userEmail }: Dashboar
           return (
           <div key={cap.title} className="ui-card group">
             <div className="ui-card-body flex flex-col gap-3 py-5">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/80 text-lumen transition-colors group-hover:bg-lumen/10">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <Icon className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-sm font-semibold">{cap.title}</p>
+                <p className="text-sm font-semibold text-foreground">{cap.title}</p>
                 <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                   {cap.desc}
                 </p>
@@ -188,9 +188,9 @@ export function DashboardContent({ userName = "管理者", userEmail }: Dashboar
               </div>
             </div>
           ))}
-          <div className="flex items-center gap-2 rounded-full border border-emerald-200/80 bg-emerald-50/80 px-3 py-1.5">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-xs font-medium text-emerald-800">{copy.dashboard.statusOnline}</span>
+          <div className="status-pill-online">
+            <span className="status-pill-online-dot" aria-hidden />
+            <span>{copy.dashboard.statusOnline}</span>
           </div>
         </div>
       </section>

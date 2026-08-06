@@ -26,10 +26,14 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: `${basePath}/favicon.svg`, type: "image/svg+xml" },
-      { url: `${basePath}/icon.svg`, type: "image/svg+xml" },
+      { url: `${basePath}/favicon.png`, sizes: "32x32", type: "image/png" },
+      { url: `${basePath}/favicon.ico`, sizes: "any" },
     ],
-    apple: [{ url: `${basePath}/apple-touch-icon.svg`, sizes: "180x180", type: "image/svg+xml" }],
-    shortcut: [`${basePath}/favicon.svg`],
+    apple: [
+      { url: `${basePath}/apple-touch-icon.png`, sizes: "180x180", type: "image/png" },
+      { url: `${basePath}/apple-touch-icon.svg`, sizes: "180x180", type: "image/svg+xml" },
+    ],
+    shortcut: [`${basePath}/favicon.ico`],
   },
 };
 
@@ -38,17 +42,20 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const iconHref = `${basePath}/favicon.svg`;
-  const appleHref = `${basePath}/apple-touch-icon.svg`;
+  const iconSvg = `${basePath}/favicon.svg`;
+  const iconPng = `${basePath}/favicon.png`;
+  const iconIco = `${basePath}/favicon.ico`;
+  const appleHref = `${basePath}/apple-touch-icon.png`;
 
   return (
     <html lang="ja" translate="no" suppressHydrationWarning>
       <head>
         <meta name="google" content="notranslate" />
-        <link rel="icon" href={iconHref} type="image/svg+xml" sizes="any" />
-        <link rel="icon" href={iconHref} />
-        <link rel="shortcut icon" href={iconHref} />
-        <link rel="apple-touch-icon" href={appleHref} />
+        <link rel="icon" href={iconSvg} type="image/svg+xml" sizes="any" />
+        <link rel="icon" href={iconPng} type="image/png" sizes="32x32" />
+        <link rel="icon" href={iconIco} sizes="any" />
+        <link rel="shortcut icon" href={iconIco} />
+        <link rel="apple-touch-icon" href={appleHref} sizes="180x180" />
       </head>
       <body
         className={`${inter.variable} ${noto.variable} notranslate font-sans antialiased`}

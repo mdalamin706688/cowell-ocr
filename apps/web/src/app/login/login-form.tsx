@@ -250,7 +250,7 @@ export function LoginForm() {
     <div className="min-h-screen flex paper-canvas">
       <div className="login-hero hidden lg:flex lg:w-[48%] p-10 sm:p-12 lg:p-14">
         <div className="relative z-10">
-          <Logo size="lg" variant="light" />
+          <Logo size="lg" />
         </div>
 
         <div className="relative z-10 max-w-md">
@@ -274,14 +274,14 @@ export function LoginForm() {
         </p>
       </div>
 
-      <div className="flex flex-1 flex-col items-center justify-center px-6 py-12">
+      <div className="login-form-stage">
         <div className="w-full max-w-[360px]">
           <div className="mb-8 lg:hidden">
             <Logo size="md" />
           </div>
 
           <div className="form-surface">
-            <h2 className="font-display text-xl font-semibold tracking-tight">{copy.login.title}</h2>
+            <h2 className="font-display text-xl font-semibold tracking-tight text-foreground">{copy.login.title}</h2>
             <p className="mt-1.5 text-sm text-muted-foreground">
               {formSubtitle}
             </p>

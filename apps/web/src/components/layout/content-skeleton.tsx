@@ -19,7 +19,7 @@ export function ContentSkeleton() {
         <SkeletonBlock className="h-11 w-40 rounded-xl" />
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-border/50 bg-muted/25 p-7 sm:p-9">
+      <div className="forest-hero overflow-hidden p-7 sm:p-9">
         <div className="grid gap-8 lg:grid-cols-[1fr,280px]">
           <div className="max-w-lg space-y-4">
             <SkeletonBlock className="h-3 w-24 rounded-md" />
@@ -28,7 +28,7 @@ export function ContentSkeleton() {
             <SkeletonBlock className="h-14 w-full rounded-md" />
             <SkeletonBlock className="mt-2 h-11 w-44 rounded-xl" />
           </div>
-          <div className="hidden space-y-3 rounded-xl border border-border/40 bg-card/40 p-5 lg:block">
+          <div className="hidden space-y-3 inset-well p-5 lg:block">
             <SkeletonBlock className="h-3 w-28 rounded-md" />
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="flex items-center gap-3 rounded-lg border border-border/30 px-3 py-2.5">
@@ -159,20 +159,20 @@ export function LoginSkeleton() {
   return (
     <div className="flex min-h-screen paper-canvas" aria-busy="true" aria-label="Loading login">
       <div className="login-hero hidden w-[48%] flex-col justify-between p-10 sm:p-12 lg:flex lg:p-14">
-        <SkeletonBlock className="relative z-10 h-10 w-44 rounded-lg bg-white/10" />
+        <SkeletonBlock className="relative z-10 h-12 w-48 rounded-xl" />
         <div className="relative z-10 max-w-[26rem] space-y-4">
-          <SkeletonBlock className="h-3 w-28 rounded-md bg-white/15" />
-          <SkeletonBlock className="h-9 w-72 max-w-full rounded-md bg-white/15" />
-          <SkeletonBlock className="h-9 w-56 max-w-full rounded-md bg-white/12" />
-          <SkeletonBlock className="h-16 w-full rounded-md bg-white/10" />
+          <SkeletonBlock className="h-3 w-28 rounded-md" />
+          <SkeletonBlock className="h-9 w-72 max-w-full rounded-md" />
+          <SkeletonBlock className="h-9 w-56 max-w-full rounded-md" />
+          <SkeletonBlock className="h-16 w-full rounded-md" />
         </div>
-        <SkeletonBlock className="relative z-10 h-3 w-40 rounded-md bg-white/10" />
+        <SkeletonBlock className="relative z-10 h-3 w-40 rounded-md" />
       </div>
 
-      <div className="flex flex-1 flex-col items-center justify-center px-6 py-12">
+      <div className="login-form-stage">
         <div className="w-full max-w-[360px] space-y-8">
           <SkeletonBlock className="h-8 w-28 rounded-md lg:hidden" />
-          <div className="space-y-4 rounded-xl bg-muted/20 p-7">
+          <div className="form-surface space-y-4 !p-7">
             <SkeletonBlock className="h-6 w-32 rounded-md" />
             <SkeletonBlock className="h-4 w-48 rounded-md" />
             <SkeletonBlock className="h-10 w-full rounded-lg" />

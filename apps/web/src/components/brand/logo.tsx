@@ -1,48 +1,73 @@
 "use client";
 
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { copy } from "@/lib/copy";
 
+const LOGO_PATH = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/cowell-logo.png`;
+const LOGO_ASPECT = 249 / 61;
+
 interface LogoProps {
   size?: "sm" | "md" | "lg";
+  /** Login / marketing panel — logo on white chip */
   variant?: "light" | "dark";
   className?: string;
 }
 
+export function LogoMark({
+  height = 22,
+  className,
+  chip = false,
+}: {
+  height?: number;
+  className?: string;
+  chip?: boolean;
+}) {
+  const w = Math.round(height * LOGO_ASPECT);
+  const img = (
+    <Image
+      src={LOGO_PATH}
+      alt="COWELL"
+      width={w}
+      height={height}
+      className="h-auto w-auto shrink-0"
+      style={{ width: w, height }}
+      priority
+    />
+  );
+  if (!chip) return <span className={cn("inline-flex", className)}>{img}</span>;
+  return <span className={cn("brand-logo-mark inline-flex !px-2 !py-1.5", className)}>{img}</span>;
+}
+
 export function Logo({ size = "md", variant = "dark", className }: LogoProps) {
-  const sizes = {
-    sm: { box: "h-8 w-8", icon: "h-3.5 w-3.5", title: "text-sm", sub: "hidden" },
-    md: { box: "h-9 w-9", icon: "h-4 w-4", title: "text-[15px]", sub: "text-[10px]" },
-    lg: { box: "h-10 w-10", icon: "h-4 w-4", title: "text-lg", sub: "text-[11px]" },
-  };
-  const s = sizes[size];
-  const isLight = variant === "light";
+  const heights = { sm: 28, md: 32, lg: 38 } as const;
+  const h = heights[size];
+  const w = Math.round(h * LOGO_ASPECT);
+  const onBrandPanel = variant === "light";
 
   return (
-    <div className={cn("flex items-center gap-3", className)}>
-      <div className={cn("relative flex shrink-0 items-center justify-center rounded-[10px] forest-panel", s.box)}>
-        <div className="absolute inset-0 rounded-[10px] ring-1 ring-lumen-glow/25 ring-inset" />
-        <svg viewBox="0 0 24 24" fill="none" className={cn(s.icon, "relative text-lumen-glow")} aria-hidden>
-          <path d="M12 2.5L7.5 10.5H11v9h2v-9h3.5L12 2.5z" fill="currentColor" />
-          <ellipse cx="12" cy="20.5" rx="4.5" ry="1.2" fill="currentColor" opacity="0.35" />
-        </svg>
+    <div className={cn("flex flex-col gap-2", className)}>
+      <div className={cn(onBrandPanel && "brand-logo-mark", onBrandPanel && "px-3.5 py-2.5")}>
+        <Image
+          src={LOGO_PATH}
+          alt="COWELL"
+          width={w}
+          height={h}
+          className="h-auto w-auto shrink-0"
+          style={{ width: w, height: h }}
+          priority
+        />
       </div>
-      <div>
-        <p className={cn("font-display font-bold leading-none tracking-tight", s.title, isLight ? "text-white" : "text-foreground")}>
-          COWELL<span className={isLight ? "text-[#9EC0FA]" : "text-lumen"}> OCR</span>
+      {size !== "sm" && (
+        <p
+          className={cn(
+            "font-medium tracking-[0.04em] whitespace-nowrap text-muted-foreground",
+            size === "lg" ? "text-[11px]" : "text-[10px]"
+          )}
+        >
+          {copy.app.tagline}
         </p>
-        {s.sub !== "hidden" && (
-          <p
-            className={cn(
-              "mt-1.5 font-medium tracking-[0.04em] whitespace-nowrap",
-              s.sub,
-              isLight ? "text-white/55" : "text-muted-foreground"
-            )}
-          >
-            {copy.app.tagline}
-          </p>
-        )}
-      </div>
+      )}
     </div>
   );
 }

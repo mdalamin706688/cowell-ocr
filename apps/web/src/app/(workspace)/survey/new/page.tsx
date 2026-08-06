@@ -574,7 +574,6 @@ function SurveyWorkflow() {
               ) : null}
               <Button
                 className="w-full sm:w-auto"
-                variant="outline"
                 onClick={() => {
                   reset();
                   setCsvExport(false);

@@ -5,32 +5,36 @@
 @layer base {
   :root {
     /* COWELL brand blue — from cowell.co.jp / ous.png (#1F2677) */
-    --background: 220 24% 97%;
-    --foreground: 230 28% 12%;
-    --card: 0 0% 100%;
-    --card-foreground: 230 28% 12%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 230 28% 12%;
-    --primary: 235 59% 29%;
+    /* Warm ivory surfaces — not pure white (light peach/cream) */
+    --background: 38 45% 98%;
+    --foreground: 232 35% 8%;
+    --card: 36 50% 97%;
+    --card-foreground: 232 35% 8%;
+    --popover: 36 50% 97%;
+    --popover-foreground: 232 35% 8%;
+    --primary: 235 62% 19%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 18% 94%;
-    --secondary-foreground: 230 20% 28%;
-    --muted: 220 16% 94%;
-    --muted-foreground: 225 10% 42%;
-    --accent: 228 42% 95%;
-    --accent-foreground: 235 50% 28%;
+    --secondary: 34 38% 95%;
+    --secondary-foreground: 232 35% 12%;
+    --muted: 32 42% 94%;
+    --muted-foreground: 230 12% 32%;
+    --accent: 35 48% 96%;
+    --accent-foreground: 235 62% 18%;
     --destructive: 0 65% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 220 14% 88%;
-    --input: 220 14% 88%;
-    --ring: 235 59% 29%;
+    --border: 32 24% 86%;
+    --input: 32 24% 86%;
+    --ring: 235 59% 27%;
     --radius: 0.75rem;
-    --lumen: 235 59% 36%;
-    --lumen-glow: 214 72% 58%;
+    --lumen: 235 62% 19%;
+    --lumen-glow: 235 58% 24%;
     --forest: 235 42% 14%;
     --forest-muted: 230 28% 24%;
-    --paper: 220 24% 97%;
-    --ink: 230 28% 12%;
+    /* Workspace canvas — slightly deeper warm gray */
+    --paper: 30 28% 91%;
+    --ink: 232 32% 10%;
+    /* Strong navy for marketing / brand copy (logo #1F2677 family) */
+    --brand-text: 235 64% 17%;
   }
 
   * { @apply border-border; }
@@ -57,9 +61,6 @@
   /* ── Canvas ── */
   .paper-canvas {
     background-color: hsl(var(--paper));
-    background-image:
-      radial-gradient(ellipse 90% 60% at 0% -20%, hsl(var(--lumen) / 0.07) 0%, transparent 55%),
-      radial-gradient(ellipse 50% 40% at 100% 0%, hsl(var(--forest) / 0.04) 0%, transparent 50%);
   }
 
   .grain {
@@ -71,101 +72,62 @@
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
-  /* ── Cards ── */
-  .ui-card {
-    @apply rounded-xl border border-border/80 bg-card;
-    box-shadow:
-      0 0 0 1px hsl(0 0% 100% / 0.7) inset,
-      0 1px 2px hsl(230 28% 12% / 0.04),
-      0 8px 28px hsl(230 28% 12% / 0.05);
+  /* ── Elevated surfaces (white on canvas) ── */
+  /* Blue-tinted outline so panels read clearly on white canvas */
+  .content-outline,
+  .surface-panel,
+  .ui-card,
+  .forest-hero,
+  .login-hero,
+  .form-surface,
+  .btn-surface {
+    border: 1px solid hsl(var(--primary) / 0.22);
+    box-shadow: 0 0 0 1px hsl(var(--primary) / 0.07);
   }
 
+  .surface-panel,
+  .ui-card {
+    @apply rounded-xl bg-card;
+  }
+
+  .inset-well {
+    @apply rounded-xl border border-border/80 bg-muted/60;
+  }
+
+  /* ── Cards ── */
+
   .ui-card-header {
-    @apply flex items-center justify-between gap-3 px-6 py-4 border-b border-border/60;
+    @apply flex items-center justify-between gap-3 px-6 py-4 border-b;
+    border-bottom-color: hsl(var(--primary) / 0.12);
   }
 
   .ui-card-body { @apply p-6; }
 
-  /* ── Hero panels ── */
+  /* Dashboard hero — white content on gray canvas */
   .forest-hero {
-    @apply relative overflow-hidden rounded-xl;
-    background:
-      radial-gradient(ellipse 70% 55% at 85% -10%, hsl(214 72% 48% / 0.22) 0%, transparent 55%),
-      radial-gradient(ellipse 50% 40% at 0% 100%, hsl(235 59% 40% / 0.18) 0%, transparent 50%),
-      linear-gradient(155deg, hsl(235 48% 18%) 0%, hsl(235 52% 12%) 42%, hsl(235 55% 8%) 100%);
-    box-shadow:
-      0 0 0 1px hsl(214 72% 70% / 0.08) inset,
-      0 24px 56px hsl(235 50% 6% / 0.28);
+    @apply relative overflow-hidden rounded-2xl bg-card;
   }
 
-  .forest-hero::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background:
-      linear-gradient(180deg, hsl(0 0% 100% / 0.04) 0%, transparent 28%),
-      radial-gradient(ellipse 55% 70% at 100% 0%, hsl(214 72% 58% / 0.14) 0%, transparent 58%),
-      repeating-linear-gradient(
-        -18deg,
-        transparent,
-        transparent 48px,
-        hsl(0 0% 100% / 0.012) 48px,
-        hsl(0 0% 100% / 0.012) 49px
-      );
-    pointer-events: none;
-  }
-
-  /* Login split — full-bleed premium brand panel */
   .login-hero {
-    @apply relative flex flex-col justify-between overflow-hidden;
-    background:
-      radial-gradient(ellipse 90% 70% at 110% -20%, hsl(214 80% 55% / 0.28) 0%, transparent 52%),
-      radial-gradient(ellipse 60% 50% at -15% 90%, hsl(235 59% 35% / 0.35) 0%, transparent 55%),
-      linear-gradient(165deg, hsl(235 55% 22%) 0%, hsl(235 58% 14%) 38%, hsl(235 62% 8%) 100%);
-    box-shadow: inset -1px 0 0 hsl(0 0% 100% / 0.06);
+    @apply relative flex flex-col justify-between overflow-hidden bg-card;
   }
 
-  .login-hero::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background:
-      linear-gradient(115deg, transparent 40%, hsl(214 72% 65% / 0.07) 58%, transparent 72%),
-      linear-gradient(180deg, hsl(0 0% 100% / 0.055) 0%, transparent 32%),
-      radial-gradient(circle at 20% 30%, hsl(214 72% 60% / 0.08) 0%, transparent 42%);
-    pointer-events: none;
-  }
-
-  .login-hero::after {
-    content: "";
-    position: absolute;
-    inset: auto 0 0 0;
-    height: 40%;
-    background: linear-gradient(0deg, hsl(235 70% 4% / 0.45) 0%, transparent 100%);
-    pointer-events: none;
+  .brand-logo-mark {
+    @apply inline-flex w-fit;
   }
 
   .login-hero-rule {
+    @apply copper-rule relative z-10;
     width: 3rem;
-    height: 2px;
-    border-radius: 999px;
-    background: linear-gradient(
-      90deg,
-      hsl(214 72% 68%) 0%,
-      hsl(235 59% 42%) 55%,
-      transparent 100%
-    );
-    box-shadow: 0 0 12px hsl(214 72% 58% / 0.35);
   }
 
   .login-hero-eyebrow {
-    @apply relative z-10 text-[11px] font-semibold;
+    @apply relative z-10 text-[11px] font-bold uppercase text-primary;
     letter-spacing: 0.18em;
-    color: #8eb6f8;
   }
 
   .login-hero-title {
-    @apply relative z-10 mt-5 font-display font-bold text-white;
+    @apply relative z-10 mt-5 font-display font-bold text-foreground;
     font-size: 2.15rem;
     line-height: 1.2;
     letter-spacing: -0.02em;
@@ -178,17 +140,14 @@
   }
 
   .login-hero-body {
-    @apply relative z-10 mt-6;
+    @apply relative z-10 mt-6 text-foreground/85;
     font-size: 15px;
     line-height: 1.75;
-    color: hsl(0 0% 100% / 0.68);
   }
 
   .login-hero-footer {
-    @apply relative z-10;
-    font-size: 11px;
-    letter-spacing: 0.08em;
-    color: hsl(0 0% 100% / 0.35);
+    @apply relative z-10 text-sm text-muted-foreground;
+    letter-spacing: 0.04em;
   }
 
   .forest-panel {
@@ -226,7 +185,7 @@
   .btn-lumen:active { transform: scale(0.985); }
 
   .btn-surface {
-    @apply font-medium text-foreground rounded-xl border border-border/80 bg-card;
+    @apply font-medium text-foreground rounded-xl bg-card;
     box-shadow:
       0 0 0 1px hsl(40 40% 99% / 0.65) inset,
       0 1px 2px hsl(28 12% 11% / 0.04);
@@ -244,19 +203,19 @@
 
   .btn-elevated {
     @apply font-semibold text-foreground rounded-xl border-0;
-    background: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 18% 96%) 100%);
+    background: linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--muted)) 100%);
     box-shadow:
-      0 0 0 1px hsl(0 0% 100% / 0.9) inset,
-      0 1px 2px hsl(230 28% 12% / 0.08),
-      0 8px 24px hsl(230 28% 12% / 0.12);
+      0 0 0 1px hsl(var(--border) / 0.5) inset,
+      0 1px 2px hsl(30 20% 20% / 0.08),
+      0 8px 24px hsl(30 20% 20% / 0.1);
     transition: box-shadow 0.2s ease, transform 0.15s ease;
   }
 
   .btn-elevated:hover {
     box-shadow:
-      0 0 0 1px hsl(0 0% 100%) inset,
-      0 2px 4px hsl(230 28% 12% / 0.1),
-      0 12px 32px hsl(230 28% 12% / 0.14);
+      0 0 0 1px hsl(var(--border) / 0.65) inset,
+      0 2px 4px hsl(30 20% 20% / 0.1),
+      0 12px 32px hsl(30 20% 20% / 0.12);
   }
 
   .btn-elevated:active { transform: scale(0.985); }
@@ -300,7 +259,70 @@
   }
 
   .text-eyebrow {
-    @apply text-xs font-semibold tracking-wider text-lumen;
+    @apply text-xs font-bold tracking-wider uppercase text-primary;
+  }
+
+  .text-brand {
+    @apply text-primary font-semibold;
+  }
+
+  .text-readable {
+    @apply text-muted-foreground;
+  }
+
+  .text-on-canvas {
+    @apply text-foreground;
+  }
+
+  /* Role badge — COWELL primary blue */
+  .role-badge {
+    @apply shrink-0 rounded-md px-2 py-0.5 text-[10px] font-bold tracking-wide;
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border: 1px solid hsl(235 55% 15%);
+    box-shadow: 0 1px 3px hsl(var(--primary) / 0.28);
+  }
+
+  .role-badge-muted {
+    @apply shrink-0 rounded-md px-2 py-0.5 text-[10px] font-bold tracking-wide;
+    background: hsl(var(--primary) / 0.12);
+    color: hsl(var(--primary));
+    border: 1px solid hsl(var(--primary) / 0.35);
+  }
+
+  /* System status — dark navy chip (readable, production-style) */
+  .status-pill-online {
+    @apply inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-semibold tracking-wide;
+    background: linear-gradient(180deg, hsl(235 48% 16%) 0%, hsl(235 52% 11%) 100%);
+    color: hsl(0 0% 98%);
+    border: 1px solid hsl(214 40% 28% / 0.45);
+    box-shadow:
+      0 1px 2px hsl(235 50% 6% / 0.4),
+      inset 0 1px 0 hsl(0 0% 100% / 0.08);
+  }
+
+  .status-pill-online-dot {
+    @apply h-2 w-2 shrink-0 rounded-full bg-emerald-400;
+    box-shadow: 0 0 10px hsl(152 76% 48% / 0.75);
+    animation: status-pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes status-pulse {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.75;
+      transform: scale(0.92);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .status-pill-online-dot {
+      animation: none;
+    }
   }
 
   .text-title {
@@ -325,6 +347,8 @@
   .shell-aside {
     width: 300px;
     transition: width 280ms cubic-bezier(0.22, 1, 0.36, 1);
+    border-right: 1px solid hsl(var(--primary) / 0.22);
+    box-shadow: 1px 0 0 hsl(var(--primary) / 0.07);
   }
   .shell-aside-inner {
     padding: 1.5rem;
@@ -653,10 +677,11 @@
 
   /* ── Form card (login) ── */
   .form-surface {
-    @apply rounded-xl border border-border/70 bg-card p-7;
-    box-shadow:
-      0 0 0 1px hsl(40 40% 99% / 0.8) inset,
-      0 16px 40px hsl(28 12% 11% / 0.06);
+    @apply rounded-2xl bg-card p-7 sm:p-8;
+  }
+
+  .login-form-stage {
+    @apply relative flex flex-1 flex-col items-center justify-center px-6 py-12;
   }
 
   /* ── Skeleton shimmer (premium) ── */
