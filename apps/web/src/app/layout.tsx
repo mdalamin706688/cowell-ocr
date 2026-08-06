@@ -25,9 +25,10 @@ export const metadata: Metadata = {
     : {}),
   icons: {
     icon: [
-      { url: `${basePath}/favicon.svg`, type: "image/svg+xml" },
-      { url: `${basePath}/favicon.png`, sizes: "32x32", type: "image/png" },
       { url: `${basePath}/favicon.ico`, sizes: "any" },
+      { url: `${basePath}/favicon.png`, sizes: "32x32", type: "image/png" },
+      { url: `${basePath}/favicon-16.png`, sizes: "16x16", type: "image/png" },
+      { url: `${basePath}/favicon.svg`, type: "image/svg+xml" },
     ],
     apple: [
       { url: `${basePath}/apple-touch-icon.png`, sizes: "180x180", type: "image/png" },
@@ -51,9 +52,9 @@ export default function RootLayout({
     <html lang="ja" translate="no" suppressHydrationWarning>
       <head>
         <meta name="google" content="notranslate" />
-        <link rel="icon" href={iconSvg} type="image/svg+xml" sizes="any" />
-        <link rel="icon" href={iconPng} type="image/png" sizes="32x32" />
         <link rel="icon" href={iconIco} sizes="any" />
+        <link rel="icon" href={iconPng} type="image/png" sizes="32x32" />
+        <link rel="icon" href={iconSvg} type="image/svg+xml" sizes="any" />
         <link rel="shortcut icon" href={iconIco} />
         <link rel="apple-touch-icon" href={appleHref} sizes="180x180" />
       </head>

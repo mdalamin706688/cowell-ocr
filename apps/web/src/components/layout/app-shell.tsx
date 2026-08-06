@@ -12,7 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import { copy } from "@/lib/copy";
 import { Button } from "@/components/ui/button";
-import { Logo, LogoMark } from "@/components/brand/logo";
+import { Logo, LogoMark, CMonogram } from "@/components/brand/logo";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { SoftNavButton } from "@/components/ui/soft-nav-button";
 import { useSidebarCollapsed } from "@/hooks/use-sidebar-collapsed";
@@ -61,7 +61,7 @@ export function AppShell({ children, user }: AppShellProps) {
               aria-label="COWELL OCR"
               className="shell-rail-item flex items-center justify-center p-0"
             >
-              <LogoMark height={20} />
+              <CMonogram size={32} />
             </SoftNavButton>
             <Button
               type="button"

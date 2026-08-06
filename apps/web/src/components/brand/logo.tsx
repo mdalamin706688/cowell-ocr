@@ -14,6 +14,41 @@ interface LogoProps {
   className?: string;
 }
 
+/**
+ * Premium "C" monogram — inline SVG for crisp rendering at any size.
+ * Cream rounded square + navy C arc with rounded line caps.
+ * Server-safe (no next/image, no client-only APIs).
+ */
+export function CMonogram({
+  size = 40,
+  className,
+}: {
+  size?: number;
+  className?: string;
+}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 64 64"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      aria-label="COWELL"
+      role="img"
+    >
+      <rect width="64" height="64" rx="14" fill="#FDF7F0" />
+      <path
+        d="M44 20a16 16 0 1 0 0 24"
+        fill="none"
+        stroke="#1F2677"
+        strokeWidth="8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export function LogoMark({
   height = 22,
   className,
