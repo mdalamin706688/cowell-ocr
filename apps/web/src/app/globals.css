@@ -10,6 +10,7 @@
     --foreground: 232 35% 8%;
     --card: 30 30% 97.6%;
     --card-foreground: 232 35% 8%;
+    --main-surface: 30 24% 95.2%;
     --popover: 30 30% 97.6%;
     --popover-foreground: 232 35% 8%;
     --primary: 235 62% 19%;
@@ -59,7 +60,7 @@
 @layer components {
   /* ── Canvas ── */
   .paper-canvas {
-    background-color: hsl(var(--paper));
+    background-color: hsl(var(--card));
   }
 
   .grain {
@@ -104,11 +105,13 @@
 
   /* Dashboard hero — white content on gray canvas */
   .forest-hero {
-    @apply relative overflow-hidden rounded-2xl bg-card;
+    @apply relative overflow-hidden rounded-2xl;
+    background-color: hsl(var(--primary) / 0.1);
   }
 
   .login-hero {
-    @apply relative flex flex-col justify-between overflow-hidden bg-card;
+    @apply relative flex flex-col justify-between overflow-hidden;
+    background-color: hsl(var(--primary) / 0.1);
   }
 
   .brand-logo-mark {
@@ -353,7 +356,12 @@
     padding: 1.5rem;
   }
   .shell-main {
+    background-color: hsl(var(--main-surface));
     transition: padding-left 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .shell-content {
+    background-color: hsl(var(--main-surface));
   }
 
   /* Survey review maximize: fit viewport — only the table body scrolls */
