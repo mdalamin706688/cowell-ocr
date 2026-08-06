@@ -147,7 +147,14 @@ export function AppShell({ children, user }: AppShellProps) {
               >
                 <div className="shell-account-row flex items-center justify-between gap-2">
                   <p className="shell-expanded-only text-label">{copy.nav.account}</p>
-                  <span className="shell-expanded-only role-badge">{roleLabel}</span>
+                  <span
+                    className={cn(
+                      "shell-expanded-only shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold tracking-wide",
+                      isSuperAdmin ? "bg-lumen/15 text-lumen" : "bg-muted text-muted-foreground"
+                    )}
+                  >
+                    {roleLabel}
+                  </span>
                   <CircleUserRound
                     className={cn(
                       "shell-collapsed-only h-5 w-5",
