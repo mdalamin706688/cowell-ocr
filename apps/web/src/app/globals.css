@@ -680,6 +680,36 @@
     background: hsl(var(--lumen) / 0.03);
   }
 
+  .review-col-resize {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 2;
+    width: 10px;
+    height: 100%;
+    cursor: col-resize;
+    touch-action: none;
+  }
+
+  .review-col-resize::after {
+    content: "";
+    position: absolute;
+    top: 18%;
+    bottom: 18%;
+    right: 3px;
+    width: 2px;
+    border-radius: 1px;
+    background: hsl(var(--muted-foreground) / 0.35);
+  }
+
+  .review-col-resize:hover::after,
+  .review-col-resize:focus-visible::after,
+  [data-resizing="on"] .review-col-resize[data-active="on"]::after {
+    background: hsl(var(--primary));
+    width: 3px;
+    opacity: 1;
+  }
+
   /* ── Form card (login) ── */
   .form-surface {
     @apply rounded-2xl bg-card p-7 sm:p-8;

@@ -213,6 +213,7 @@ export const copy = {
     deleteRowConfirm: "削除する",
     deleteRowCancel: "キャンセル",
     rowFallback: (n: number) => `${n}行目`,
+    resizeColumn: "列幅を変更",
   },
   auth: {
     logout: "ログアウト",

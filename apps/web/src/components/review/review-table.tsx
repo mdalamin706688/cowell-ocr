@@ -36,6 +36,75 @@ const TEXT_FIELDS = [
   "notes",
 ] as const;
 
+type DataColKey =
+  | "floor"
+  | "location"
+  | "fixtureModel"
+  | "existingProduct"
+  | "photo"
+  | "quantity"
+  | "notes";
+
+const DATA_COLUMNS: Array<{
+  key: DataColKey;
+  label: (typeof SURVEY_COLUMNS)[number];
+  field?: (typeof TEXT_FIELDS)[number];
+}> = [
+  { key: "floor", label: "フロア", field: "floor" },
+  { key: "location", label: "設置場所", field: "location" },
+  { key: "fixtureModel", label: "器具品番", field: "fixtureModel" },
+  { key: "existingProduct", label: "既設商品名", field: "existingProduct" },
+  { key: "photo", label: "写真" },
+  { key: "quantity", label: "数量", field: "quantity" },
+  { key: "notes", label: "備考", field: "notes" },
+];
+
+const INDEX_COL_WIDTH = 44;
+const ACTION_COL_WIDTH = 44;
+const COL_WIDTH_STORAGE_KEY = "cowell_review_col_widths_v2";
+
+/** Floor stays compact; product name + notes get room so text is not clipped. */
+const DEFAULT_COL_WIDTHS: Record<DataColKey, number> = {
+  floor: 48,
+  location: 128,
+  fixtureModel: 180,
+  existingProduct: 280,
+  photo: 148,
+  quantity: 56,
+  notes: 300,
+};
+
+const MIN_COL_WIDTHS: Record<DataColKey, number> = {
+  floor: 40,
+  location: 80,
+  fixtureModel: 100,
+  existingProduct: 140,
+  photo: 132,
+  quantity: 48,
+  notes: 160,
+};
+
+function readStoredColWidths(): Record<DataColKey, number> {
+  if (typeof window === "undefined") return DEFAULT_COL_WIDTHS;
+  try {
+    const raw = window.localStorage.getItem(COL_WIDTH_STORAGE_KEY);
+    if (!raw) return DEFAULT_COL_WIDTHS;
+    const parsed = JSON.parse(raw) as Partial<Record<DataColKey, number>>;
+    return DATA_COLUMNS.reduce(
+      (acc, { key }) => {
+        const next = Number(parsed[key]);
+        acc[key] = Number.isFinite(next)
+          ? Math.max(MIN_COL_WIDTHS[key], Math.round(next))
+          : DEFAULT_COL_WIDTHS[key];
+        return acc;
+      },
+      { ...DEFAULT_COL_WIDTHS }
+    );
+  } catch {
+    return DEFAULT_COL_WIDTHS;
+  }
+}
+
 const PAGE_SIZE_OPTIONS = [20, 50, 100, 200] as const;
 
 function rowDisplayName(row: OcrRow, rowNumber: number): string {
@@ -56,6 +125,48 @@ export function ReviewTable({ rows, onRowsChange, query, expanded = false }: Rev
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(100);
+  const [colWidths, setColWidths] = useState<Record<DataColKey, number>>(DEFAULT_COL_WIDTHS);
+  const [resizingCol, setResizingCol] = useState<DataColKey | null>(null);
+  const colWidthsReady = useRef(false);
+
+  useEffect(() => {
+    setColWidths(readStoredColWidths());
+    colWidthsReady.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (!colWidthsReady.current) return;
+    window.localStorage.setItem(COL_WIDTH_STORAGE_KEY, JSON.stringify(colWidths));
+  }, [colWidths]);
+
+  useEffect(() => {
+    if (!resizingCol) return;
+    const onMove = (event: PointerEvent) => {
+      setColWidths((prev) => ({
+        ...prev,
+        [resizingCol]: Math.max(
+          MIN_COL_WIDTHS[resizingCol],
+          prev[resizingCol] + event.movementX
+        ),
+      }));
+    };
+    const onUp = () => setResizingCol(null);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [resizingCol]);
+
+  const tableMinWidth =
+    INDEX_COL_WIDTH + ACTION_COL_WIDTH + DATA_COLUMNS.reduce((sum, col) => sum + colWidths[col.key], 0);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -152,7 +263,10 @@ export function ReviewTable({ rows, onRowsChange, query, expanded = false }: Rev
         onChange={(e) => void handlePhotoSelected(e.target.files?.[0])}
       />
 
-      <div className={cn(expanded ? "review-table-root" : "space-y-3")}>
+      <div
+        className={cn(expanded ? "review-table-root" : "space-y-3")}
+        data-resizing={resizingCol ? "on" : "off"}
+      >
         <div
           className={cn(
             "rounded-lg border border-border/80 overflow-hidden bg-card",
@@ -165,31 +279,48 @@ export function ReviewTable({ rows, onRowsChange, query, expanded = false }: Rev
               expanded ? "review-table-scroll" : "max-h-[min(28rem,60vh)]"
             )}
           >
-            <table className="w-full text-sm">
+            <table
+              className="text-sm"
+              style={{ tableLayout: "fixed", width: tableMinWidth, minWidth: tableMinWidth }}
+            >
+              <colgroup>
+                <col style={{ width: INDEX_COL_WIDTH }} />
+                {DATA_COLUMNS.map((col) => (
+                  <col key={col.key} style={{ width: colWidths[col.key] }} />
+                ))}
+                <col style={{ width: ACTION_COL_WIDTH }} />
+              </colgroup>
               <thead className="bg-muted/80 sticky top-0 z-10 backdrop-blur-sm">
                 <tr className="border-b border-border">
-                  <th className="px-3 py-2.5 text-left text-xs font-medium text-muted-foreground w-10">
+                  <th className="px-2 py-2.5 text-left text-xs font-medium text-muted-foreground">
                     #
                   </th>
-                  {SURVEY_COLUMNS.map((col) => (
+                  {DATA_COLUMNS.map((col) => (
                     <th
-                      key={col}
-                      className={cn(
-                        "px-2 py-2.5 text-left text-xs font-medium text-muted-foreground whitespace-nowrap",
-                        col === "写真" && "w-36",
-                        col === "数量" && "w-16"
-                      )}
+                      key={col.key}
+                      className="relative px-2 py-2.5 text-left text-xs font-medium text-muted-foreground"
                     >
-                      {col}
+                      <span className="block truncate pr-2">{col.label}</span>
+                      <button
+                        type="button"
+                        className="review-col-resize"
+                        data-active={resizingCol === col.key ? "on" : "off"}
+                        aria-label={`${copy.table.resizeColumn}: ${col.label}`}
+                        onPointerDown={(event) => {
+                          event.preventDefault();
+                          (event.currentTarget as HTMLButtonElement).setPointerCapture(event.pointerId);
+                          setResizingCol(col.key);
+                        }}
+                      />
                     </th>
                   ))}
-                  <th className="w-10" />
+                  <th />
                 </tr>
               </thead>
               <tbody>
                 {pageRows.length === 0 ? (
                   <tr>
-                    <td colSpan={SURVEY_COLUMNS.length + 2} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                    <td colSpan={DATA_COLUMNS.length + 2} className="px-4 py-10 text-center text-sm text-muted-foreground">
                       {copy.table.noMatches}
                     </td>
                   </tr>
@@ -202,85 +333,95 @@ export function ReviewTable({ rows, onRowsChange, query, expanded = false }: Rev
                         key={row.id}
                         className="table-row-hover border-b border-border/50 last:border-0"
                       >
-                        <td className="px-3 py-1.5 text-xs text-muted-foreground tabular-nums">
+                        <td className="px-2 py-1.5 text-xs text-muted-foreground tabular-nums">
                           {absoluteIndex + 1}
                         </td>
 
-                        {TEXT_FIELDS.slice(0, 4).map((field) => (
-                          <td key={field} className="px-1 py-1">
-                            <Input
-                              value={row[field]}
-                              onChange={(e) => updateRow(row.id, field, e.target.value)}
-                              className="h-9 text-sm border-transparent bg-transparent shadow-none focus-visible:bg-background focus-visible:border-border"
-                            />
-                          </td>
-                        ))}
+                        {DATA_COLUMNS.map((col) => {
+                          if (col.key === "photo") {
+                            return (
+                              <td key={col.key} className="px-1 py-1 align-middle">
+                                <div className="flex items-center gap-1 min-w-0">
+                                  {row.photoUrl ? (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setPreviewPhoto({
+                                          src: row.photoUrl!,
+                                          label: displayName,
+                                        })
+                                      }
+                                      className="shrink-0 rounded-md border border-border/60 hover:border-lumen/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumen/30"
+                                      aria-label={`${copy.table.photoAttached}: ${displayName}`}
+                                    >
+                                      <img
+                                        src={row.photoUrl}
+                                        alt={displayName}
+                                        className="h-9 w-9 rounded-md object-cover"
+                                      />
+                                    </button>
+                                  ) : null}
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-9 min-w-0 shrink px-2 text-xs"
+                                    disabled={uploadingRowId === row.id}
+                                    onClick={() => openPhotoPicker(row.id)}
+                                  >
+                                    {uploadingRowId === row.id ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      <ImagePlus className="h-3.5 w-3.5" />
+                                    )}
+                                    <span className="sr-only sm:not-sr-only truncate">
+                                      {row.photoUrl ? copy.table.changePhoto : copy.table.attachPhoto}
+                                    </span>
+                                  </Button>
+                                  {row.photoUrl ? (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-9 w-9 shrink-0 text-muted-foreground/50 hover:text-destructive"
+                                      onClick={() => clearRowPhoto(row.id)}
+                                      aria-label={copy.table.removePhoto}
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  ) : null}
+                                </div>
+                              </td>
+                            );
+                          }
 
-                        <td className="px-1 py-1 align-middle">
-                          <div className="flex items-center gap-1 min-w-[8.5rem]">
-                            {row.photoUrl ? (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setPreviewPhoto({
-                                    src: row.photoUrl!,
-                                    label: displayName,
-                                  })
-                                }
-                                className="shrink-0 rounded-md border border-border/60 hover:border-lumen/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lumen/30"
-                                aria-label={`${copy.table.photoAttached}: ${displayName}`}
-                              >
-                                <img
-                                  src={row.photoUrl}
-                                  alt={displayName}
-                                  className="h-9 w-9 rounded-md object-cover"
+                          const field = col.field!;
+                          const wrap = col.key === "existingProduct" || col.key === "notes" || col.key === "fixtureModel";
+                          return (
+                            <td key={col.key} className="px-1 py-1 align-top">
+                              {wrap ? (
+                                <textarea
+                                  value={row[field]}
+                                  title={row[field]}
+                                  rows={2}
+                                  onChange={(e) => updateRow(row.id, field, e.target.value)}
+                                  className="min-h-9 w-full min-w-0 resize-none rounded-lg border border-transparent bg-transparent px-2 py-1.5 text-sm leading-snug shadow-none outline-none focus-visible:border-border focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-lumen/12"
                                 />
-                              </button>
-                            ) : null}
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="h-9 shrink-0 px-2 text-xs"
-                              disabled={uploadingRowId === row.id}
-                              onClick={() => openPhotoPicker(row.id)}
-                            >
-                              {uploadingRowId === row.id ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
                               ) : (
-                                <ImagePlus className="h-3.5 w-3.5" />
+                                <Input
+                                  value={row[field]}
+                                  title={row[field]}
+                                  onChange={(e) => updateRow(row.id, field, e.target.value)}
+                                  className={cn(
+                                    "h-9 min-w-0 text-sm border-transparent bg-transparent shadow-none focus-visible:bg-background focus-visible:border-border",
+                                    col.key === "floor" && "px-1",
+                                    col.key === "quantity" && "tabular-nums px-1.5"
+                                  )}
+                                />
                               )}
-                              <span className="sr-only sm:not-sr-only">
-                                {row.photoUrl ? copy.table.changePhoto : copy.table.attachPhoto}
-                              </span>
-                            </Button>
-                            {row.photoUrl ? (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-9 w-9 shrink-0 text-muted-foreground/50 hover:text-destructive"
-                                onClick={() => clearRowPhoto(row.id)}
-                                aria-label={copy.table.removePhoto}
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            ) : null}
-                          </div>
-                        </td>
-
-                        {TEXT_FIELDS.slice(4).map((field) => (
-                          <td key={field} className="px-1 py-1">
-                            <Input
-                              value={row[field]}
-                              onChange={(e) => updateRow(row.id, field, e.target.value)}
-                              className={cn(
-                                "h-9 text-sm border-transparent bg-transparent shadow-none focus-visible:bg-background focus-visible:border-border",
-                                field === "quantity" && "w-16 tabular-nums"
-                              )}
-                            />
-                          </td>
-                        ))}
+                            </td>
+                          );
+                        })}
 
                         <td className="px-1 py-1">
                           <Button
