@@ -270,13 +270,16 @@ export async function surveyExport(
   }
 
   if (isPreviewEnvironment()) {
-    onProgress?.({ percent: 40, phase: "spreadsheet" });
+    onProgress?.({ percent: 10, phase: "folders" });
+    onProgress?.({ percent: 25, phase: "sources" });
+    onProgress?.({ percent: 45, phase: "photos" });
+    onProgress?.({ percent: 70, phase: "spreadsheet" });
     downloadCsv(rows, title);
     onProgress?.({ percent: 100, phase: "finishing" });
     return { spreadsheetUrl: "", rowCount: rows.length, downloadOnly: true };
   }
 
-  onProgress?.({ percent: 20, phase: "spreadsheet" });
+  onProgress?.({ percent: 10, phase: "folders" });
   const res = await fetch(`${getBasePath()}/api/sheets/export`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

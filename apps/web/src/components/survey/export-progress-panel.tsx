@@ -17,9 +17,9 @@ interface ExportProgressPanelProps {
 /** Work phases only — auth is shown separately before % starts */
 const WORK_STEPS: Array<{ id: ExportProgressPhase; label: string }> = [
   { id: "folders", label: copy.survey.exportPhase.foldersShort },
-  { id: "spreadsheet", label: copy.survey.exportPhase.spreadsheetShort },
-  { id: "photos", label: copy.survey.exportPhase.photosShort },
   { id: "sources", label: copy.survey.exportPhase.sourcesShort },
+  { id: "photos", label: copy.survey.exportPhase.photosShort },
+  { id: "spreadsheet", label: copy.survey.exportPhase.spreadsheetShort },
   { id: "finishing", label: copy.survey.exportPhase.finishingShort },
 ];
 

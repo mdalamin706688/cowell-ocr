@@ -67,9 +67,9 @@ export interface DriveRootFolderOption {
 export type ExportProgressPhase =
   | "connecting"
   | "folders"
-  | "spreadsheet"
-  | "photos"
   | "sources"
+  | "photos"
+  | "spreadsheet"
   | "finishing";
 
 export interface ExportProgressEvent {
@@ -1185,13 +1185,12 @@ async function uploadSourceFilesToDrive(
   return count;
 }
 
-async function attachRowPhotos(
+async function uploadRowPhotosToDrive(
   accessToken: string,
-  spreadsheetId: string,
   rows: OcrRow[],
   photoFolderId: string,
   onItem?: (done: number, total: number) => void
-): Promise<number> {
+): Promise<Array<{ sheetRow: number; imageUrl: string }>> {
   const photoRows = rows
     .map((row, index) => ({
       row,
@@ -1199,10 +1198,10 @@ async function attachRowPhotos(
     }))
     .filter((item) => item.row.photoBase64 && item.row.photoMimeType);
 
-  if (!photoRows.length) return 0;
+  if (!photoRows.length) return [];
 
+  const uploaded: Array<{ sheetRow: number; imageUrl: string }> = [];
   const total = photoRows.length;
-  const updates: Array<{ range: string; values: string[][] }> = [];
 
   for (let i = 0; i < photoRows.length; i++) {
     const { row, sheetRow } = photoRows[i];
@@ -1213,13 +1212,27 @@ async function attachRowPhotos(
       buildRowPhotoFileName(sheetRow - EXPORT_SHEET_DATA_START_ROW + 1),
       photoFolderId
     );
-    const cell = `${columnLetter(PHOTO_COLUMN_INDEX)}${sheetRow}`;
-    updates.push({
-      range: `${SHEET_TAB_TITLE}!${cell}`,
-      values: [[`=IMAGE("${imageUrl}", 1)`]],
-    });
+    uploaded.push({ sheetRow, imageUrl });
     onItem?.(i + 1, total);
   }
+
+  return uploaded;
+}
+
+async function applyPhotoFormulasToSheet(
+  accessToken: string,
+  spreadsheetId: string,
+  photoRows: Array<{ sheetRow: number; imageUrl: string }>
+): Promise<number> {
+  if (!photoRows.length) return 0;
+
+  const updates = photoRows.map(({ sheetRow, imageUrl }) => {
+    const cell = `${columnLetter(PHOTO_COLUMN_INDEX)}${sheetRow}`;
+    return {
+      range: `${SHEET_TAB_TITLE}!${cell}`,
+      values: [[`=IMAGE("${imageUrl}", 1)`]],
+    };
+  });
 
   const batchRes = await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchUpdate`,
@@ -1394,7 +1407,7 @@ async function exportRowsWithAccessTokenUnlocked(
       (done, total) => {
         emitProgress(
           onProgress,
-          rangePercent(16, 28, done / total),
+          rangePercent(16, 32, done / total),
           "sources",
           `${done} / ${total}`
         );
@@ -1403,17 +1416,38 @@ async function exportRowsWithAccessTokenUnlocked(
     await ensureExclusiveParent(accessToken, sourceFolderId, processFolderId);
     await ensureExclusiveParent(accessToken, processFolderId, parent.id);
   }
-  emitProgress(onProgress, shouldUploadSources ? 28 : 20, "spreadsheet");
+  emitProgress(onProgress, shouldUploadSources ? 32 : 18, "photos");
 
   const photoFolderId = await createPhotoSubfolder(accessToken, processFolderId);
-  emitProgress(onProgress, shouldUploadSources ? 30 : 22, "spreadsheet");
+  let photoCount = 0;
+  let uploadedPhotos: Array<{ sheetRow: number; imageUrl: string }> = [];
+  if (photoTotal > 0) {
+    emitProgress(onProgress, 34, "photos", `0 / ${photoTotal}`);
+    uploadedPhotos = await uploadRowPhotosToDrive(
+      accessToken,
+      rows,
+      photoFolderId,
+      (done, total) => {
+        emitProgress(
+          onProgress,
+          rangePercent(34, 58, done / total),
+          "photos",
+          `${done} / ${total}`
+        );
+      }
+    );
+    photoCount = uploadedPhotos.length;
+    await ensureExclusiveParent(accessToken, photoFolderId, processFolderId);
+    await ensureExclusiveParent(accessToken, processFolderId, parent.id);
+  }
+  emitProgress(onProgress, photoTotal > 0 ? 58 : 36, "spreadsheet");
 
   const spreadsheetId = await createResultSpreadsheet(
     accessToken,
     processFolderId,
     spreadsheetName
   );
-  emitProgress(onProgress, 28, "spreadsheet");
+  emitProgress(onProgress, 62, "spreadsheet");
 
   const updateRes = await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/A1?valueInputOption=RAW`,
@@ -1430,29 +1464,12 @@ async function exportRowsWithAccessTokenUnlocked(
   }
 
   await formatExportedSpreadsheet(accessToken, spreadsheetId, rows);
-  emitProgress(onProgress, 35, "spreadsheet");
+  emitProgress(onProgress, 82, "spreadsheet");
 
-  let photoCount = 0;
-  if (photoTotal > 0) {
-    emitProgress(onProgress, 36, "photos", `0 / ${photoTotal}`);
-    photoCount = await attachRowPhotos(
-      accessToken,
-      spreadsheetId,
-      rows,
-      photoFolderId,
-      (done, total) => {
-        emitProgress(
-          onProgress,
-          rangePercent(36, 75, done / total),
-          "photos",
-          `${done} / ${total}`
-        );
-      }
-    );
-    await ensureExclusiveParent(accessToken, photoFolderId, processFolderId);
-    await ensureExclusiveParent(accessToken, processFolderId, parent.id);
+  if (uploadedPhotos.length > 0) {
+    await applyPhotoFormulasToSheet(accessToken, spreadsheetId, uploadedPhotos);
   }
-  emitProgress(onProgress, 75, photoTotal > 0 ? "photos" : "finishing");
+  emitProgress(onProgress, 92, "finishing");
 
   await touchSpreadsheetFile(accessToken, spreadsheetId);
 
