@@ -76,6 +76,11 @@ function formatProgressBytes(bytes: number): string {
   return `${bytes} B`;
 }
 
+function chunkDetail(chunkIndex: number, chunkTotal: number, rest: string): string {
+  if (chunkTotal <= 1) return rest;
+  return `送信 ${chunkIndex}/${chunkTotal} · ${rest}`;
+}
+
 function emitProgress(
   onProgress: OcrProgressCallback | undefined,
   percent: number,
@@ -167,7 +172,7 @@ function postOcrForm(
 
 function mapApiRow(row: ApiSurveyRow): OcrRow {
   return {
-    id: row.id != null && row.id > 0 ? String(row.id) : generateId(),
+    id: generateId(),
     floor: row.floor ?? "",
     location: row.location ?? "",
     fixtureModel: row.fixture_model ?? "",
@@ -271,11 +276,6 @@ function parseOcrResponse(
   const warnings = Array.isArray(data.warnings) ? data.warnings : [];
   const rows = apiRows.map(mapApiRow);
 
-  if (!rows.length && fileErrors.length) {
-    const joined = fileErrors.map((e) => `${e.filename}: ${e.detail}`).join("\n");
-    throw new Error(friendlyOcrError(joined || copy.errors.ocrFailed));
-  }
-
   const busyHint = [...warnings, ...fileErrors.map((e) => e.detail)].join(" ");
   if (!rows.length && /503|unavailable|high demand/i.test(busyHint)) {
     throw new Error(copy.errors.ocrBusy);
@@ -298,7 +298,9 @@ async function postOcrBatch(
   accessToken: string | undefined,
   onProgress: OcrProgressCallback | undefined,
   rangeStart: number,
-  rangeEnd: number
+  rangeEnd: number,
+  chunkIndex: number,
+  chunkTotal: number
 ): Promise<ReturnType<typeof parseOcrResponse>> {
   const form = new FormData();
   const totalBytes = estimateOcrBodyBytes(files, prompt);
@@ -310,12 +312,10 @@ async function postOcrBatch(
   }
 
   const uploadEnd = rangeStart + (rangeEnd - rangeStart) * 0.28;
-  emitProgress(
-    onProgress,
-    rangeStart,
-    "uploading",
-    `0 / ${formatProgressBytes(totalBytes)}`
-  );
+  const sizeLabel = (loaded: number, total: number) =>
+    chunkDetail(chunkIndex, chunkTotal, `${formatProgressBytes(loaded)} / ${formatProgressBytes(total)}`);
+
+  emitProgress(onProgress, rangeStart, "uploading", sizeLabel(0, totalBytes));
 
   let readingTimer: number | null = null;
   let readingStarted = false;
@@ -332,14 +332,24 @@ async function postOcrBatch(
     clearReadingTicker();
     const started = Date.now();
     let expectedMs = estimateReadingMs(files.length, totalBytes);
-    emitProgress(onProgress, uploadEnd, "reading");
+    emitProgress(
+      onProgress,
+      uploadEnd,
+      "reading",
+      chunkDetail(chunkIndex, chunkTotal, formatProgressBytes(totalBytes))
+    );
     readingTimer = window.setInterval(() => {
       const elapsed = Date.now() - started;
       if (elapsed > expectedMs * 0.85 && expectedMs < 160_000) {
         expectedMs *= 1.18;
       }
       const t = Math.min(0.992, elapsed / expectedMs);
-      emitProgress(onProgress, easeReading(t, uploadEnd, rangeEnd), "reading");
+      emitProgress(
+        onProgress,
+        easeReading(t, uploadEnd, rangeEnd),
+        "reading",
+        chunkDetail(chunkIndex, chunkTotal, formatProgressBytes(totalBytes))
+      );
     }, 50);
   };
 
@@ -355,12 +365,7 @@ async function postOcrBatch(
           total > 0 ? loaded : loaded <= 1 ? absoluteTotal * loaded : loaded;
         const ratio = Math.min(1, absoluteLoaded / absoluteTotal);
         const percent = rangeStart + (uploadEnd - rangeStart) * ratio;
-        emitProgress(
-          onProgress,
-          percent,
-          "uploading",
-          `${formatProgressBytes(absoluteLoaded)} / ${formatProgressBytes(absoluteTotal)}`
-        );
+        emitProgress(onProgress, percent, "uploading", sizeLabel(absoluteLoaded, absoluteTotal));
       },
       onUploadComplete: startReadingTicker,
     });
@@ -383,10 +388,22 @@ async function postOcrBatchWithSplit(
   accessToken: string | undefined,
   onProgress: OcrProgressCallback | undefined,
   rangeStart: number,
-  rangeEnd: number
+  rangeEnd: number,
+  chunkIndex: number,
+  chunkTotal: number
 ): Promise<ReturnType<typeof parseOcrResponse>> {
   try {
-    return await postOcrBatch(url, prompt, files, accessToken, onProgress, rangeStart, rangeEnd);
+    return await postOcrBatch(
+      url,
+      prompt,
+      files,
+      accessToken,
+      onProgress,
+      rangeStart,
+      rangeEnd,
+      chunkIndex,
+      chunkTotal
+    );
   } catch (err) {
     const message = err instanceof Error ? err.message : "";
     const tooLarge = message === copy.errors.ocrPayloadTooLarge;
@@ -400,7 +417,9 @@ async function postOcrBatchWithSplit(
       accessToken,
       onProgress,
       rangeStart,
-      split
+      split,
+      chunkIndex,
+      chunkTotal
     );
     const second = await postOcrBatchWithSplit(
       url,
@@ -409,7 +428,9 @@ async function postOcrBatchWithSplit(
       accessToken,
       onProgress,
       split,
-      rangeEnd
+      rangeEnd,
+      chunkIndex,
+      chunkTotal
     );
     return {
       rows: [...first.rows, ...second.rows],
@@ -475,7 +496,9 @@ export async function runRemoteOcr(
       accessToken,
       onProgress,
       rangeStart,
-      rangeEnd
+      rangeEnd,
+      i + 1,
+      usableBatches.length
     );
     merged.rows.push(...part.rows);
     merged.fileErrors.push(...part.fileErrors);
@@ -485,7 +508,17 @@ export async function runRemoteOcr(
     merged.totalTokens += part.totalTokens;
   }
 
-  emitProgress(onProgress, 97, "finishing");
+  if (!merged.rows.length && merged.fileErrors.length) {
+    const joined = merged.fileErrors.map((e) => `${e.filename}: ${e.detail}`).join("\n");
+    throw new Error(friendlyOcrError(joined || copy.errors.ocrFailed));
+  }
+
+  emitProgress(
+    onProgress,
+    97,
+    "finishing",
+    usableBatches.length > 1 ? `送信 ${usableBatches.length}/${usableBatches.length}` : undefined
+  );
   emitProgress(onProgress, 100, "finishing");
 
   return {

@@ -25,7 +25,7 @@ Usage fields mapped into `OcrResult.usage`:
 
 If `NEXT_PUBLIC_OCR_API_ENABLED` is `false`, static FE uses **demo OCR**.
 
-Lambda Function URLs reject request bodies over **~6MB**. The frontend still accepts source PDFs up to 20MB (kept for Drive 元ファイル). Before `POST /api/ocr`, oversized payloads are rasterized to JPEG page images and split into multiple requests so OCR can complete under that cap.
+Lambda Function URLs reject request bodies over **~6MB**. Oversized PDFs are rendered to sharp page JPEGs (1600px) and sent in several OCR requests of at most 4 pages. Results are merged. The source PDF is unchanged for Drive 元ファイル.
 
 Auth: when Cognito is configured on the FE, requests send:
 

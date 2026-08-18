@@ -330,7 +330,7 @@ export function ReviewTable({ rows, onRowsChange, query, expanded = false }: Rev
                     const displayName = rowDisplayName(row, absoluteIndex + 1);
                     return (
                       <tr
-                        key={row.id}
+                        key={`${row.id}-${absoluteIndex}`}
                         className="table-row-hover border-b border-border/50 last:border-0"
                       >
                         <td className="px-2 py-1.5 text-xs text-muted-foreground tabular-nums">

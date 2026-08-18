@@ -207,7 +207,7 @@ function SurveyWorkflow() {
           onProgress: (event) => {
             setProgress((prev) => Math.max(prev, event.percent));
             setOcrPhase(event.phase);
-            setOcrDetail(event.phase === "uploading" ? event.detail : undefined);
+            setOcrDetail(event.detail);
           },
         }
       );

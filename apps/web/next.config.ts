@@ -1,4 +1,9 @@
 import type { NextConfig } from "next";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const configDir = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.join(configDir, "../..");
 
 const isGitHubPages = process.env.GITHUB_PAGES === "true";
 const isAwsStatic = process.env.AWS_STATIC === "true";
@@ -30,6 +35,14 @@ const nextConfig: NextConfig = {
     : {}),
   experimental: {
     optimizePackageImports: ["lucide-react", "framer-motion"],
+  },
+  turbopack: {
+    root: repoRoot,
+    resolveAlias: {
+      canvas: {
+        browser: "./src/lib/empty-module.ts",
+      },
+    },
   },
   webpack: (config) => {
     config.resolve.alias = {

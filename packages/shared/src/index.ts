@@ -13,6 +13,9 @@ export const QUALITY_PRESETS: Record<QualityPreset, QualityConfig> = {
   high: { maxPx: 1400, quality: 0.9, label: "高品質 1400px" },
 };
 
+/** Per-file upload cap. OCR still sends ≤6MB chunks to Lambda. */
+export const MAX_UPLOAD_FILE_BYTES = 20 * 1024 * 1024;
+
 export const GEMINI_PRICING = {
   inputPer1M: 1.5,
   outputPer1M: 9.0,

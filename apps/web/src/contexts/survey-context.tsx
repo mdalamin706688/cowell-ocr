@@ -25,6 +25,7 @@ import {
   reviveDraftRows,
   saveSurveyDraft,
   stabilizeStep,
+  uniqueOcrRowIds,
 } from "@/lib/survey-draft";
 
 interface SurveyState {
@@ -75,7 +76,9 @@ export function SurveyProvider({ children }: { children: ReactNode }) {
           files,
           quality: draft.quality,
           prompt: draft.prompt || DEFAULT_OCR_PROMPT,
-          ocrResult: draft.ocrResult,
+          ocrResult: draft.ocrResult
+            ? { ...draft.ocrResult, rows: uniqueOcrRowIds(draft.ocrResult.rows) }
+            : null,
           rows: reviveDraftRows(draft.rows),
           exportUrl: draft.exportUrl,
           error: null,
@@ -115,7 +118,7 @@ export function SurveyProvider({ children }: { children: ReactNode }) {
     (ocrResult: OcrResult | null) => setState((s) => ({ ...s, ocrResult })),
     []
   );
-  const setRows = useCallback((rows: OcrRow[]) => setState((s) => ({ ...s, rows })), []);
+  const setRows = useCallback((rows: OcrRow[]) => setState((s) => ({ ...s, rows: uniqueOcrRowIds(rows) })), []);
   const setExportUrl = useCallback(
     (exportUrl: string | null) => setState((s) => ({ ...s, exportUrl })),
     []

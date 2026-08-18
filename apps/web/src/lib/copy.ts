@@ -97,7 +97,8 @@ export const copy = {
     runOcr: "読み取りを開始",
     processing: "読み取り中…",
     processingFiles: (n: number) => `${n}件のファイルを処理しています`,
-    processingHint: "大きなPDFは1〜2分かかることがあります。この画面を閉じないでください。",
+    processingHint:
+      "大きなPDFはページごとに分けて送信します。送信 1/4 のように進捗が表示されます。この画面を閉じないでください。",
     processingPhase: {
       preparing: "準備しています…",
       uploading: "ファイルを送信しています…",

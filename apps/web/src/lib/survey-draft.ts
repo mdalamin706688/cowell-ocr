@@ -6,6 +6,7 @@ import type {
   WorkflowStep,
 } from "@cowell/shared";
 import { DEFAULT_OCR_PROMPT } from "@cowell/shared";
+import { generateId } from "./utils";
 
 const DB_NAME = "cowell-ocr";
 const DB_VERSION = 1;
@@ -62,14 +63,32 @@ export function reviveDraftFiles(files: UploadedFile[]): UploadedFile[] {
 
 /** Restore row photo preview URLs after refresh */
 export function reviveDraftRows(rows: OcrRow[]): OcrRow[] {
-  return rows.map((row) => ({
-    ...row,
-    photoUrl:
-      row.photoUrl ||
-      (row.photoBase64 && row.photoMimeType
-        ? previewFromBase64(row.photoBase64, row.photoMimeType)
-        : undefined),
-  }));
+  return uniqueOcrRowIds(
+    rows.map((row) => ({
+      ...row,
+      photoUrl:
+        row.photoUrl ||
+        (row.photoBase64 && row.photoMimeType
+          ? previewFromBase64(row.photoBase64, row.photoMimeType)
+          : undefined),
+    }))
+  );
+}
+
+/** Backend OCR restarts ids at 1 on every chunk; keep React keys unique. */
+export function uniqueOcrRowIds(rows: OcrRow[]): OcrRow[] {
+  const seen = new Set<string>();
+  return rows.map((row) => {
+    const current = String(row.id ?? "").trim();
+    if (current && !seen.has(current)) {
+      seen.add(current);
+      return row.id === current ? row : { ...row, id: current };
+    }
+    let next = generateId();
+    while (seen.has(next)) next = generateId();
+    seen.add(next);
+    return { ...row, id: next };
+  });
 }
 
 /** Mid-flight steps are not safe to resume; snap to a stable step. */

@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { FileImage, FileText, ImagePlus, X } from "lucide-react";
 import {
+  MAX_UPLOAD_FILE_BYTES,
   QUALITY_PRESETS,
   type QualityPreset,
   type UploadedFile,
@@ -44,7 +45,7 @@ export function FileUploadZone({
       const newFiles: UploadedFile[] = [];
 
       for (const file of accepted) {
-        if (file.size > 20 * 1024 * 1024) {
+        if (file.size > MAX_UPLOAD_FILE_BYTES) {
           setError(`${file.name} が 20MB を超えています`);
           continue;
         }
