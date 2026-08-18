@@ -2,6 +2,11 @@ import { GEMINI_PRICING, type OcrResult, type OcrRow } from "@cowell/shared";
 import { getCognitoAccessToken } from "./cognito-auth";
 import { isCognitoConfigured } from "./cognito-config";
 import { copy } from "./copy";
+import {
+  estimateOcrBodyBytes,
+  prepareOcrBatches,
+  type OcrFilePart,
+} from "./ocr-payload";
 import { generateId } from "./utils";
 
 /** Backend OCR API (Lambda). Sends Cognito `Authorization: Bearer <accessToken>` when Cognito is configured. */
@@ -62,20 +67,13 @@ interface ApiOcrResponse {
   warnings?: string[];
 }
 
-const PREPARE_END = 4;
+const PREPARE_END = 10;
 const READING_CAP = 94;
 
 function formatProgressBytes(bytes: number): string {
   if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${bytes} B`;
-}
-
-/** Small payloads finish upload instantly — keep upload band short so reading owns the bar. */
-function uploadBandEnd(totalBytes: number): number {
-  if (totalBytes < 400_000) return 16;
-  if (totalBytes < 1_500_000) return 28;
-  return 38;
 }
 
 function emitProgress(
@@ -167,13 +165,6 @@ function postOcrForm(
   });
 }
 
-function base64ToBlob(base64: string, mimeType: string): Blob {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return new Blob([bytes], { type: mimeType || "application/octet-stream" });
-}
-
 function mapApiRow(row: ApiSurveyRow): OcrRow {
   return {
     id: row.id != null && row.id > 0 ? String(row.id) : generateId(),
@@ -212,6 +203,15 @@ function friendlyOcrError(raw: string, status?: number): string {
     return "セッションが切れています。再度ログインしてください。";
   }
   if (
+    status === 413 ||
+    text.includes("413") ||
+    text.includes("request entity too large") ||
+    text.includes("payload too large") ||
+    text.includes("content too large")
+  ) {
+    return copy.errors.ocrPayloadTooLarge;
+  }
+  if (
     status === 503 ||
     text.includes("503") ||
     text.includes("unavailable") ||
@@ -233,102 +233,17 @@ async function resolveOcrAccessToken(): Promise<string | undefined> {
   return accessToken;
 }
 
-/**
- * Call remote COWELL OCR API with multipart upload.
- * Reports real upload % then eases through reading until the response arrives.
- * Docs: https://4gzkbzzubqjzwcx7mf3xcjpb7i0rdssf.lambda-url.ap-northeast-1.on.aws/docs
- */
-export async function runRemoteOcr(
-  prompt: string,
-  files: Array<{ base64: string; mimeType: string; name: string }>,
-  options: OcrRunOptions = {}
-): Promise<OcrResult> {
-  const { onProgress } = options;
-  const baseUrl = getOcrApiBaseUrl();
-  if (!baseUrl) {
-    throw new Error("OCR API が設定されていません");
-  }
-  if (!files.length) {
-    throw new Error("アップロードするファイルがありません");
-  }
-
-  emitProgress(onProgress, 1, "preparing");
-
-  const accessToken = await resolveOcrAccessToken();
-
-  const form = new FormData();
-  let totalBytes = 0;
-  for (const file of files) {
-    const blob = base64ToBlob(file.base64, file.mimeType);
-    totalBytes += blob.size;
-    form.append("survey_files", blob, file.name);
-  }
-  if (prompt.trim()) {
-    form.append("instructions", prompt.trim());
-  }
-
-  const uploadStart = PREPARE_END;
-  const uploadEnd = uploadBandEnd(totalBytes);
-  emitProgress(onProgress, uploadStart, "uploading", `0 / ${formatProgressBytes(totalBytes)}`);
-
-  let readingTimer: number | null = null;
-  let readingStarted = false;
-  const clearReadingTicker = () => {
-    if (readingTimer != null) {
-      window.clearInterval(readingTimer);
-      readingTimer = null;
-    }
-  };
-
-  const startReadingTicker = () => {
-    if (readingStarted) return;
-    readingStarted = true;
-    clearReadingTicker();
-    const started = Date.now();
-    let expectedMs = estimateReadingMs(files.length, totalBytes);
-    emitProgress(onProgress, uploadEnd, "reading");
-    readingTimer = window.setInterval(() => {
-      const elapsed = Date.now() - started;
-      if (elapsed > expectedMs * 0.85 && expectedMs < 160_000) {
-        expectedMs *= 1.18;
-      }
-      const t = Math.min(0.992, elapsed / expectedMs);
-      emitProgress(onProgress, easeReading(t, uploadEnd, READING_CAP), "reading");
-    }, 50);
-  };
-
-  let status = 0;
-  let text = "";
-  try {
-    const result = await postOcrForm(`${baseUrl}/api/ocr`, form, {
-      timeoutMs: 180_000,
-      accessToken,
-      onUploadProgress: (loaded, total) => {
-        const absoluteTotal = total > 0 ? total : totalBytes || 1;
-        const absoluteLoaded =
-          total > 0 ? loaded : loaded <= 1 ? absoluteTotal * loaded : loaded;
-        const ratio = Math.min(1, absoluteLoaded / absoluteTotal);
-        const percent = uploadStart + (uploadEnd - uploadStart) * ratio;
-        emitProgress(
-          onProgress,
-          percent,
-          "uploading",
-          `${formatProgressBytes(absoluteLoaded)} / ${formatProgressBytes(absoluteTotal)}`
-        );
-      },
-      onUploadComplete: startReadingTicker,
-    });
-    status = result.status;
-    text = result.text;
-  } catch (err) {
-    clearReadingTicker();
-    throw err;
-  } finally {
-    clearReadingTicker();
-  }
-
-  emitProgress(onProgress, 97, "finishing");
-
+function parseOcrResponse(
+  status: number,
+  text: string
+): {
+  rows: OcrRow[];
+  fileErrors: ApiFileError[];
+  warnings: string[];
+  costUsd: number;
+  elapsedMs: number;
+  totalTokens: number;
+} {
   let data: ApiOcrResponse & { detail?: unknown; message?: string } = {};
   try {
     data = text.trim() ? (JSON.parse(text) as typeof data) : {};
@@ -361,29 +276,229 @@ export async function runRemoteOcr(
     throw new Error(friendlyOcrError(joined || copy.errors.ocrFailed));
   }
 
-  // Some backends return 200 with Gemini 503 text in warnings only
   const busyHint = [...warnings, ...fileErrors.map((e) => e.detail)].join(" ");
   if (!rows.length && /503|unavailable|high demand/i.test(busyHint)) {
     throw new Error(copy.errors.ocrBusy);
   }
 
-  const costUsd = Number(data.estimated_cost_usd) || 0;
-  const elapsedMs = Math.round((Number(data.processing_time_sec) || 0) * 1000);
-  const totalTokens = Math.max(0, Math.round(Number(data.token_usage) || 0));
+  return {
+    rows,
+    fileErrors,
+    warnings,
+    costUsd: Number(data.estimated_cost_usd) || 0,
+    elapsedMs: Math.round((Number(data.processing_time_sec) || 0) * 1000),
+    totalTokens: Math.max(0, Math.round(Number(data.token_usage) || 0)),
+  };
+}
 
+async function postOcrBatch(
+  url: string,
+  prompt: string,
+  files: OcrFilePart[],
+  accessToken: string | undefined,
+  onProgress: OcrProgressCallback | undefined,
+  rangeStart: number,
+  rangeEnd: number
+): Promise<ReturnType<typeof parseOcrResponse>> {
+  const form = new FormData();
+  const totalBytes = estimateOcrBodyBytes(files, prompt);
+  for (const file of files) {
+    form.append("survey_files", file.blob, file.name);
+  }
+  if (prompt.trim()) {
+    form.append("instructions", prompt.trim());
+  }
+
+  const uploadEnd = rangeStart + (rangeEnd - rangeStart) * 0.28;
+  emitProgress(
+    onProgress,
+    rangeStart,
+    "uploading",
+    `0 / ${formatProgressBytes(totalBytes)}`
+  );
+
+  let readingTimer: number | null = null;
+  let readingStarted = false;
+  const clearReadingTicker = () => {
+    if (readingTimer != null) {
+      window.clearInterval(readingTimer);
+      readingTimer = null;
+    }
+  };
+
+  const startReadingTicker = () => {
+    if (readingStarted) return;
+    readingStarted = true;
+    clearReadingTicker();
+    const started = Date.now();
+    let expectedMs = estimateReadingMs(files.length, totalBytes);
+    emitProgress(onProgress, uploadEnd, "reading");
+    readingTimer = window.setInterval(() => {
+      const elapsed = Date.now() - started;
+      if (elapsed > expectedMs * 0.85 && expectedMs < 160_000) {
+        expectedMs *= 1.18;
+      }
+      const t = Math.min(0.992, elapsed / expectedMs);
+      emitProgress(onProgress, easeReading(t, uploadEnd, rangeEnd), "reading");
+    }, 50);
+  };
+
+  let status = 0;
+  let text = "";
+  try {
+    const result = await postOcrForm(url, form, {
+      timeoutMs: 180_000,
+      accessToken,
+      onUploadProgress: (loaded, total) => {
+        const absoluteTotal = total > 0 ? total : totalBytes || 1;
+        const absoluteLoaded =
+          total > 0 ? loaded : loaded <= 1 ? absoluteTotal * loaded : loaded;
+        const ratio = Math.min(1, absoluteLoaded / absoluteTotal);
+        const percent = rangeStart + (uploadEnd - rangeStart) * ratio;
+        emitProgress(
+          onProgress,
+          percent,
+          "uploading",
+          `${formatProgressBytes(absoluteLoaded)} / ${formatProgressBytes(absoluteTotal)}`
+        );
+      },
+      onUploadComplete: startReadingTicker,
+    });
+    status = result.status;
+    text = result.text;
+  } catch (err) {
+    clearReadingTicker();
+    throw err;
+  } finally {
+    clearReadingTicker();
+  }
+
+  return parseOcrResponse(status, text);
+}
+
+async function postOcrBatchWithSplit(
+  url: string,
+  prompt: string,
+  files: OcrFilePart[],
+  accessToken: string | undefined,
+  onProgress: OcrProgressCallback | undefined,
+  rangeStart: number,
+  rangeEnd: number
+): Promise<ReturnType<typeof parseOcrResponse>> {
+  try {
+    return await postOcrBatch(url, prompt, files, accessToken, onProgress, rangeStart, rangeEnd);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    const tooLarge = message === copy.errors.ocrPayloadTooLarge;
+    if (!tooLarge || files.length < 2) throw err;
+    const mid = Math.ceil(files.length / 2);
+    const split = rangeStart + (rangeEnd - rangeStart) / 2;
+    const first = await postOcrBatchWithSplit(
+      url,
+      prompt,
+      files.slice(0, mid),
+      accessToken,
+      onProgress,
+      rangeStart,
+      split
+    );
+    const second = await postOcrBatchWithSplit(
+      url,
+      prompt,
+      files.slice(mid),
+      accessToken,
+      onProgress,
+      split,
+      rangeEnd
+    );
+    return {
+      rows: [...first.rows, ...second.rows],
+      fileErrors: [...first.fileErrors, ...second.fileErrors],
+      warnings: [...first.warnings, ...second.warnings],
+      costUsd: first.costUsd + second.costUsd,
+      elapsedMs: first.elapsedMs + second.elapsedMs,
+      totalTokens: first.totalTokens + second.totalTokens,
+    };
+  }
+}
+
+/**
+ * Call remote COWELL OCR API with multipart upload.
+ * Reports real upload % then eases through reading until the response arrives.
+ * Large PDFs are converted to page JPEGs so the request stays under Lambda's ~6MB body limit.
+ * Docs: https://4gzkbzzubqjzwcx7mf3xcjpb7i0rdssf.lambda-url.ap-northeast-1.on.aws/docs
+ */
+export async function runRemoteOcr(
+  prompt: string,
+  files: Array<{ base64: string; mimeType: string; name: string }>,
+  options: OcrRunOptions = {}
+): Promise<OcrResult> {
+  const { onProgress } = options;
+  const baseUrl = getOcrApiBaseUrl();
+  if (!baseUrl) {
+    throw new Error("OCR API が設定されていません");
+  }
+  if (!files.length) {
+    throw new Error("アップロードするファイルがありません");
+  }
+
+  emitProgress(onProgress, 1, "preparing");
+
+  const accessToken = await resolveOcrAccessToken();
+  const batches = await prepareOcrBatches(files, prompt, (percent, detail) => {
+    emitProgress(onProgress, percent, "preparing", detail);
+  });
+  const usableBatches = batches.filter((batch) => batch.length > 0);
+  if (!usableBatches.length) {
+    throw new Error("アップロードするファイルがありません");
+  }
+
+  const merged = {
+    rows: [] as OcrRow[],
+    fileErrors: [] as ApiFileError[],
+    warnings: [] as string[],
+    costUsd: 0,
+    elapsedMs: 0,
+    totalTokens: 0,
+  };
+
+  const url = `${baseUrl}/api/ocr`;
+  for (let i = 0; i < usableBatches.length; i++) {
+    const rangeStart =
+      PREPARE_END + ((READING_CAP - PREPARE_END) * i) / usableBatches.length;
+    const rangeEnd =
+      PREPARE_END + ((READING_CAP - PREPARE_END) * (i + 1)) / usableBatches.length;
+    const part = await postOcrBatchWithSplit(
+      url,
+      prompt,
+      usableBatches[i],
+      accessToken,
+      onProgress,
+      rangeStart,
+      rangeEnd
+    );
+    merged.rows.push(...part.rows);
+    merged.fileErrors.push(...part.fileErrors);
+    merged.warnings.push(...part.warnings);
+    merged.costUsd += part.costUsd;
+    merged.elapsedMs += part.elapsedMs;
+    merged.totalTokens += part.totalTokens;
+  }
+
+  emitProgress(onProgress, 97, "finishing");
   emitProgress(onProgress, 100, "finishing");
 
   return {
-    rawText: buildRawText(rows, warnings, fileErrors),
-    rows,
+    rawText: buildRawText(merged.rows, merged.warnings, merged.fileErrors),
+    rows: merged.rows,
     usage: {
       promptTokens: 0,
       outputTokens: 0,
-      totalTokens,
-      elapsedMs,
-      costUsd,
-      costJpy: costUsd * GEMINI_PRICING.usdToJpy,
+      totalTokens: merged.totalTokens,
+      elapsedMs: merged.elapsedMs,
+      costUsd: merged.costUsd,
+      costJpy: merged.costUsd * GEMINI_PRICING.usdToJpy,
     },
-    finishReason: fileErrors.length ? "PARTIAL" : "STOP",
+    finishReason: merged.fileErrors.length ? "PARTIAL" : "STOP",
   };
 }

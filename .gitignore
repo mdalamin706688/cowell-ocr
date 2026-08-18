@@ -37,3 +37,6 @@ Thumbs.db
 
 # Vercel
 .vercel
+
+# Copied from pdfjs-dist on predev/prebuild
+apps/web/public/pdf.worker.min.mjs
