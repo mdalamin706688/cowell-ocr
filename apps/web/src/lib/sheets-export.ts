@@ -1209,7 +1209,7 @@ async function uploadRowPhotosToDrive(
       accessToken,
       row.photoBase64!,
       row.photoMimeType!,
-      buildRowPhotoFileName(sheetRow - EXPORT_SHEET_DATA_START_ROW + 1),
+      buildRowPhotoFileName(sheetRow),
       photoFolderId
     );
     uploaded.push({ sheetRow, imageUrl });

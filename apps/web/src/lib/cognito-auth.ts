@@ -10,7 +10,7 @@ import {
 const TOKEN_KEY = "cowell_cognito_tokens";
 
 /** Access/ID token local TTL — refresh before this elapses (Cognito app client should match). */
-const ACCESS_TOKEN_TTL_MS = 15 * 60 * 1000;
+const ACCESS_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 /** Refresh slightly before expiry to avoid edge races on API calls. */
 const ACCESS_TOKEN_REFRESH_SKEW_MS = 60_000;
 
@@ -150,7 +150,7 @@ function persistTokens(result: CognitoAuthResult, previousRefresh?: string): Cog
     idToken: result.IdToken || "",
     accessToken: result.AccessToken || "",
     refreshToken,
-    // Cap at 15m so FE refreshes on that cadence even if pool ExpiresIn is longer.
+    // Cap at 24h so FE matches the app-client access-token validity.
     expiresAt:
       Date.now() +
       Math.min((result.ExpiresIn || ACCESS_TOKEN_TTL_MS / 1000) * 1000, ACCESS_TOKEN_TTL_MS),

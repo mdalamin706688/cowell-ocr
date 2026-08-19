@@ -27,7 +27,7 @@ export function buildSpreadsheetDriveName(projectName?: string, date = new Date(
   return `${folder}_${stamp}`;
 }
 
-/** Drive photo file name for a spreadsheet data row (1-based). */
+/** Drive photo file name matches the spreadsheet row number (title=1, header=2, first data=3). */
 export function buildRowPhotoFileName(rowNumber: number): string {
   return `写真_${rowNumber}行目.jpg`;
 }
