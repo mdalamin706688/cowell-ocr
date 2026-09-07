@@ -13,7 +13,7 @@ When `NEXT_PUBLIC_OCR_API_BASE_URL` is set **and** `NEXT_PUBLIC_OCR_API_ENABLED=
 | `survey_files` | one or more files |
 | `instructions` | OCR prompt (optional) |
 
-Response snake_case rows are mapped to FE `OcrRow` (camelCase).
+Response snake_case rows are mapped to FE `OcrRow` (camelCase), including `symbol` → `symbol` and `fixture_type` → `fixtureType`.
 
 Usage fields mapped into `OcrResult.usage`:
 

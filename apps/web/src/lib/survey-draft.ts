@@ -66,6 +66,8 @@ export function reviveDraftRows(rows: OcrRow[]): OcrRow[] {
   return uniqueOcrRowIds(
     rows.map((row) => ({
       ...row,
+      symbol: row.symbol ?? "",
+      fixtureType: row.fixtureType ?? "",
       photoUrl:
         row.photoUrl ||
         (row.photoBase64 && row.photoMimeType

@@ -43,6 +43,8 @@ interface ApiSurveyRow {
   id?: number;
   floor?: string;
   location?: string;
+  symbol?: string;
+  fixture_type?: string;
   fixture_model?: string;
   existing_product?: string;
   photo_id?: string;
@@ -175,6 +177,8 @@ function mapApiRow(row: ApiSurveyRow): OcrRow {
     id: generateId(),
     floor: row.floor ?? "",
     location: row.location ?? "",
+    symbol: row.symbol ?? "",
+    fixtureType: row.fixture_type ?? "",
     fixtureModel: row.fixture_model ?? "",
     existingProduct: row.existing_product ?? "",
     quantity: row.quantity ?? "",
@@ -184,10 +188,10 @@ function mapApiRow(row: ApiSurveyRow): OcrRow {
 }
 
 function buildRawText(rows: OcrRow[], warnings: string[], fileErrors: ApiFileError[]): string {
-  const header = "フロア\t設置場所\t器具品番\t既設商品名\t数量\t備考";
+  const header = "フロア\t設置場所\t記号\t器具種別\t器具品番\t既設商品名\t数量\t備考";
   const body = rows.map(
     (r) =>
-      `${r.floor}\t${r.location}\t${r.fixtureModel}\t${r.existingProduct}\t${r.quantity}\t${r.notes}`
+      `${r.floor}\t${r.location}\t${r.symbol}\t${r.fixtureType}\t${r.fixtureModel}\t${r.existingProduct}\t${r.quantity}\t${r.notes}`
   );
   const extras: string[] = [];
   if (warnings.length) extras.push("", "Warnings:", ...warnings.map((w) => `- ${w}`));

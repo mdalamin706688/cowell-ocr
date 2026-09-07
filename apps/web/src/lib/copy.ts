@@ -191,7 +191,7 @@ export const copy = {
   table: {
     empty: "読み取り結果がありません",
     footer: (n: number) => `${n}件 — セルをクリックして編集`,
-    searchPlaceholder: "フロア・場所・品番などで検索…",
+    searchPlaceholder: "フロア・場所・記号・種別・品番などで検索…",
     pageSize: "表示件数",
     noMatches: "該当する行がありません",
     range: (from: number, to: number, total: number) =>

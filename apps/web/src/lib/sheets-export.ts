@@ -147,6 +147,8 @@ function mapOcrRowToExportValues(row: OcrRow): string[] {
   return [
     formatExportCell(row.floor),
     formatExportCell(row.location),
+    formatExportCell(row.symbol),
+    formatExportCell(row.fixtureType),
     formatExportCell(row.fixtureModel),
     formatExportCell(row.existingProduct),
     "", // 写真 — IMAGE() applied after upload
@@ -756,11 +758,13 @@ async function createResultSpreadsheet(
 const EXPORT_COLUMN_PIXEL_WIDTHS = [
   70, // フロア
   160, // 設置場所
-  250, // 器具品番
-  270, // 既設商品名
+  72, // 記号
+  140, // 器具種別
+  220, // 器具品番
+  250, // 既設商品名
   140, // 写真
   64, // 数量
-  350, // 備考
+  320, // 備考
   260, // 選定商品
   190, // 定価
   100, // 仕切り単価
@@ -768,10 +772,10 @@ const EXPORT_COLUMN_PIXEL_WIDTHS = [
   480, // 備考（選定側）
 ] as const;
 
-const NOTES_COLUMN_INDEXES = [6, 11] as const;
-const PRODUCT_COLUMN_INDEX = 3;
+const NOTES_COLUMN_INDEXES = [8, 13] as const;
+const PRODUCT_COLUMN_INDEX = 5;
 const PHOTO_COL_INDEX = PHOTO_COLUMN_INDEX;
-const QTY_COLUMN_INDEX = 5;
+const QTY_COLUMN_INDEX = 7;
 
 function textLineCount(text: string, charsPerLine: number): number {
   const raw = (text || "").trim();
@@ -787,7 +791,9 @@ function estimateRowHeightPx(row: OcrRow, hasPhoto: boolean): number {
     textLineCount(row.existingProduct, 32),
     textLineCount(row.notes, 28),
     textLineCount(row.location, 18),
-    textLineCount(row.fixtureModel, 22)
+    textLineCount(row.fixtureType, 18),
+    textLineCount(row.fixtureModel, 22),
+    textLineCount(row.symbol, 10)
   );
   const textHeight = 20 + lines * 16;
   if (hasPhoto) return Math.min(140, Math.max(96, textHeight));

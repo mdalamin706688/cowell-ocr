@@ -7,10 +7,10 @@ export function runMockOcr(
 ): OcrResult {
   const source = files[0]?.name ?? "demo.pdf";
   const rawText = [
-    "フロア\t設置場所\t器具品番\t既設商品名\t数量\t備考",
-    "1F\t廊下\tLED-40W\tパナソニック XX123\t12\t",
-    "2F\t教室A\tLED-60W\t東芝 YY456\t8\t調光あり",
-    "3F\t体育館\tLED-100W\t三菱 ZZ789\t4\t高所",
+    "フロア\t設置場所\t記号\t器具種別\t器具品番\t既設商品名\t数量\t備考",
+    "1F\t廊下\t非\tベースライト\tLED-40W\tパナソニック XX123\t12\t",
+    "2F\t教室A\t呈\t誘導灯\tLED-60W\t東芝 YY456\t8\t調光あり",
+    "3F\t体育館\tH\tシーリングライト\tLED-100W\t三菱 ZZ789\t4\t高所",
   ].join("\n");
 
   const rows = [
@@ -18,6 +18,8 @@ export function runMockOcr(
       id: generateId(),
       floor: "1F",
       location: "廊下",
+      symbol: "非",
+      fixtureType: "ベースライト",
       fixtureModel: "LED-40W",
       existingProduct: "パナソニック XX123",
       quantity: "12",
@@ -29,6 +31,8 @@ export function runMockOcr(
       id: generateId(),
       floor: "2F",
       location: "教室A",
+      symbol: "呈",
+      fixtureType: "誘導灯",
       fixtureModel: "LED-60W",
       existingProduct: "東芝 YY456",
       quantity: "8",
@@ -40,6 +44,8 @@ export function runMockOcr(
       id: generateId(),
       floor: "3F",
       location: "体育館",
+      symbol: "H",
+      fixtureType: "シーリングライト",
       fixtureModel: "LED-100W",
       existingProduct: "三菱 ZZ789",
       quantity: "4",

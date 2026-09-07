@@ -30,6 +30,8 @@ interface ReviewTableProps {
 const TEXT_FIELDS = [
   "floor",
   "location",
+  "symbol",
+  "fixtureType",
   "fixtureModel",
   "existingProduct",
   "quantity",
@@ -39,6 +41,8 @@ const TEXT_FIELDS = [
 type DataColKey =
   | "floor"
   | "location"
+  | "symbol"
+  | "fixtureType"
   | "fixtureModel"
   | "existingProduct"
   | "photo"
@@ -52,6 +56,8 @@ const DATA_COLUMNS: Array<{
 }> = [
   { key: "floor", label: "フロア", field: "floor" },
   { key: "location", label: "設置場所", field: "location" },
+  { key: "symbol", label: "記号", field: "symbol" },
+  { key: "fixtureType", label: "器具種別", field: "fixtureType" },
   { key: "fixtureModel", label: "器具品番", field: "fixtureModel" },
   { key: "existingProduct", label: "既設商品名", field: "existingProduct" },
   { key: "photo", label: "写真" },
@@ -61,22 +67,26 @@ const DATA_COLUMNS: Array<{
 
 const INDEX_COL_WIDTH = 44;
 const ACTION_COL_WIDTH = 44;
-const COL_WIDTH_STORAGE_KEY = "cowell_review_col_widths_v2";
+const COL_WIDTH_STORAGE_KEY = "cowell_review_col_widths_v3";
 
 /** Floor stays compact; product name + notes get room so text is not clipped. */
 const DEFAULT_COL_WIDTHS: Record<DataColKey, number> = {
   floor: 48,
   location: 128,
-  fixtureModel: 180,
-  existingProduct: 280,
+  symbol: 64,
+  fixtureType: 140,
+  fixtureModel: 160,
+  existingProduct: 240,
   photo: 148,
   quantity: 56,
-  notes: 300,
+  notes: 280,
 };
 
 const MIN_COL_WIDTHS: Record<DataColKey, number> = {
   floor: 40,
   location: 80,
+  symbol: 48,
+  fixtureType: 90,
   fixtureModel: 100,
   existingProduct: 140,
   photo: 132,
@@ -112,6 +122,8 @@ function rowDisplayName(row: OcrRow, rowNumber: number): string {
   if (product) return product;
   const model = row.fixtureModel?.trim();
   if (model) return model;
+  const type = row.fixtureType?.trim();
+  if (type) return type;
   const location = row.location?.trim();
   if (location) return location;
   return copy.table.rowFallback(rowNumber);
@@ -172,7 +184,7 @@ export function ReviewTable({ rows, onRowsChange, query, expanded = false }: Rev
     const q = query.trim().toLowerCase();
     if (!q) return rows;
     return rows.filter((r) =>
-      [r.floor, r.location, r.fixtureModel, r.existingProduct, r.quantity, r.notes]
+      [r.floor, r.location, r.symbol, r.fixtureType, r.fixtureModel, r.existingProduct, r.quantity, r.notes]
         .join(" ")
         .toLowerCase()
         .includes(q)
@@ -396,7 +408,11 @@ export function ReviewTable({ rows, onRowsChange, query, expanded = false }: Rev
                           }
 
                           const field = col.field!;
-                          const wrap = col.key === "existingProduct" || col.key === "notes" || col.key === "fixtureModel";
+                          const wrap =
+                            col.key === "existingProduct" ||
+                            col.key === "notes" ||
+                            col.key === "fixtureModel" ||
+                            col.key === "fixtureType";
                           return (
                             <td key={col.key} className="px-1 py-1 align-top">
                               {wrap ? (

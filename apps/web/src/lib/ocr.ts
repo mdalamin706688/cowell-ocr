@@ -12,6 +12,8 @@ function exportRowCells(r: OcrRow): string[] {
   return [
     (r.floor ?? "").trim(),
     (r.location ?? "").trim(),
+    (r.symbol ?? "").trim(),
+    (r.fixtureType ?? "").trim(),
     (r.fixtureModel ?? "").trim(),
     (r.existingProduct ?? "").trim(),
     r.photoBase64 ? "添付済み" : "",
@@ -46,7 +48,10 @@ export function parseTsvToRows(text: string, sourceFile?: string): OcrRow[] {
     if (h.includes("フロア") || lower.includes("floor")) colMap[i] = "floor";
     else if (h.includes("設置") || h.includes("場所") || lower.includes("location"))
       colMap[i] = "location";
-    else if (h.includes("器具") || h.includes("品番") || lower.includes("model"))
+    else if (h.includes("記号") || lower.includes("symbol")) colMap[i] = "symbol";
+    else if (h.includes("種別") || lower.includes("fixture_type") || lower === "type")
+      colMap[i] = "fixtureType";
+    else if (h.includes("品番") || lower.includes("model") || (h.includes("器具") && !h.includes("種別")))
       colMap[i] = "fixtureModel";
     else if (h.includes("既設") || h.includes("商品") || lower.includes("product"))
       colMap[i] = "existingProduct";
@@ -57,10 +62,20 @@ export function parseTsvToRows(text: string, sourceFile?: string): OcrRow[] {
   });
 
   // Fallback column order if headers don't match
-  type OcrCellKey = "floor" | "location" | "fixtureModel" | "existingProduct" | "quantity" | "notes";
+  type OcrCellKey =
+    | "floor"
+    | "location"
+    | "symbol"
+    | "fixtureType"
+    | "fixtureModel"
+    | "existingProduct"
+    | "quantity"
+    | "notes";
   const fallbackKeys: OcrCellKey[] = [
     "floor",
     "location",
+    "symbol",
+    "fixtureType",
     "fixtureModel",
     "existingProduct",
     "quantity",
@@ -73,6 +88,8 @@ export function parseTsvToRows(text: string, sourceFile?: string): OcrRow[] {
       id: generateId(),
       floor: "",
       location: "",
+      symbol: "",
+      fixtureType: "",
       fixtureModel: "",
       existingProduct: "",
       quantity: "",
