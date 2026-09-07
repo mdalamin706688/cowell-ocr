@@ -58,7 +58,7 @@ const DATA_COLUMNS: Array<{
   { key: "location", label: "設置場所", field: "location" },
   { key: "symbol", label: "記号", field: "symbol" },
   { key: "fixtureType", label: "器具種別", field: "fixtureType" },
-  { key: "fixtureModel", label: "器具品番", field: "fixtureModel" },
+  { key: "fixtureModel", label: "既設品番", field: "fixtureModel" },
   { key: "existingProduct", label: "既設商品名", field: "existingProduct" },
   { key: "photo", label: "写真" },
   { key: "quantity", label: "数量", field: "quantity" },
