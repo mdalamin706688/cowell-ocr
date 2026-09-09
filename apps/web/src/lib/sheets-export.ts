@@ -758,7 +758,7 @@ async function createResultSpreadsheet(
 const EXPORT_COLUMN_PIXEL_WIDTHS = [
   70, // フロア
   160, // 設置場所
-  72, // 記号
+  72, // シンボル
   140, // 器具種別
   220, // 既設品番
   250, // 既設商品名

@@ -32,7 +32,7 @@ export const DEFAULT_OCR_PROMPT =
 export const SURVEY_COLUMNS = [
   "フロア",
   "設置場所",
-  "記号",
+  "シンボル",
   "器具種別",
   "既設品番",
   "既設商品名",
@@ -47,7 +47,7 @@ export const SURVEY_COLUMNS = [
 export const EXPORT_SHEET_COLUMNS = [
   "フロア",
   "設置場所",
-  "記号",
+  "シンボル",
   "器具種別",
   "既設品番",
   "既設商品名",
@@ -84,7 +84,7 @@ export interface OcrRow {
   id: string;
   floor: string;
   location: string;
-  /** Drawing / legend mark (記号) */
+  /** Drawing / legend mark (シンボル) */
   symbol: string;
   /** Fixture category (器具種別) */
   fixtureType: string;

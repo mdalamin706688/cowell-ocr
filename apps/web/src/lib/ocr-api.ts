@@ -188,7 +188,7 @@ function mapApiRow(row: ApiSurveyRow): OcrRow {
 }
 
 function buildRawText(rows: OcrRow[], warnings: string[], fileErrors: ApiFileError[]): string {
-  const header = "フロア\t設置場所\t記号\t器具種別\t既設品番\t既設商品名\t数量\t備考";
+  const header = "フロア\t設置場所\tシンボル\t器具種別\t既設品番\t既設商品名\t数量\t備考";
   const body = rows.map(
     (r) =>
       `${r.floor}\t${r.location}\t${r.symbol}\t${r.fixtureType}\t${r.fixtureModel}\t${r.existingProduct}\t${r.quantity}\t${r.notes}`

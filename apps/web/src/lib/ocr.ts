@@ -48,7 +48,7 @@ export function parseTsvToRows(text: string, sourceFile?: string): OcrRow[] {
     if (h.includes("フロア") || lower.includes("floor")) colMap[i] = "floor";
     else if (h.includes("設置") || h.includes("場所") || lower.includes("location"))
       colMap[i] = "location";
-    else if (h.includes("記号") || lower.includes("symbol")) colMap[i] = "symbol";
+    else if (h.includes("記号") || h.includes("シンボル") || lower.includes("symbol")) colMap[i] = "symbol";
     else if (h.includes("種別") || lower.includes("fixture_type") || lower === "type")
       colMap[i] = "fixtureType";
     else if (h.includes("品番") || lower.includes("model") || (h.includes("器具") && !h.includes("種別")))

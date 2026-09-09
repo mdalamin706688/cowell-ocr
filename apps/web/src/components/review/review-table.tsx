@@ -56,7 +56,7 @@ const DATA_COLUMNS: Array<{
 }> = [
   { key: "floor", label: "フロア", field: "floor" },
   { key: "location", label: "設置場所", field: "location" },
-  { key: "symbol", label: "記号", field: "symbol" },
+  { key: "symbol", label: "シンボル", field: "symbol" },
   { key: "fixtureType", label: "器具種別", field: "fixtureType" },
   { key: "fixtureModel", label: "既設品番", field: "fixtureModel" },
   { key: "existingProduct", label: "既設商品名", field: "existingProduct" },

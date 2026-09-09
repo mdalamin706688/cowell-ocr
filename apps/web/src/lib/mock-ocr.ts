@@ -7,7 +7,7 @@ export function runMockOcr(
 ): OcrResult {
   const source = files[0]?.name ?? "demo.pdf";
   const rawText = [
-    "フロア\t設置場所\t記号\t器具種別\t既設品番\t既設商品名\t数量\t備考",
+    "フロア\t設置場所\tシンボル\t器具種別\t既設品番\t既設商品名\t数量\t備考",
     "1F\t廊下\t非\tベースライト\tLED-40W\tパナソニック XX123\t12\t",
     "2F\t教室A\t呈\t誘導灯\tLED-60W\t東芝 YY456\t8\t調光あり",
     "3F\t体育館\tH\tシーリングライト\tLED-100W\t三菱 ZZ789\t4\t高所",
