@@ -1,5 +1,10 @@
 import type { OcrResult, OcrRow } from "@cowell/shared";
-import { getBasePath, isPreviewEnvironment } from "./client-auth";
+import {
+  getBasePath,
+  getSheetsApiBaseUrl,
+  isPreviewEnvironment,
+  isRemoteSheetsApiConfigured,
+} from "./client-auth";
 import { runMockOcr } from "./mock-ocr";
 import { rowsToTsv } from "./ocr";
 import { isOcrApiConfigured, runRemoteOcr, type OcrProgressCallback } from "./ocr-api";
@@ -172,7 +177,8 @@ export async function surveyExport(
   const { projectName, sourceFiles, onProgress } = options;
   const title = projectName.trim() || "現調";
 
-  if (isPreviewEnvironment()) {
+  // Static preview hosts have no /api — CSV unless a remote Sheets API is set
+  if (isPreviewEnvironment() && !isRemoteSheetsApiConfigured()) {
     onProgress?.({ percent: 10, phase: "folders" });
     onProgress?.({ percent: 25, phase: "sources" });
     onProgress?.({ percent: 45, phase: "photos" });
@@ -183,7 +189,7 @@ export async function surveyExport(
   }
 
   onProgress?.({ percent: 10, phase: "folders" });
-  const res = await fetch(`${getBasePath()}/api/sheets/export`, {
+  const res = await fetch(`${getSheetsApiBaseUrl()}/api/sheets/export`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

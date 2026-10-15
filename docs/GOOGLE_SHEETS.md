@@ -52,8 +52,20 @@ Restart `npm run dev` after changing env.
 
 `/api/sheets/*` needs a running Next.js server (local dev, Vercel, Amplify,
 ECS, …). On static hosts (S3 + CloudFront, GitHub Pages) there is no `/api/*`,
-so export falls back to CSV download. To use Drive export on CloudFront, route
-`/api/*` to a Next.js server or an equivalent backend endpoint.
+so export falls back to CSV download.
+
+To use Drive export from a static frontend, host this app somewhere
+server-capable and point the FE at it:
+
+```bash
+NEXT_PUBLIC_SHEETS_API_BASE_URL=https://your-api-host.example.com
+```
+
+The static build then calls `{base}/api/sheets/export` and
+`{base}/api/sheets/root` cross-origin (CORS is enabled on those routes).
+Google credentials (`GOOGLE_DRIVE_REFRESH_TOKEN` / `GOOGLE_SERVICE_ACCOUNT_*`
+and `GOOGLE_SHEETS_FOLDER_ID`) are configured on the API host, never on the
+static site.
 
 ## Local check
 

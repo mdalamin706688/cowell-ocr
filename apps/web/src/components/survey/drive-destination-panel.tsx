@@ -5,7 +5,11 @@ import { AlertCircle, Check, ChevronDown, FolderOpen, Loader2, Lock } from "luci
 import { CollapsiblePanel } from "@/components/ui/collapsible-panel";
 import { Input } from "@/components/ui/input";
 import { copy } from "@/lib/copy";
-import { getBasePath } from "@/lib/client-auth";
+import {
+  getSheetsApiBaseUrl,
+  isPreviewEnvironment,
+  isRemoteSheetsApiConfigured,
+} from "@/lib/client-auth";
 import { DEFAULT_DRIVE_ROOT_FOLDER_NAME } from "@/lib/drive-root-folder";
 import {
   buildDriveExportPreview,
@@ -105,10 +109,16 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
    */
   const resolveFixedRoot = useCallback(async () => {
     const seq = ++resolveSeq.current;
+    // Pure-static preview hosts have no /api — skip the live check entirely
+    if (isPreviewEnvironment() && !isRemoteSheetsApiConfigured()) {
+      setRootStatus("idle");
+      setRootChildren(undefined);
+      return;
+    }
     setRootStatus("loading");
     setRootChildren(undefined);
     try {
-      const res = await fetch(`${getBasePath()}/api/sheets/root`);
+      const res = await fetch(`${getSheetsApiBaseUrl()}/api/sheets/root`);
       const data = (await res.json().catch(() => null)) as {
         ok?: boolean;
         id?: string;
