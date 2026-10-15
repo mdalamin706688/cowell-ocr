@@ -26,11 +26,10 @@ import { copy } from "@/lib/copy";
 import { isPreviewEnvironment } from "@/lib/client-auth";
 import { useSidebarCollapsed } from "@/hooks/use-sidebar-collapsed";
 import {
+  DEFAULT_DRIVE_ROOT_FOLDER_NAME,
+  getFixedDriveRootFolderId,
   normalizeFolderNameInput,
-  readLastRootFolder,
-  writeLastRootFolder,
 } from "@/lib/drive-root-folder";
-import { getConnectedGoogleDrive, isGoogleClientConfigured } from "@/lib/google-auth-client";
 import type { ExportProgressPhase } from "@/lib/sheets-export";
 import {
   surveyExport,
@@ -67,19 +66,13 @@ function SurveyWorkflow() {
     rootFolderName: string;
     rootFolderId?: string;
     projectName: string;
-    googleAccountEmail?: string;
     isValid: boolean;
-  }>(() => {
-    const session = getConnectedGoogleDrive();
-    const last = readLastRootFolder(session?.email);
-    return {
-      rootFolderName: last.name,
-      rootFolderId: last.id,
-      projectName: "",
-      googleAccountEmail: session?.email,
-      isValid: false,
-    };
-  });
+  }>(() => ({
+    rootFolderName: DEFAULT_DRIVE_ROOT_FOLDER_NAME,
+    rootFolderId: getFixedDriveRootFolderId(),
+    projectName: "",
+    isValid: false,
+  }));
   const exportLock = useRef(false);
   const reviewSectionRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
@@ -183,14 +176,14 @@ function SurveyWorkflow() {
     setTableQuery("");
     setReviewTab("table");
     setDestination({
-      rootFolderName: "",
+      rootFolderName: DEFAULT_DRIVE_ROOT_FOLDER_NAME,
+      rootFolderId: getFixedDriveRootFolderId(),
       projectName: "",
-      googleAccountEmail: destination.googleAccountEmail,
       isValid: false,
     });
     startNavigation("/dashboard/");
     router.push(versionedAppRoute("/dashboard/"));
-  }, [destination.googleAccountEmail, reset, router, setFocusMode, startNavigation]);
+  }, [reset, router, setFocusMode, startNavigation]);
   const runOcr = useCallback(async () => {
     if (!files.length) return;
     setProcessing(true);
@@ -261,25 +254,17 @@ function SurveyWorkflow() {
     setExportPhase("folders");
     setExportDetail(undefined);
     const name = sanitizeProjectFolderName(destination.projectName);
-    const rootName = normalizeFolderNameInput(destination.rootFolderName);
-    if (!rootName || !normalizeProjectNameInput(destination.projectName) || !destination.isValid) {
+    if (!normalizeProjectNameInput(destination.projectName) || !destination.isValid) {
       setError(copy.survey.destinationInvalid);
       setExporting(false);
       exportLock.current = false;
       setStep("review");
       return;
     }
-    writeLastRootFolder(
-      { name: rootName, id: destination.rootFolderId },
-      destination.googleAccountEmail
-    );
     setExportTitle(buildSpreadsheetDriveName(destination.projectName));
     try {
       const result = await surveyExport(rows, {
         projectName: name,
-        rootFolderName: rootName,
-        rootFolderId: destination.rootFolderId,
-        googleAccountEmail: destination.googleAccountEmail,
         sourceFiles: files.map((f) => ({
           base64: f.base64,
           mimeType: f.mimeType,
@@ -493,7 +478,7 @@ function SurveyWorkflow() {
               disabled={
                 !rows.length ||
                 exporting ||
-                (isGoogleClientConfigured() && !destination.isValid)
+                !destination.isValid
               }
               size="lg"
               className="w-full sm:w-auto"
@@ -502,7 +487,7 @@ function SurveyWorkflow() {
                 <><Loader2 className="h-4 w-4 animate-spin" />{copy.survey.exporting}</>
               ) : (
                 <>
-                  {isPreviewEnvironment() && !isGoogleClientConfigured()
+                  {isPreviewEnvironment()
                     ? copy.survey.exportCsv
                     : copy.survey.export}
                   <ArrowRight className="h-4 w-4" />
@@ -577,12 +562,10 @@ function SurveyWorkflow() {
                 onClick={() => {
                   reset();
                   setCsvExport(false);
-                  const last = readLastRootFolder(destination.googleAccountEmail);
                   setDestination({
-                    rootFolderName: last.name,
-                    rootFolderId: last.id,
+                    rootFolderName: DEFAULT_DRIVE_ROOT_FOLDER_NAME,
+                    rootFolderId: getFixedDriveRootFolderId(),
                     projectName: "",
-                    googleAccountEmail: destination.googleAccountEmail,
                     isValid: false,
                   });
                   setStep("upload");

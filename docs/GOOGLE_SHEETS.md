@@ -1,79 +1,37 @@
-# Google Sheets setup (FE-driven)
+# Google Sheets export (service account)
 
-Cowell OCR exports reviewed OCR rows to a new Google Spreadsheet.  
-Makara’s preferred path: **connect Google and write Sheets from the FE** (user OAuth).  
-A service account remains available as a server-side fallback.
+Cowell OCR exports reviewed OCR rows to a new Google Spreadsheet under a **fixed
+Drive root folder**. Users never sign in to Google — they only enter a project
+name; the server does the rest with a service account.
 
-## Option A — FE Google OAuth (recommended)
+## How it works
 
-User clicks export → Google account picker → spreadsheet is created in **their** Drive (or a shared folder).
-
-### 1. Google Cloud Console
-
-1. Create / select a project
-2. Enable **Google Sheets API** and **Google Drive API**
-3. **APIs & Services → Credentials → Create credentials → OAuth client ID**
-   - Application type: **Web application**
-   - Authorized JavaScript origins:
-   - `http://localhost:3000`
-   - `https://mdalamin706688.github.io` (GitHub Pages — no path suffix)
-   - Authorized redirect URIs: not required for GIS token client
-4. Copy the **Client ID**
-
-### OAuth consent screen
-
-- User type: Internal (Workspace) or External
-- Scopes:
-  - `https://www.googleapis.com/auth/spreadsheets`
-  - `https://www.googleapis.com/auth/drive.file`
-- Add test users if the app is in Testing mode
-
-### 2. Env
-
-```bash
-NEXT_PUBLIC_GOOGLE_CLIENT_ID=xxxxx.apps.googleusercontent.com
-# Optional: ID of the parent folder **JBC-COWELL**.
-# If empty, the app finds or creates a My Drive folder named `JBC-COWELL`.
-#
-# Layout on every export:
-#   JBC-COWELL/
-#     └── 現調_YYYY-MM-DD_HHMM/     ← one folder per survey
-#           ├── 00_結果シート       ← sheet first
-#           ├── row_001.jpg
-#           └── …
-NEXT_PUBLIC_GOOGLE_SHEETS_FOLDER_ID=
-GOOGLE_SHEETS_FOLDER_ID=
-```
-
-Restart `npm run dev` after changing env.
-
-### 3. Flow
-
-1. Review OCR rows and attach one photo per row
+1. Review OCR rows and enter a project name (案件名)
 2. Click **スプレッドシートに登録**
-3. Approve Google access (once per session)
-4. App creates under **JBC-COWELL** (finds or creates that parent folder):
+3. The server (`POST /api/sheets/export`) authenticates with the service
+   account and writes into the fixed root:
+
    ```
-   JBC-COWELL/
-     └── 現調_2026-07-23_1328/     ← one folder per survey process
-           ├── 00_結果シート       ← sheet first
-           ├── row_001.jpg
-           └── row_002.jpg
+   <fixed root folder>/            ← GOOGLE_SHEETS_FOLDER_ID
+     └── <案件名>/                  ← one folder per survey (project name)
+           ├── 元ファイル/          ← uploaded source images/PDFs
+           ├── 画像/               ← one photo per row
+           └── <案件名>_yyyymmdd    ← the result spreadsheet
    ```
-5. Open the created sheet from the success screen
 
-Row photos are compressed to ~720px JPEG (~65% quality) so 100+ images stay manageable.
+4. Open the created folder from the success screen
 
----
+The root folder is fixed — users cannot pick or create it. Project names must
+be unique inside it; the form checks live (`GET /api/sheets/root`) and the
+export re-checks server-side before creating the folder.
 
-## Option B — Service account (server fallback)
+## Setup
 
-Use when you want unattended export into a company Drive folder (no user Google popup).
-
-1. Create a **service account** + JSON key
-2. Enable Sheets + Drive APIs
-3. Share a Drive folder with the service account email (**Editor**)
-4. Set:
+1. Create a **service account** + JSON key in Google Cloud Console
+2. Enable **Google Sheets API** and **Google Drive API**
+3. Create the root folder in Drive (e.g. `JBC-COWELL`) and **share it with the
+   service account email as Editor**
+4. Set env:
 
 ```bash
 GOOGLE_SERVICE_ACCOUNT_EMAIL=...@....iam.gserviceaccount.com
@@ -81,19 +39,32 @@ GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END P
 GOOGLE_SHEETS_FOLDER_ID=folder_id_from_drive_url
 ```
 
-If `NEXT_PUBLIC_GOOGLE_CLIENT_ID` is set, FE OAuth is tried first; otherwise the API uses the service account.
+If `GOOGLE_SHEETS_FOLDER_ID` is unset, the app finds or creates a folder named
+`JBC-COWELL` **in the service account's own Drive** — that folder is not
+visible to your users, so set the env in production.
 
----
+`NEXT_PUBLIC_GOOGLE_SHEETS_FOLDER_ID` may also be set as a fallback for the
+root id (e.g. when only build-time env is available).
+
+Restart `npm run dev` after changing env.
+
+## Hosting requirement
+
+`/api/sheets/*` needs a running Next.js server (local dev, Vercel, Amplify,
+ECS, …). On static hosts (S3 + CloudFront, GitHub Pages) there is no `/api/*`,
+so export falls back to CSV download. To use Drive export on CloudFront, route
+`/api/*` to a Next.js server or an equivalent backend endpoint.
 
 ## Local check
 
 | Check | How |
 |-------|-----|
-| Status API | `GET /api/sheets/export` → `{ oauthClientConfigured, serviceAccountConfigured, folderConfigured }` |
+| Status API | `GET /api/sheets/export` → `{ serviceAccountConfigured, folderConfigured }` |
+| Fixed root | `GET /api/sheets/root` → `{ ok, id, name, children }` |
 | Export | Run a survey → export → open sheet URL |
 
 ## Security notes
 
 - Never put a service account private key in `NEXT_PUBLIC_*` or client bundles
-- OAuth client ID is public by design; restrict origins in Cloud Console
-- `drive.file` only allows files the app creates (or that the user opens with the app)
+- `drive.file` scope lets the service account see its own files plus anything
+  shared with it (like the fixed root folder)

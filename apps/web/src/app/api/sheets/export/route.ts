@@ -1,39 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { OcrRow } from "@cowell/shared";
 import type { DriveSourceFile } from "@/lib/sheets-export";
-import { exportToGoogleSheets, isServiceAccountConfigured } from "@/lib/sheets";
+import { exportToGoogleSheets, getServerFixedRootFolderId, isDriveExportConfigured } from "@/lib/sheets";
 
 export async function GET() {
   return NextResponse.json({
-    serviceAccountConfigured: isServiceAccountConfigured(),
-    folderConfigured: Boolean(process.env.GOOGLE_SHEETS_FOLDER_ID),
-    oauthClientConfigured: Boolean(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID),
+    driveExportConfigured: isDriveExportConfigured(),
+    folderConfigured: Boolean(getServerFixedRootFolderId()),
   });
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { rows, projectName, title, sourceFiles, accessToken, rootFolderName, folderId } =
-      body as {
-        rows: OcrRow[];
-        projectName?: string;
-        title?: string;
-        sourceFiles?: DriveSourceFile[];
-        accessToken?: string;
-        rootFolderName?: string;
-        folderId?: string | null;
-      };
+    const { rows, projectName, title, sourceFiles } = body as {
+      rows: OcrRow[];
+      projectName?: string;
+      title?: string;
+      sourceFiles?: DriveSourceFile[];
+    };
 
     if (!rows?.length) {
       return NextResponse.json({ error: "エクスポートするデータがありません" }, { status: 400 });
     }
 
+    // The root folder is fixed server-side (GOOGLE_SHEETS_FOLDER_ID) —
+    // client-supplied destination fields are intentionally ignored.
     const result = await exportToGoogleSheets(rows, projectName || title || "現調", {
-      accessToken: accessToken?.trim() || undefined,
       sourceFiles,
-      rootFolderName,
-      folderId: folderId ?? null,
     });
     return NextResponse.json(result);
   } catch (err) {

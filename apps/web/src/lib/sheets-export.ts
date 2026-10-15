@@ -5,19 +5,15 @@ import {
 } from "@cowell/shared";
 import {
   DEFAULT_DRIVE_ROOT_FOLDER_NAME,
+  getFixedDriveRootFolderId,
   sanitizeRootFolderName,
-  writeLastRootFolder,
 } from "./drive-root-folder";
 import {
   buildRowPhotoFileName,
   buildSpreadsheetDriveName,
+  normalizeProjectNameInput,
   sanitizeProjectFolderName,
 } from "./survey-process-name";
-
-export const GOOGLE_SHEETS_SCOPES = [
-  "https://www.googleapis.com/auth/spreadsheets",
-  "https://www.googleapis.com/auth/drive.file",
-].join(" ");
 
 /** Default root Drive folder name when user has not chosen one */
 export const DRIVE_PARENT_FOLDER_NAME = DEFAULT_DRIVE_ROOT_FOLDER_NAME;
@@ -403,6 +399,65 @@ export async function listDriveChildFolders(
   });
 }
 
+export interface FixedDriveRoot {
+  /** Resolved folder id — undefined when the root will be created at export */
+  id?: string;
+  name: string;
+  /** Normalized child folder names for project-name duplicate checks */
+  children: string[];
+}
+
+/**
+ * Resolve the single fixed export root — users never choose it.
+ * Order matches ensureParentFolder: env-pinned id → fixed name under My Drive →
+ * create at export. Also returns the root's child folders.
+ */
+export async function resolveFixedDriveRoot(
+  accessToken: string,
+  pinnedId?: string
+): Promise<FixedDriveRoot> {
+  let id: string | undefined;
+  let name = DEFAULT_DRIVE_ROOT_FOLDER_NAME;
+
+  const configuredId = pinnedId ?? getFixedDriveRootFolderId();
+  if (configuredId) {
+    const meta = await verifyDriveFolder(accessToken, configuredId);
+    if (meta) {
+      id = meta.id;
+      name = meta.name;
+    }
+  }
+
+  if (!id) {
+    const live = await listDriveRootFolders(accessToken);
+    const match = live.find(
+      (f) =>
+        f.name.trim().toLowerCase() ===
+        DEFAULT_DRIVE_ROOT_FOLDER_NAME.toLowerCase()
+    );
+    if (match) {
+      id = match.id;
+      name = match.name;
+    }
+  }
+
+  let children: string[] = [];
+  if (id) {
+    const kids = await listDriveChildFolders(accessToken, id);
+    const seen = new Set<string>();
+    for (const kid of kids) {
+      const child = normalizeProjectNameInput(kid.name);
+      if (!child) continue;
+      const key = child.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      children.push(child);
+    }
+  }
+
+  return { id, name, children };
+}
+
 /** Find an existing app-visible root folder by name under My Drive. */
 async function findExistingRootFolder(
   accessToken: string,
@@ -587,6 +642,50 @@ async function createDriveFile(
   return fileId;
 }
 
+/**
+ * The fixed root lives in the service account's Drive — invisible to humans.
+ * GOOGLE_DRIVE_SHARE_WITH (comma-separated emails) gets writer access so the
+ * team can open exported folders. Best-effort: never blocks export.
+ */
+async function ensureFolderSharedWith(
+  accessToken: string,
+  folderId: string
+): Promise<void> {
+  const emails = (process.env.GOOGLE_DRIVE_SHARE_WITH || "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  if (!emails.length || !folderId || folderId === "root") return;
+
+  try {
+    const listRes = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(folderId)}/permissions?supportsAllDrives=true&fields=permissions(emailAddress,role,type)`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    const existing = new Set<string>();
+    if (listRes.ok) {
+      const data = await listRes.json();
+      for (const p of (data.permissions || []) as Array<{ emailAddress?: string }>) {
+        if (p.emailAddress) existing.add(p.emailAddress.toLowerCase());
+      }
+    }
+
+    for (const email of emails) {
+      if (existing.has(email)) continue;
+      await fetch(
+        `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(folderId)}/permissions?supportsAllDrives=true&sendNotificationEmail=false`,
+        {
+          method: "POST",
+          headers: authHeaders(accessToken),
+          body: JSON.stringify({ role: "writer", type: "user", emailAddress: email }),
+        }
+      );
+    }
+  } catch {
+    // sharing is a convenience — never fail the export over it
+  }
+}
+
 async function ensureParentFolderUnlocked(
   accessToken: string,
   rootFolderName: string,
@@ -601,7 +700,6 @@ async function ensureParentFolderUnlocked(
     const valid = await getParentFolderIfValid(accessToken, id, name);
     if (valid) {
       writeCachedParentFolderId(valid.id);
-      writeLastRootFolder({ id: valid.id, name: valid.name });
       return valid;
     }
   }
@@ -612,7 +710,6 @@ async function ensureParentFolderUnlocked(
   const found = await findExistingRootFolder(accessToken, name);
   if (found) {
     writeCachedParentFolderId(found.id);
-    writeLastRootFolder({ id: found.id, name: found.name });
     return found;
   }
 
@@ -630,7 +727,6 @@ async function ensureParentFolderUnlocked(
   }
 
   writeCachedParentFolderId(createdId);
-  writeLastRootFolder({ id: createdId, name });
   return { id: createdId, name };
 }
 
@@ -1385,6 +1481,7 @@ async function exportRowsWithAccessTokenUnlocked(
   if (!parent?.id) {
     throw new Error("ルートフォルダを作成できませんでした");
   }
+  await ensureFolderSharedWith(accessToken, parent.id);
   emitProgress(onProgress, 10, "folders");
 
   let processFolderId = existingProcessFolderId?.trim();
@@ -1394,6 +1491,18 @@ async function exportRowsWithAccessTokenUnlocked(
   }
 
   if (!processFolderId) {
+    // Fixed root → project names must be unique; reject duplicates before create
+    const siblings = await listDriveChildFolders(accessToken, parent.id);
+    const wanted = normalizeProjectNameInput(projectFolderName).toLowerCase();
+    if (
+      siblings.some(
+        (s) => normalizeProjectNameInput(s.name).toLowerCase() === wanted
+      )
+    ) {
+      throw new Error(
+        "この案件名は既に存在します。別の名前を入力してください"
+      );
+    }
     processFolderId = await createProcessFolder(
       accessToken,
       projectFolderName,

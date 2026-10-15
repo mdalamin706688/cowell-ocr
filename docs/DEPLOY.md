@@ -13,7 +13,7 @@ Live URL (after deploy): `https://d1xs8fe440jh05.cloudfront.net`
 | `AWS_REGION` | `ap-northeast-1` |
 | `S3_BUCKET_NAME` | `cowell-ocr-frontend` |
 | `CLOUDFRONT_DISTRIBUTION_ID` | `E310HKOK8I8549` |
-| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | OAuth Web client ID |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | OAuth Web client ID (unused — export uses the service account) |
 | `NEXT_PUBLIC_COGNITO_REGION` | `ap-northeast-1` |
 | `NEXT_PUBLIC_COGNITO_USER_POOL_ID` | Cognito User Pool ID |
 | `NEXT_PUBLIC_COGNITO_CLIENT_ID` | Cognito App Client ID (public) |
@@ -24,7 +24,10 @@ Live URL (after deploy): `https://d1xs8fe440jh05.cloudfront.net`
 
 Push to `main` runs **Deploy AWS (S3 + CloudFront)**.
 
-> Static frontend: Cognito auth, remote Lambda OCR, and FE Google Sheets OAuth.
+> Static frontend: Cognito auth and remote Lambda OCR. Sheets export uses a
+> service account via `/api/sheets/*`, so it needs a Next.js server — on
+> CloudFront/S3 the export button falls back to CSV download unless `/api/*`
+> is routed to a server origin.
 
 ### CloudFront checklist
 

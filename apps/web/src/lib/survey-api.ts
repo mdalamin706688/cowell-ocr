@@ -1,19 +1,9 @@
 import type { OcrResult, OcrRow } from "@cowell/shared";
 import { getBasePath, isPreviewEnvironment } from "./client-auth";
-import { writeLastRootFolder } from "./drive-root-folder";
-import {
-  isGoogleClientConfigured,
-  requireConnectedGoogleDrive,
-} from "./google-auth-client";
 import { runMockOcr } from "./mock-ocr";
 import { rowsToTsv } from "./ocr";
 import { isOcrApiConfigured, runRemoteOcr, type OcrProgressCallback } from "./ocr-api";
-import {
-  exportRowsWithAccessToken,
-  stageSurveySourceFiles,
-  type ExportProgressCallback,
-  type SurveyDriveStaging,
-} from "./sheets-export";
+import type { ExportProgressCallback } from "./sheets-export";
 
 type ApiError = { error?: string };
 
@@ -167,107 +157,20 @@ export function triggerCsvDownload(rows: OcrRow[], title: string): void {
 
 export interface SurveyExportOptions {
   projectName: string;
-  rootFolderName?: string;
-  rootFolderId?: string | null;
-  googleAccountEmail?: string | null;
   sourceFiles?: Array<{ base64: string; mimeType: string; name: string }>;
-  existingProcessFolderId?: string;
-  skipSourceUpload?: boolean;
   onProgress?: ExportProgressCallback;
 }
 
-export type { SurveyDriveStaging };
-
-export interface SurveyStageSourceOptions {
-  projectName: string;
-  rootFolderName: string;
-  rootFolderId?: string | null;
-  googleAccountEmail?: string | null;
-  sourceFiles: Array<{ base64: string; mimeType: string; name: string }>;
-  onProgress?: (done: number, total: number) => void;
-}
-
-/** Upload originals to 元ファイル/ before OCR when Drive destination is ready. */
-export async function surveyStageSourceFiles(
-  options: SurveyStageSourceOptions
-): Promise<SurveyDriveStaging> {
-  const account = requireConnectedGoogleDrive();
-
-  const sameAccount =
-    Boolean(options.googleAccountEmail) &&
-    options.googleAccountEmail!.trim().toLowerCase() === account.email.toLowerCase();
-  const safeFolderId = sameAccount ? options.rootFolderId ?? null : null;
-
-  if (options.rootFolderName) {
-    writeLastRootFolder(
-      { name: options.rootFolderName, id: safeFolderId || undefined },
-      account.email
-    );
-  }
-
-  return stageSurveySourceFiles({
-    accessToken: account.accessToken,
-    projectName: options.projectName,
-    rootFolderName: options.rootFolderName,
-    folderId: safeFolderId,
-    sourceFiles: options.sourceFiles,
-    onProgress: options.onProgress,
-  });
-}
-
 /**
- * Export uses the already-connected Google session only.
- * Account picker runs once in Drive保存先 — never again on export.
+ * Export runs on the server with a service account into the fixed root folder
+ * (GOOGLE_SHEETS_FOLDER_ID). No Google popup — the user never signs in to Google.
  */
 export async function surveyExport(
   rows: OcrRow[],
   options: SurveyExportOptions
 ): Promise<SurveyExportResult> {
-  const {
-    projectName,
-    sourceFiles,
-    rootFolderName,
-    rootFolderId,
-    googleAccountEmail,
-    onProgress,
-  } = options;
+  const { projectName, sourceFiles, onProgress } = options;
   const title = projectName.trim() || "現調";
-
-  if (isGoogleClientConfigured()) {
-    // No account picker here — session must already exist
-    const account = requireConnectedGoogleDrive();
-
-    const sameAccount =
-      Boolean(googleAccountEmail) &&
-      googleAccountEmail!.trim().toLowerCase() === account.email.toLowerCase();
-    const safeFolderId = sameAccount ? rootFolderId ?? null : null;
-
-    if (rootFolderName) {
-      writeLastRootFolder(
-        { name: rootFolderName, id: safeFolderId || undefined },
-        account.email
-      );
-    }
-
-    onProgress?.({ percent: 0, phase: "folders" });
-    const result = await exportRowsWithAccessToken({
-      accessToken: account.accessToken,
-      rows,
-      projectName: title,
-      rootFolderName,
-      sourceFiles,
-      folderId: safeFolderId,
-      existingProcessFolderId: options.existingProcessFolderId,
-      skipSourceUpload: options.skipSourceUpload,
-      onProgress,
-    });
-    return {
-      spreadsheetUrl: result.spreadsheetUrl,
-      processFolderUrl: result.processFolderUrl,
-      rowCount: result.rowCount,
-      photoCount: result.photoCount,
-    };
-  }
 
   if (isPreviewEnvironment()) {
     onProgress?.({ percent: 10, phase: "folders" });
@@ -286,8 +189,6 @@ export async function surveyExport(
     body: JSON.stringify({
       rows,
       projectName: title,
-      rootFolderName,
-      folderId: rootFolderId,
       sourceFiles,
     }),
   });
