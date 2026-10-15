@@ -160,6 +160,16 @@ export async function exportToGoogleSheets(
   }
 
   const token = await getServerDriveAccessToken();
+  // When both creds exist, folders are created with the SA token so the
+  // retention job can delete them; file bytes stay user-owned (SA quota = 0).
+  let folderAccessToken: string | undefined;
+  if (getRefreshTokenCredentials() && getServiceAccountCredentials()) {
+    try {
+      folderAccessToken = await getServiceAccountAccessToken();
+    } catch {
+      folderAccessToken = undefined;
+    }
+  }
   const folderId = getServerFixedRootFolderId();
 
   // Pinned folder: resolve its real name so export verifies id+name consistently.
@@ -178,6 +188,7 @@ export async function exportToGoogleSheets(
 
   return exportRowsWithAccessToken({
     accessToken: token,
+    folderAccessToken,
     rows,
     projectName,
     rootFolderName,

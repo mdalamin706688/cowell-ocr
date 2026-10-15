@@ -3,7 +3,11 @@ import { getBasePath, isPreviewEnvironment } from "./client-auth";
 import { runMockOcr } from "./mock-ocr";
 import { rowsToTsv } from "./ocr";
 import { isOcrApiConfigured, runRemoteOcr, type OcrProgressCallback } from "./ocr-api";
-import { getDirectDriveAccessToken, isDirectDriveConfigured } from "./google-direct";
+import {
+  getDirectDriveAccessToken,
+  getDirectServiceAccountAccessToken,
+  isDirectDriveConfigured,
+} from "./google-direct";
 import { isRemoteSheetsApi, sheetsApiAuthHeaders, sheetsApiUrl, surveyUsesCsvFallback } from "./sheets-api";
 import { exportRowsWithAccessToken, type ExportProgressCallback } from "./sheets-export";
 import { getFixedDriveRootFolderId } from "./drive-root-folder";
@@ -192,8 +196,13 @@ export async function surveyExport(
   // INSECURE: refresh token is public — see google-direct.ts.
   if (isPreviewEnvironment() && !isRemoteSheetsApi() && isDirectDriveConfigured()) {
     const accessToken = await getDirectDriveAccessToken();
+    // SA creates the folder skeleton when configured → folders stay SA-owned
+    // so the retention job can delete them. File bytes still use the user
+    // token (service accounts have no storage quota).
+    const folderAccessToken = await getDirectServiceAccountAccessToken();
     const result = await exportRowsWithAccessToken({
       accessToken,
+      folderAccessToken: folderAccessToken ?? undefined,
       rows,
       projectName: title,
       sourceFiles,

@@ -39,6 +39,8 @@ export interface SurveyDriveStaging {
 
 export interface StageSurveySourceOptions {
   accessToken: string;
+  /** Optional SA token that owns the folder skeleton (cleanup can delete it). */
+  folderAccessToken?: string;
   projectName?: string;
   /** @deprecated Use projectName */
   title?: string;
@@ -80,6 +82,13 @@ export type ExportProgressCallback = (event: ExportProgressEvent) => void;
 
 export interface SheetsExportOptions {
   accessToken: string;
+  /**
+   * Optional service-account token used only for folder creation.
+   * Folders become SA-owned so the retention job can delete them;
+   * file bytes stay owned by `accessToken` (SA has no storage quota).
+   * Note: deleting an SA-owned folder orphans user-owned files inside.
+   */
+  folderAccessToken?: string;
   rows: OcrRow[];
   /** Project name → survey folder under the chosen root */
   projectName?: string;
@@ -1397,7 +1406,8 @@ async function applyPhotoFormulasToSheet(
 export async function stageSurveySourceFiles(
   options: StageSurveySourceOptions
 ): Promise<SurveyDriveStaging> {
-  const { accessToken, sourceFiles, folderId, onProgress } = options;
+  const { accessToken, folderAccessToken, sourceFiles, folderId, onProgress } = options;
+  const folderToken = folderAccessToken?.trim() || accessToken;
   const projectFolderName = resolveProjectName(options);
   const rootFolderName = resolveRootFolderName(options);
   const valid = sourceFiles?.filter((f) => f.base64?.trim()) ?? [];
@@ -1415,12 +1425,12 @@ export async function stageSurveySourceFiles(
   }
 
   const processFolderId = await createProcessFolder(
-    accessToken,
+    folderToken,
     projectFolderName,
     parent.id,
     parent.name
   );
-  const sourceFolderId = await createSourceSubfolder(accessToken, processFolderId);
+  const sourceFolderId = await createSourceSubfolder(folderToken, processFolderId);
   const sourceCount = await uploadSourceFilesToDrive(
     accessToken,
     valid,
@@ -1428,8 +1438,8 @@ export async function stageSurveySourceFiles(
     onProgress
   );
 
-  await ensureExclusiveParent(accessToken, sourceFolderId, processFolderId);
-  await ensureExclusiveParent(accessToken, processFolderId, parent.id);
+  await ensureExclusiveParent(folderToken, sourceFolderId, processFolderId);
+  await ensureExclusiveParent(folderToken, processFolderId, parent.id);
 
   return {
     processFolderId,
@@ -1460,6 +1470,7 @@ async function exportRowsWithAccessTokenUnlocked(
 ): Promise<SheetsExportResult> {
   const {
     accessToken,
+    folderAccessToken,
     rows,
     folderId,
     sourceFiles,
@@ -1467,6 +1478,7 @@ async function exportRowsWithAccessTokenUnlocked(
     skipSourceUpload,
     onProgress,
   } = options;
+  const folderToken = folderAccessToken?.trim() || accessToken;
   const headers = authHeaders(accessToken);
   const projectFolderName = resolveProjectName(options);
   const rootFolderName = resolveRootFolderName(options);
@@ -1508,7 +1520,7 @@ async function exportRowsWithAccessTokenUnlocked(
       );
     }
     processFolderId = await createProcessFolder(
-      accessToken,
+      folderToken,
       projectFolderName,
       parent.id,
       parent.name
@@ -1518,7 +1530,7 @@ async function exportRowsWithAccessTokenUnlocked(
 
   if (shouldUploadSources) {
     emitProgress(onProgress, 16, "sources", `0 / ${sourceTotal}`);
-    const sourceFolderId = await createSourceSubfolder(accessToken, processFolderId);
+    const sourceFolderId = await createSourceSubfolder(folderToken, processFolderId);
     await uploadSourceFilesToDrive(
       accessToken,
       sourceFiles!,
@@ -1532,12 +1544,12 @@ async function exportRowsWithAccessTokenUnlocked(
         );
       }
     );
-    await ensureExclusiveParent(accessToken, sourceFolderId, processFolderId);
-    await ensureExclusiveParent(accessToken, processFolderId, parent.id);
+    await ensureExclusiveParent(folderToken, sourceFolderId, processFolderId);
+    await ensureExclusiveParent(folderToken, processFolderId, parent.id);
   }
   emitProgress(onProgress, shouldUploadSources ? 32 : 18, "photos");
 
-  const photoFolderId = await createPhotoSubfolder(accessToken, processFolderId);
+  const photoFolderId = await createPhotoSubfolder(folderToken, processFolderId);
   let photoCount = 0;
   let uploadedPhotos: Array<{ sheetRow: number; imageUrl: string }> = [];
   if (photoTotal > 0) {
@@ -1556,8 +1568,8 @@ async function exportRowsWithAccessTokenUnlocked(
       }
     );
     photoCount = uploadedPhotos.length;
-    await ensureExclusiveParent(accessToken, photoFolderId, processFolderId);
-    await ensureExclusiveParent(accessToken, processFolderId, parent.id);
+    await ensureExclusiveParent(folderToken, photoFolderId, processFolderId);
+    await ensureExclusiveParent(folderToken, processFolderId, parent.id);
   }
   emitProgress(onProgress, photoTotal > 0 ? 58 : 36, "spreadsheet");
 
@@ -1593,7 +1605,7 @@ async function exportRowsWithAccessTokenUnlocked(
   await touchSpreadsheetFile(accessToken, spreadsheetId);
 
   // Final guarantee: survey folder only under chosen root (not also My Drive root)
-  await ensureExclusiveParent(accessToken, processFolderId, parent.id);
+  await ensureExclusiveParent(folderToken, processFolderId, parent.id);
   emitProgress(onProgress, 100, "finishing");
 
   return {
