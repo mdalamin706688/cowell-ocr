@@ -3,8 +3,10 @@ import { getBasePath, isPreviewEnvironment } from "./client-auth";
 import { runMockOcr } from "./mock-ocr";
 import { rowsToTsv } from "./ocr";
 import { isOcrApiConfigured, runRemoteOcr, type OcrProgressCallback } from "./ocr-api";
-import { isRemoteSheetsApi, sheetsApiAuthHeaders, sheetsApiUrl } from "./sheets-api";
-import type { ExportProgressCallback } from "./sheets-export";
+import { getDirectDriveAccessToken, isDirectDriveConfigured } from "./google-direct";
+import { isRemoteSheetsApi, sheetsApiAuthHeaders, sheetsApiUrl, surveyUsesCsvFallback } from "./sheets-api";
+import { exportRowsWithAccessToken, type ExportProgressCallback } from "./sheets-export";
+import { getFixedDriveRootFolderId } from "./drive-root-folder";
 
 type ApiError = { error?: string };
 
@@ -163,9 +165,11 @@ export interface SurveyExportOptions {
 }
 
 /**
- * Export runs server-side into the fixed root folder — via
- * NEXT_PUBLIC_SHEETS_API_BASE_URL (Lambda on static hosts) or the same-origin
- * /api/sheets/export route (server hosting). No Google popup for the user.
+ * Export into the fixed root folder — no Google popup for the user.
+ * Priority: NEXT_PUBLIC_SHEETS_API_BASE_URL (Lambda on static hosts) →
+ * same-origin /api/sheets/export (server hosting) → browser-direct export
+ * with embedded refresh-token creds (insecure, see google-direct.ts) →
+ * CSV fallback.
  */
 export async function surveyExport(
   rows: OcrRow[],
@@ -174,7 +178,7 @@ export async function surveyExport(
   const { projectName, sourceFiles, onProgress } = options;
   const title = projectName.trim() || "現調";
 
-  if (!isRemoteSheetsApi() && isPreviewEnvironment()) {
+  if (surveyUsesCsvFallback()) {
     onProgress?.({ percent: 10, phase: "folders" });
     onProgress?.({ percent: 25, phase: "sources" });
     onProgress?.({ percent: 45, phase: "photos" });
@@ -182,6 +186,26 @@ export async function surveyExport(
     downloadCsv(rows, title);
     onProgress?.({ percent: 100, phase: "finishing" });
     return { spreadsheetUrl: "", rowCount: rows.length, downloadOnly: true };
+  }
+
+  // Static host + embedded credential → run the export in the browser.
+  // INSECURE: refresh token is public — see google-direct.ts.
+  if (isPreviewEnvironment() && !isRemoteSheetsApi() && isDirectDriveConfigured()) {
+    const accessToken = await getDirectDriveAccessToken();
+    const result = await exportRowsWithAccessToken({
+      accessToken,
+      rows,
+      projectName: title,
+      sourceFiles,
+      folderId: getFixedDriveRootFolderId(),
+      onProgress,
+    });
+    return {
+      spreadsheetUrl: result.spreadsheetUrl,
+      processFolderUrl: result.processFolderUrl,
+      rowCount: result.rowCount,
+      photoCount: result.photoCount,
+    };
   }
 
   onProgress?.({ percent: 10, phase: "folders" });

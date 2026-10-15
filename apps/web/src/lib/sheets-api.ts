@@ -1,6 +1,7 @@
-import { getBasePath } from "./client-auth";
+import { getBasePath, isPreviewEnvironment } from "./client-auth";
 import { getCognitoAccessToken } from "./cognito-auth";
 import { isCognitoConfigured } from "./cognito-config";
+import { isDirectDriveConfigured } from "./google-direct";
 
 /**
  * Remote Sheets export API (Lambda Function URL) — used on static hosts
@@ -18,6 +19,16 @@ export function isRemoteSheetsApi(): boolean {
 export function sheetsApiUrl(path: "root" | "export"): string {
   const remote = getSheetsApiBaseUrl();
   return remote ? `${remote}/${path}` : `${getBasePath()}/api/sheets/${path}`;
+}
+
+/**
+ * True only when no export backend exists: static host, no remote API and no
+ * embedded direct credential → export degrades to CSV download.
+ */
+export function surveyUsesCsvFallback(): boolean {
+  return (
+    isPreviewEnvironment() && !isRemoteSheetsApi() && !isDirectDriveConfigured()
+  );
 }
 
 /** Cognito bearer for the remote Lambda; empty headers for same-origin routes. */

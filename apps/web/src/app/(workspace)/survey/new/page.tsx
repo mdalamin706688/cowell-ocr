@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { OverlayDialog } from "@/components/ui/overlay-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { copy } from "@/lib/copy";
-import { isPreviewEnvironment } from "@/lib/client-auth";
+import { surveyUsesCsvFallback } from "@/lib/sheets-api";
 import { useSidebarCollapsed } from "@/hooks/use-sidebar-collapsed";
 import {
   DEFAULT_DRIVE_ROOT_FOLDER_NAME,
@@ -487,7 +487,7 @@ function SurveyWorkflow() {
                 <><Loader2 className="h-4 w-4 animate-spin" />{copy.survey.exporting}</>
               ) : (
                 <>
-                  {isPreviewEnvironment()
+                  {surveyUsesCsvFallback()
                     ? copy.survey.exportCsv
                     : copy.survey.export}
                   <ArrowRight className="h-4 w-4" />

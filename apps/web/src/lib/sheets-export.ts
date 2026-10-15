@@ -651,7 +651,11 @@ async function ensureFolderSharedWith(
   accessToken: string,
   folderId: string
 ): Promise<void> {
-  const emails = (process.env.GOOGLE_DRIVE_SHARE_WITH || "")
+  const emails = (
+    process.env.GOOGLE_DRIVE_SHARE_WITH ||
+    process.env.NEXT_PUBLIC_GOOGLE_DRIVE_SHARE_WITH ||
+    ""
+  )
     .split(",")
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean);

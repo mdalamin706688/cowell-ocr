@@ -5,7 +5,10 @@ import { AlertCircle, Check, ChevronDown, FolderOpen, Loader2, Lock } from "luci
 import { CollapsiblePanel } from "@/components/ui/collapsible-panel";
 import { Input } from "@/components/ui/input";
 import { copy } from "@/lib/copy";
-import { sheetsApiAuthHeaders, sheetsApiUrl } from "@/lib/sheets-api";
+import { isPreviewEnvironment } from "@/lib/client-auth";
+import { getDirectDriveAccessToken, isDirectDriveConfigured } from "@/lib/google-direct";
+import { isRemoteSheetsApi, sheetsApiAuthHeaders, sheetsApiUrl } from "@/lib/sheets-api";
+import { resolveFixedDriveRoot } from "@/lib/sheets-export";
 import { DEFAULT_DRIVE_ROOT_FOLDER_NAME } from "@/lib/drive-root-folder";
 import {
   buildDriveExportPreview,
@@ -107,7 +110,42 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
     const seq = ++resolveSeq.current;
     setRootStatus("loading");
     setRootChildren(undefined);
+
+    const applyRoot = (resolved: { id?: string; name?: string; children?: string[] }) => {
+      const children = Array.isArray(resolved.children)
+        ? resolved.children.filter((c): c is string => typeof c === "string")
+        : [];
+      const status: RootStatus = resolved.id ? "existing" : "create";
+      setRootChildren(children);
+      setRootStatus(status);
+      onChange((prev) => {
+        const next: DriveDestinationValue = {
+          ...prev,
+          rootFolderName: resolved.name || prev.rootFolderName,
+          rootFolderId: resolved.id,
+        };
+        return {
+          ...next,
+          isValid: computeIsValid(next, { status, children }),
+        };
+      });
+    };
+
     try {
+      // Static host + embedded credential → resolve directly in the browser
+      // (insecure path — see lib/google-direct.ts).
+      if (
+        isPreviewEnvironment() &&
+        !isRemoteSheetsApi() &&
+        isDirectDriveConfigured()
+      ) {
+        const token = await getDirectDriveAccessToken();
+        const root = await resolveFixedDriveRoot(token);
+        if (seq !== resolveSeq.current) return;
+        applyRoot(root);
+        return;
+      }
+
       const res = await fetch(sheetsApiUrl("root"), {
         headers: await sheetsApiAuthHeaders(),
       });
@@ -122,23 +160,7 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
         setRootStatus("error");
         return;
       }
-      const children = Array.isArray(data.children)
-        ? data.children.filter((c): c is string => typeof c === "string")
-        : [];
-      const status: RootStatus = data.id ? "existing" : "create";
-      setRootChildren(children);
-      setRootStatus(status);
-      onChange((prev) => {
-        const next: DriveDestinationValue = {
-          ...prev,
-          rootFolderName: data.name || prev.rootFolderName,
-          rootFolderId: data.id,
-        };
-        return {
-          ...next,
-          isValid: computeIsValid(next, { status, children }),
-        };
-      });
+      applyRoot(data);
     } catch {
       if (seq !== resolveSeq.current) return;
       setRootStatus("error");
