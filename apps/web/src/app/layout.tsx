@@ -1,19 +1,9 @@
 import type { Metadata } from "next";
-import { Inter, Noto_Sans_JP } from "next/font/google";
 import { AppProviders } from "@/components/providers/app-providers";
 import "./globals.css";
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  weight: ["400", "500", "600", "700"],
-});
-
-const noto = Noto_Sans_JP({
-  subsets: ["latin"],
-  variable: "--font-noto",
-  weight: ["400", "500", "600"],
-});
+// Fonts load via <link> at runtime — next/font/google fetches at build time,
+// which fails on CI runners / Turbopack. CSS vars live in globals.css.
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
@@ -52,6 +42,12 @@ export default function RootLayout({
     <html lang="ja" translate="no" suppressHydrationWarning>
       <head>
         <meta name="google" content="notranslate" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600&display=swap"
+        />
         <link rel="icon" href={iconIco} sizes="any" />
         <link rel="icon" href={iconPng} type="image/png" sizes="32x32" />
         <link rel="icon" href={iconSvg} type="image/svg+xml" sizes="any" />
@@ -59,7 +55,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href={appleHref} sizes="180x180" />
       </head>
       <body
-        className={`${inter.variable} ${noto.variable} notranslate font-sans antialiased`}
+        className="notranslate font-sans antialiased"
         translate="no"
         suppressHydrationWarning
       >

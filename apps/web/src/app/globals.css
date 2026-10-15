@@ -4,6 +4,9 @@
 
 @layer base {
   :root {
+    /* Fonts — loaded via <link> in layout.tsx, not next/font/google */
+    --font-inter: "Inter", ui-sans-serif, system-ui, sans-serif;
+    --font-noto: "Noto Sans JP", "Hiragino Sans", ui-sans-serif, sans-serif;
     /* COWELL brand blue — from cowell.co.jp / ous.png (#1F2677) */
     /* Page: very light; cards: gentle warm blush (between subtle and peach) */
     --background: 38 12% 99.5%;
