@@ -24,11 +24,9 @@ Live URL (after deploy): `https://d1xs8fe440jh05.cloudfront.net`
 
 Push to `main` runs **Deploy AWS (S3 + CloudFront)**.
 
-> Static frontend: Cognito auth and remote Lambda OCR. Sheets export uses
-> server-side Google credentials via `/api/sheets/*`, so it needs a Next.js
-> server — on CloudFront/S3 the export button falls back to CSV download.
-> Set `NEXT_PUBLIC_SHEETS_API_BASE_URL` to a hosted instance of this app
-> (e.g. Vercel/Amplify) to enable Drive export from the static site.
+> Static frontend: Cognito auth and remote Lambda OCR. Sheets export runs via
+> the sheets-export Lambda Function URL (`NEXT_PUBLIC_SHEETS_API_BASE_URL`) —
+> see `docs/GOOGLE_SHEETS.md`. Without it, export falls back to CSV download.
 
 ### CloudFront checklist
 

@@ -146,21 +146,6 @@ export function getBasePath(): string {
   return process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 }
 
-/**
- * Base URL for the server-side Sheets/Drive API (service account export).
- * Same-origin by default; on static hosts (S3/CloudFront/GitHub Pages) point
- * NEXT_PUBLIC_SHEETS_API_BASE_URL at a hosted instance of this app.
- */
-export function getSheetsApiBaseUrl(): string {
-  const remote = process.env.NEXT_PUBLIC_SHEETS_API_BASE_URL?.trim().replace(/\/$/, "");
-  return remote || getBasePath();
-}
-
-/** True when the Sheets API lives on a remote host (static-deploy escape hatch). */
-export function isRemoteSheetsApiConfigured(): boolean {
-  return Boolean(process.env.NEXT_PUBLIC_SHEETS_API_BASE_URL?.trim());
-}
-
 const FLASH_PREFIX = "cowell_flash_";
 
 /** One-time flash message (e.g. after logout) without polluting the URL */

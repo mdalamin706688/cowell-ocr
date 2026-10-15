@@ -1,13 +1,9 @@
 import type { OcrResult, OcrRow } from "@cowell/shared";
-import {
-  getBasePath,
-  getSheetsApiBaseUrl,
-  isPreviewEnvironment,
-  isRemoteSheetsApiConfigured,
-} from "./client-auth";
+import { getBasePath, isPreviewEnvironment } from "./client-auth";
 import { runMockOcr } from "./mock-ocr";
 import { rowsToTsv } from "./ocr";
 import { isOcrApiConfigured, runRemoteOcr, type OcrProgressCallback } from "./ocr-api";
+import { isRemoteSheetsApi, sheetsApiAuthHeaders, sheetsApiUrl } from "./sheets-api";
 import type { ExportProgressCallback } from "./sheets-export";
 
 type ApiError = { error?: string };
@@ -167,8 +163,9 @@ export interface SurveyExportOptions {
 }
 
 /**
- * Export runs on the server with a service account into the fixed root folder
- * (GOOGLE_SHEETS_FOLDER_ID). No Google popup — the user never signs in to Google.
+ * Export runs server-side into the fixed root folder — via
+ * NEXT_PUBLIC_SHEETS_API_BASE_URL (Lambda on static hosts) or the same-origin
+ * /api/sheets/export route (server hosting). No Google popup for the user.
  */
 export async function surveyExport(
   rows: OcrRow[],
@@ -177,8 +174,7 @@ export async function surveyExport(
   const { projectName, sourceFiles, onProgress } = options;
   const title = projectName.trim() || "現調";
 
-  // Static preview hosts have no /api — CSV unless a remote Sheets API is set
-  if (isPreviewEnvironment() && !isRemoteSheetsApiConfigured()) {
+  if (!isRemoteSheetsApi() && isPreviewEnvironment()) {
     onProgress?.({ percent: 10, phase: "folders" });
     onProgress?.({ percent: 25, phase: "sources" });
     onProgress?.({ percent: 45, phase: "photos" });
@@ -189,9 +185,12 @@ export async function surveyExport(
   }
 
   onProgress?.({ percent: 10, phase: "folders" });
-  const res = await fetch(`${getSheetsApiBaseUrl()}/api/sheets/export`, {
+  const res = await fetch(sheetsApiUrl("export"), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(await sheetsApiAuthHeaders()),
+    },
     body: JSON.stringify({
       rows,
       projectName: title,

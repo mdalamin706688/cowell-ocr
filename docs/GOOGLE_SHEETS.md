@@ -51,21 +51,44 @@ Restart `npm run dev` after changing env.
 ## Hosting requirement
 
 `/api/sheets/*` needs a running Next.js server (local dev, Vercel, Amplify,
-ECS, …). On static hosts (S3 + CloudFront, GitHub Pages) there is no `/api/*`,
-so export falls back to CSV download.
-
-To use Drive export from a static frontend, host this app somewhere
-server-capable and point the FE at it:
+ECS, …). On static hosts (S3 + CloudFront, GitHub Pages) there is no `/api/*`
+— deploy the bundled **sheets-export Lambda** instead and set
+`NEXT_PUBLIC_SHEETS_API_BASE_URL` on the frontend:
 
 ```bash
-NEXT_PUBLIC_SHEETS_API_BASE_URL=https://your-api-host.example.com
+cd apps/web
+npm run build:sheets-lambda          # → dist/sheets-export/index.mjs
+cd dist/sheets-export && zip function.zip index.mjs
+
+aws lambda create-function \
+  --function-name cowell-sheets-export \
+  --runtime nodejs20.x --handler index.handler \
+  --zip-file fileb://function.zip \
+  --role <lambda-exec-role-arn> \
+  --timeout 300 --memory-size 512
+
+aws lambda create-function-url-config \
+  --function-name cowell-sheets-export --auth-type NONE
+# Do NOT configure Function URL CORS — the handler sets CORS headers itself.
 ```
 
-The static build then calls `{base}/api/sheets/export` and
-`{base}/api/sheets/root` cross-origin (CORS is enabled on those routes).
-Google credentials (`GOOGLE_DRIVE_REFRESH_TOKEN` / `GOOGLE_SERVICE_ACCOUNT_*`
-and `GOOGLE_SHEETS_FOLDER_ID`) are configured on the API host, never on the
-static site.
+Lambda env vars:
+
+| Var | Notes |
+|-----|-------|
+| `GOOGLE_DRIVE_CLIENT_ID` / `GOOGLE_DRIVE_CLIENT_SECRET` / `GOOGLE_DRIVE_REFRESH_TOKEN` | Preferred — exports as the folder owner (real quota) |
+| `GOOGLE_SERVICE_ACCOUNT_*` / `GOOGLE_SERVICE_ACCOUNT_JSON` | Fallback — only works with a Shared Drive root |
+| `GOOGLE_SHEETS_FOLDER_ID` | Fixed root folder id |
+| `GOOGLE_DRIVE_SHARE_WITH` | Optional emails granted writer on the root |
+| `COGNITO_REGION` / `COGNITO_USER_POOL_ID` / `COGNITO_CLIENT_ID` | Enables Cognito JWT verification (recommended) |
+| `ALLOWED_ORIGINS` | e.g. `https://d1xs8fe440jh05.cloudfront.net` |
+
+Endpoints: `GET /root` (fixed root + children for the duplicate check),
+`POST /export` (rows + projectName + sourceFiles). Function URL payloads are
+capped ~6 MB — large source PDFs may exceed it; then export with photos only.
+
+Then add the GitHub secret `NEXT_PUBLIC_SHEETS_API_BASE_URL=<function url>`
+and redeploy the frontend.
 
 ## Local check
 
