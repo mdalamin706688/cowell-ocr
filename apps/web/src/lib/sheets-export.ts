@@ -710,7 +710,9 @@ async function ensureParentFolderUnlocked(
   ) as string[];
 
   for (const id of candidates) {
-    const valid = await getParentFolderIfValid(accessToken, id, name);
+    // The pinned id IS the configuration — adopt its real name so a Drive-side
+    // rename doesn't invalidate it (name-match would silently recreate the root).
+    const valid = await getFolderMeta(accessToken, id);
     if (valid) {
       writeCachedParentFolderId(valid.id);
       return valid;
@@ -1416,7 +1418,7 @@ export async function stageSurveySourceFiles(
   }
 
   let parent = await ensureParentFolder(accessToken, rootFolderName, folderId);
-  if (!(await getParentFolderIfValid(accessToken, parent.id, rootFolderName))) {
+  if (!(await getParentFolderIfValid(accessToken, parent.id, parent.name))) {
     clearCachedParentFolderId();
     parent = await ensureParentFolder(accessToken, rootFolderName, folderId);
   }
@@ -1490,7 +1492,7 @@ async function exportRowsWithAccessTokenUnlocked(
   emitProgress(onProgress, 0, "folders");
 
   let parent = await ensureParentFolder(accessToken, rootFolderName, folderId);
-  if (!(await getParentFolderIfValid(accessToken, parent.id, rootFolderName))) {
+  if (!(await getParentFolderIfValid(accessToken, parent.id, parent.name))) {
     clearCachedParentFolderId();
     parent = await ensureParentFolder(accessToken, rootFolderName, folderId);
   }

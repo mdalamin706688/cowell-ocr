@@ -164,6 +164,8 @@ export function triggerCsvDownload(rows: OcrRow[], title: string): void {
 
 export interface SurveyExportOptions {
   projectName: string;
+  /** Resolved root folder name from the panel (may differ after a Drive rename). */
+  rootFolderName?: string;
   sourceFiles?: Array<{ base64: string; mimeType: string; name: string }>;
   onProgress?: ExportProgressCallback;
 }
@@ -179,7 +181,7 @@ export async function surveyExport(
   rows: OcrRow[],
   options: SurveyExportOptions
 ): Promise<SurveyExportResult> {
-  const { projectName, sourceFiles, onProgress } = options;
+  const { projectName, rootFolderName, sourceFiles, onProgress } = options;
   const title = projectName.trim() || "現調";
 
   if (surveyUsesCsvFallback()) {
@@ -203,6 +205,7 @@ export async function surveyExport(
     const result = await exportRowsWithAccessToken({
       accessToken,
       folderAccessToken: folderAccessToken ?? undefined,
+      rootFolderName,
       rows,
       projectName: title,
       sourceFiles,

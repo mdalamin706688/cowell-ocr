@@ -265,6 +265,7 @@ function SurveyWorkflow() {
     try {
       const result = await surveyExport(rows, {
         projectName: name,
+        rootFolderName: destination.rootFolderName,
         sourceFiles: files.map((f) => ({
           base64: f.base64,
           mimeType: f.mimeType,
