@@ -177,7 +177,22 @@ export function DriveDestinationPanel({ value, onChange }: DriveDestinationPanel
 
   useEffect(() => {
     if (!open) return;
-    void resolveFixedRootRef.current();
+    const resolve = () => void resolveFixedRootRef.current();
+    resolve();
+
+    // Re-resolve without a page refresh: tab focus/visibility return + a
+    // light poll while the panel is open (Drive-side renames propagate).
+    const onVisible = () => {
+      if (document.visibilityState === "visible") resolve();
+    };
+    window.addEventListener("focus", resolve);
+    document.addEventListener("visibilitychange", onVisible);
+    const interval = window.setInterval(resolve, 30_000);
+    return () => {
+      window.removeEventListener("focus", resolve);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.clearInterval(interval);
+    };
   }, [open]);
 
   const canAutoCollapse = open && isValid;
