@@ -1534,6 +1534,7 @@ async function exportRowsWithAccessTokenUnlocked(
   if (shouldUploadSources) {
     emitProgress(onProgress, 16, "sources", `0 / ${sourceTotal}`);
     const sourceFolderId = await createSourceSubfolder(folderToken, processFolderId);
+    await ensureFolderSharedWith(folderToken, sourceFolderId);
     await uploadSourceFilesToDrive(
       accessToken,
       sourceFiles!,
@@ -1553,6 +1554,7 @@ async function exportRowsWithAccessTokenUnlocked(
   emitProgress(onProgress, shouldUploadSources ? 32 : 18, "photos");
 
   const photoFolderId = await createPhotoSubfolder(folderToken, processFolderId);
+  await ensureFolderSharedWith(folderToken, photoFolderId);
   let photoCount = 0;
   let uploadedPhotos: Array<{ sheetRow: number; imageUrl: string }> = [];
   if (photoTotal > 0) {
