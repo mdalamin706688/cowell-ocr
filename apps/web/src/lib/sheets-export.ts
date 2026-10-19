@@ -1528,6 +1528,7 @@ async function exportRowsWithAccessTokenUnlocked(
       parent.name
     );
   }
+  await ensureFolderSharedWith(folderToken, processFolderId);
   emitProgress(onProgress, 15, "folders");
 
   if (shouldUploadSources) {
