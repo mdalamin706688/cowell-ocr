@@ -1,0 +1,77 @@
+name: Deploy AWS (S3 + CloudFront)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: aws-static
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build static site for AWS
+        run: node scripts/build-aws-static.mjs
+        env:
+          DEMO_LOGIN_EMAIL: ${{ secrets.DEMO_LOGIN_EMAIL }}
+          DEMO_LOGIN_PASSWORD: ${{ secrets.DEMO_LOGIN_PASSWORD }}
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
+          NEXT_PUBLIC_GOOGLE_SHEETS_FOLDER_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_SHEETS_FOLDER_ID }}
+          NEXT_PUBLIC_COGNITO_REGION: ${{ secrets.NEXT_PUBLIC_COGNITO_REGION }}
+          NEXT_PUBLIC_COGNITO_USER_POOL_ID: ${{ secrets.NEXT_PUBLIC_COGNITO_USER_POOL_ID }}
+          NEXT_PUBLIC_COGNITO_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_COGNITO_CLIENT_ID }}
+          NEXT_PUBLIC_COGNITO_IDENTITY_POOL_ID: ${{ secrets.NEXT_PUBLIC_COGNITO_IDENTITY_POOL_ID }}
+          NEXT_PUBLIC_OCR_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_OCR_API_BASE_URL }}
+          NEXT_PUBLIC_OCR_API_ENABLED: ${{ secrets.NEXT_PUBLIC_OCR_API_ENABLED }}
+          NEXT_PUBLIC_GOOGLE_DRIVE_CLIENT_ID: ${{ secrets.GOOGLE_DRIVE_CLIENT_ID }}
+          NEXT_PUBLIC_GOOGLE_DRIVE_CLIENT_SECRET: ${{ secrets.GOOGLE_DRIVE_CLIENT_SECRET }}
+          NEXT_PUBLIC_GOOGLE_DRIVE_REFRESH_TOKEN: ${{ secrets.GOOGLE_DRIVE_REFRESH_TOKEN }}
+          NEXT_PUBLIC_GOOGLE_DRIVE_SHARE_WITH: ${{ secrets.GOOGLE_DRIVE_SHARE_WITH }}
+          NEXT_PUBLIC_GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          NEXT_PUBLIC_SHEETS_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_SHEETS_API_BASE_URL }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Sync hashed assets to S3
+        run: |
+          aws s3 sync apps/web/out/_next/static "s3://${{ secrets.S3_BUCKET_NAME }}/_next/static" \
+            --cache-control "public,max-age=31536000,immutable"
+
+      - name: Sync HTML and route payloads to S3
+        run: |
+          aws s3 sync apps/web/out "s3://${{ secrets.S3_BUCKET_NAME }}" \
+            --delete \
+            --exclude "_next/static/*" \
+            --cache-control "no-cache,no-store,must-revalidate"
+
+      - name: Invalidate CloudFront
+        run: |
+          INVALIDATION_ID=$(aws cloudfront create-invalidation \
+            --distribution-id "${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}" \
+            --paths "/*" \
+            --query "Invalidation.Id" \
+            --output text)
+          aws cloudfront wait invalidation-completed \
+            --distribution-id "${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}" \
+            --id "$INVALIDATION_ID"

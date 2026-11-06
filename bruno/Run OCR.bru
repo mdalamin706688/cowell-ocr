@@ -1,0 +1,33 @@
+meta {
+  name: Run OCR
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/ocr
+  body: multipartForm
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+headers {
+  accept: application/json
+}
+
+body:multipart-form {
+  survey_files: @file(/home/md-alamin-haque/Projects/my_drive.png)
+  instructions:
+}
+
+docs {
+  # Run OCR
+  1. Select environment **local**
+  2. Set `accessToken` to a Cognito **access** token (from a signed-in session)
+  3. Confirm `survey_files` points to a real image/PDF
+  4. Click **Send**
+  5. Gemini may return 503 high demand — retry later
+}

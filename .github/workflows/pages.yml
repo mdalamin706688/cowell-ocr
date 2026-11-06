@@ -1,0 +1,60 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build static site for GitHub Pages
+        run: node scripts/build-github-pages.mjs
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          DEMO_LOGIN_EMAIL: ${{ secrets.DEMO_LOGIN_EMAIL }}
+          DEMO_LOGIN_PASSWORD: ${{ secrets.DEMO_LOGIN_PASSWORD }}
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
+          NEXT_PUBLIC_GOOGLE_SHEETS_FOLDER_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_SHEETS_FOLDER_ID }}
+          NEXT_PUBLIC_COGNITO_REGION: ${{ secrets.NEXT_PUBLIC_COGNITO_REGION }}
+          NEXT_PUBLIC_COGNITO_USER_POOL_ID: ${{ secrets.NEXT_PUBLIC_COGNITO_USER_POOL_ID }}
+          NEXT_PUBLIC_COGNITO_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_COGNITO_CLIENT_ID }}
+          NEXT_PUBLIC_COGNITO_IDENTITY_POOL_ID: ${{ secrets.NEXT_PUBLIC_COGNITO_IDENTITY_POOL_ID }}
+          NEXT_PUBLIC_OCR_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_OCR_API_BASE_URL }}
+          NEXT_PUBLIC_OCR_API_ENABLED: ${{ secrets.NEXT_PUBLIC_OCR_API_ENABLED }}
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/web/out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
